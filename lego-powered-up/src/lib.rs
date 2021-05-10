@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use btleplug::api::PeripheralProperties;
+use btleplug::api::{BDAddr, PeripheralProperties};
 use num_traits::FromPrimitive;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, RwLock};
@@ -17,12 +17,15 @@ use btleplug::corebluetooth::{adapter::Adapter, manager::Manager};
 #[cfg(target_os = "windows")]
 use btleplug::winrtble::{adapter::Adapter, manager::Manager};
 
+#[allow(unused)]
+use log::{debug, error, info, trace, warn};
+
 use consts::*;
 mod consts;
 
 #[cfg(target_os = "linux")]
 fn print_adapter_info(adapter: &Adapter) {
-    println!(
+    info!(
         "connected adapter {:?} is powered: {:?}",
         adapter.name(),
         adapter.is_powered()
@@ -31,7 +34,7 @@ fn print_adapter_info(adapter: &Adapter) {
 
 #[cfg(any(target_os = "windows", target_os = "macos"))]
 fn print_adapter_info(_adapter: &Adapter) {
-    println!("adapter info can't be printed on Windows 10 or mac");
+    info!("adapter info can't be printed on Windows 10 or mac");
 }
 
 fn get_central(manager: &Manager) -> Adapter {
@@ -39,8 +42,9 @@ fn get_central(manager: &Manager) -> Adapter {
     adapters.into_iter().next().unwrap()
 }
 
+#[derive(Copy, Clone, Debug)]
 pub enum PoweredUpEvent {
-    HubDiscovered,
+    HubDiscovered(HubType, BDAddr),
 }
 
 pub struct PoweredUp {
@@ -120,7 +124,7 @@ impl Worker {
                 DeviceDiscovered(dev) => {
                     let adapter = self.adapter.write().unwrap();
                     let peripheral = adapter.peripheral(dev).unwrap();
-                    println!(
+                    debug!(
                         "peripheral : {:?} is connected: {:?}",
                         peripheral.properties().local_name,
                         peripheral.is_connected()
@@ -129,11 +133,12 @@ impl Worker {
                         && !peripheral.is_connected()
                     {
                         if let Some(hub_type) = peripheral.identify() {
-                            println!("Looks like a '{:?}' hub!", hub_type);
+                            debug!("Looks like a '{:?}' hub!", hub_type);
+                            self.pu_event_tx.send(
+                                PoweredUpEvent::HubDiscovered(hub_type, dev),
+                            )?;
                         } else {
-                            println!(
-                                "Device does not look like a PoweredUp Hub"
-                            );
+                            debug!("Device does not look like a PoweredUp Hub");
                         }
                     }
                 }
@@ -261,7 +266,7 @@ impl<P: Peripheral> IdentifyHub for P {
         use HubType::*;
 
         let props = self.properties();
-        println!("props:\n{:?}", props);
+        trace!("props:\n{:?}", props);
 
         if props
             .services
