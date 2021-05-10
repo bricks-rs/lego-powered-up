@@ -5,7 +5,7 @@ use rand::{thread_rng, Rng};
 
 #[allow(unused_imports)]
 use std::thread;
-use std::time::Duration;
+
 
 #[allow(unused_imports)]
 use btleplug::api::{Central, CentralEvent, Characteristic, Peripheral};
