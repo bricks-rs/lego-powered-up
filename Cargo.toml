@@ -1,15 +1,5 @@
-[package]
-name = "lego-powered-up"
-version = "0.1.0"
-authors = ["David Young <david@thedavidyoung.co.uk>"]
-edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-btleplug = "0.7"
-lazy_static = "1.4"
-num-derive = "0.3"
-num-traits = "0.2"
-rand = "0.8"
-uuid = "0.8"
+[workspace]
+members = [
+	"lego-powered-up",
+	"pu-util",
+]
