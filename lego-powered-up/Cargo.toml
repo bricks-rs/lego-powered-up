@@ -9,8 +9,10 @@ edition = "2018"
 # https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+anyhow = "1.0"
 btleplug = "0.7"
 lazy_static = "1.4"
+log = "0.4"
 num-derive = "0.3"
 num-traits = "0.2"
 rand = "0.8"

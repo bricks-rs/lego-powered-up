@@ -1,11 +1,9 @@
-#![allow(dead_code)]
+use anyhow::{Context, Result};
 use btleplug::api::PeripheralProperties;
-#[allow(unused_imports)]
-use rand::{thread_rng, Rng};
-
-#[allow(unused_imports)]
-use std::thread;
-
+use num_traits::FromPrimitive;
+use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::{Arc, RwLock};
+use std::thread::{self, JoinHandle};
 
 #[allow(unused_imports)]
 use btleplug::api::{Central, CentralEvent, Characteristic, Peripheral};
@@ -18,8 +16,6 @@ use btleplug::corebluetooth::{adapter::Adapter, manager::Manager};
 #[allow(unused_imports)]
 #[cfg(target_os = "windows")]
 use btleplug::winrtble::{adapter::Adapter, manager::Manager};
-
-use num_traits::FromPrimitive;
 
 use consts::*;
 mod consts;
@@ -43,12 +39,110 @@ fn get_central(manager: &Manager) -> Adapter {
     adapters.into_iter().next().unwrap()
 }
 
-/**
-If you are getting run time error like that :
- thread 'main' panicked at 'Can't scan BLE adapter for connected devices...: PermissionDenied', src/libcore/result.rs:1188:5
- you can try to run app with > sudo ./discover_adapters_peripherals
- on linux
-**/
+pub enum PoweredUpEvent {
+    HubDiscovered,
+}
+
+pub struct PoweredUp {
+    manager: Manager,
+    adapter: Arc<RwLock<Adapter>>,
+    event_rx: Option<Receiver<CentralEvent>>,
+    pu_event_tx: Option<Sender<PoweredUpEvent>>,
+    pu_event_rx: Option<Receiver<PoweredUpEvent>>,
+    worker_thread: Option<JoinHandle<Result<()>>>,
+    pub hubs: Vec<Box<dyn Hub>>,
+}
+
+impl PoweredUp {
+    pub fn init() -> Result<Self> {
+        let manager = Manager::new()?;
+        let adapters = manager.adapters()?;
+        let adapter =
+            adapters.into_iter().next().context("No adapter found")?;
+        let event_rx = Some(
+            adapter
+                .event_receiver()
+                .context("Unable to access event receiver")?,
+        );
+
+        let (pu_event_tx, pu_event_rx) = mpsc::channel();
+
+        Ok(Self {
+            manager,
+            adapter: Arc::new(RwLock::new(adapter)),
+            event_rx,
+            pu_event_tx: Some(pu_event_tx),
+            pu_event_rx: Some(pu_event_rx),
+            worker_thread: None,
+            hubs: Vec::new(),
+        })
+    }
+
+    pub fn event_receiver(&mut self) -> Option<Receiver<PoweredUpEvent>> {
+        self.pu_event_rx.take()
+    }
+
+    pub fn start_scan(&mut self) -> Result<()> {
+        self.adapter.write().unwrap().start_scan()?;
+
+        let mut worker = Worker {
+            pu_event_tx: self
+                .pu_event_tx
+                .take()
+                .context("Unable to access event transmitter")?,
+            event_rx: self
+                .event_rx
+                .take()
+                .context("Unable to access btle event receiver")?,
+            adapter: self.adapter.clone(),
+        };
+
+        let handle = thread::spawn(move || worker.run());
+        self.worker_thread = Some(handle);
+        Ok(())
+    }
+}
+
+struct Worker {
+    pub pu_event_tx: Sender<PoweredUpEvent>,
+    pub event_rx: Receiver<CentralEvent>,
+    pub adapter: Arc<RwLock<Adapter>>,
+}
+
+impl Worker {
+    pub fn run(&mut self) -> Result<()> {
+        use CentralEvent::*;
+        loop {
+            // This is in a loop rather than a while let so that the
+            // mpsc error gets propagated
+            let evt = self.event_rx.recv()?;
+            match evt {
+                DeviceDiscovered(dev) => {
+                    let adapter = self.adapter.write().unwrap();
+                    let peripheral = adapter.peripheral(dev).unwrap();
+                    println!(
+                        "peripheral : {:?} is connected: {:?}",
+                        peripheral.properties().local_name,
+                        peripheral.is_connected()
+                    );
+                    if peripheral.properties().local_name.is_some()
+                        && !peripheral.is_connected()
+                    {
+                        if let Some(hub_type) = peripheral.identify() {
+                            println!("Looks like a '{:?}' hub!", hub_type);
+                        } else {
+                            println!(
+                                "Device does not look like a PoweredUp Hub"
+                            );
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+}
+
 fn main() {
     let manager = Manager::new().unwrap();
     let adapter = get_central(&manager);
@@ -79,7 +173,7 @@ fn main() {
                 if let Some(hub_type) = peripheral.identify() {
                     println!("Looks like a '{:?}' hub!", hub_type);
                 } else {
-                	println!("Device does not look like a PoweredUp Hub");
+                    println!("Device does not look like a PoweredUp Hub");
                 }
 
                 //let hub = register_hub(&peripheral.properties());
@@ -149,16 +243,16 @@ pub trait IdentifyHub {
 }
 
 /*
-PeripheralProperties 
-{ 
+PeripheralProperties
+{
  address: 90:84:2B:60:3C:B8,
  address_type: Public,
  local_name: Some("game"),
  tx_power_level: Some(-66),
  manufacturer_data: {919: [0, 128, 6, 0, 97, 0]},
- service_data: {}, 
- services: [00001623-1212-efde-1623-785feabcd123], 
- discovery_count: 1, 
+ service_data: {},
+ services: [00001623-1212-efde-1623-785feabcd123],
+ discovery_count: 1,
  has_scan_response: false
 }
 */
