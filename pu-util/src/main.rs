@@ -1,14 +1,29 @@
+use anyhow::Result;
+use argparse::Command;
+use env_logger::Env;
 use lego_powered_up::PoweredUp;
 
-fn main() {
-    env_logger::init();
-    println!("Hello, world!");
+mod argparse;
+mod devices;
+mod hubs;
+mod motor_test;
 
-    let mut pu = PoweredUp::init().unwrap();
-    let rx = pu.event_receiver().unwrap();
-    pu.start_scan().unwrap();
+fn main() -> Result<()> {
+    let args = argparse::parse_args();
+    env_logger::Builder::from_env(Env::default().default_filter_or(
+        match args.verbosity {
+            0 => "info",
+            1 => "debug",
+            _ => "trace",
+        },
+    ))
+    .init();
 
-    while let Ok(evt) = rx.recv() {
-        println!("Received event: {:?}", evt);
+    match args.command {
+        Command::Devices(dev_args) => devices::run(&dev_args)?,
+        Command::Hubs(hub_args) => hubs::run(&hub_args)?,
+        _ => todo!(),
     }
+
+    Ok(())
 }

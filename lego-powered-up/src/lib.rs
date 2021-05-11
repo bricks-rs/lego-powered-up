@@ -24,17 +24,21 @@ use consts::*;
 mod consts;
 
 #[cfg(target_os = "linux")]
-fn print_adapter_info(adapter: &Adapter) {
-    info!(
+pub fn print_adapter_info(idx: usize, adapter: &Adapter) -> Result<()> {
+    /*info!(
         "connected adapter {:?} is powered: {:?}",
         adapter.name(),
         adapter.is_powered()
-    );
+    );*/
+    println!("  {}: {}", idx, adapter.name()?);
+    Ok(())
 }
 
 #[cfg(any(target_os = "windows", target_os = "macos"))]
-fn print_adapter_info(_adapter: &Adapter) {
+pub fn print_adapter_info(idx: usize,_adapter: &Adapter) -> Result<()> {
     info!("adapter info can't be printed on Windows 10 or mac");
+    println!("  {}: Adapter {}");
+    Ok(())
 }
 
 fn get_central(manager: &Manager) -> Adapter {
@@ -58,11 +62,20 @@ pub struct PoweredUp {
 }
 
 impl PoweredUp {
+    pub fn devices() -> Result<Vec<Adapter>> {
+        let manager = Manager::new()?;
+        Ok(manager.adapters()?)
+    }
+
     pub fn init() -> Result<Self> {
+        Self::with_device(0)
+    }
+
+    pub fn with_device(dev: usize) -> Result<Self> {
         let manager = Manager::new()?;
         let adapters = manager.adapters()?;
         let adapter =
-            adapters.into_iter().next().context("No adapter found")?;
+            adapters.into_iter().nth(dev).context("No adapter found")?;
         let event_rx = Some(
             adapter
                 .event_receiver()
@@ -153,7 +166,7 @@ fn main() {
     let adapter = get_central(&manager);
     println!("connecting to BLE adapter: ...");
 
-    print_adapter_info(&adapter);
+    print_adapter_info(0, &adapter).unwrap();
     let event_rx = adapter
         .event_receiver()
         .expect("Can't scan BLE adapter for connected devices...");

@@ -909,6 +909,8 @@ dependencies = [
 name = "pu-util"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "btleplug",
  "clap 3.0.0-beta.2",
  "env_logger",
  "lego-powered-up",
