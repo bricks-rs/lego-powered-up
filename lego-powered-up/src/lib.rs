@@ -4,16 +4,15 @@ use num_traits::FromPrimitive;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, RwLock};
 use std::thread::{self, JoinHandle};
+use btleplug::api::{Central, CentralEvent,  };
+pub use btleplug::api::Peripheral;
 
-#[allow(unused_imports)]
-use btleplug::api::{Central, CentralEvent, Characteristic, Peripheral};
-#[allow(unused_imports)]
 #[cfg(target_os = "linux")]
 use btleplug::bluez::{adapter::Adapter, manager::Manager};
-#[allow(unused_imports)]
+
 #[cfg(target_os = "macos")]
 use btleplug::corebluetooth::{adapter::Adapter, manager::Manager};
-#[allow(unused_imports)]
+
 #[cfg(target_os = "windows")]
 use btleplug::winrtble::{adapter::Adapter, manager::Manager};
 
@@ -35,7 +34,7 @@ pub fn print_adapter_info(idx: usize, adapter: &Adapter) -> Result<()> {
 }
 
 #[cfg(any(target_os = "windows", target_os = "macos"))]
-pub fn print_adapter_info(idx: usize,_adapter: &Adapter) -> Result<()> {
+pub fn print_adapter_info(idx: usize, _adapter: &Adapter) -> Result<()> {
     info!("adapter info can't be printed on Windows 10 or mac");
     println!("  {}: Adapter {}");
     Ok(())
@@ -46,6 +45,7 @@ fn get_central(manager: &Manager) -> Adapter {
     adapters.into_iter().next().unwrap()
 }
 
+#[non_exhaustive]
 #[derive(Copy, Clone, Debug)]
 pub enum PoweredUpEvent {
     HubDiscovered(HubType, BDAddr),
@@ -117,6 +117,10 @@ impl PoweredUp {
         let handle = thread::spawn(move || worker.run());
         self.worker_thread = Some(handle);
         Ok(())
+    }
+
+    pub fn peripheral(&self, dev: BDAddr) -> Option<impl Peripheral> {
+        self.adapter.write().unwrap().peripheral(dev)
     }
 }
 

@@ -1,5 +1,6 @@
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
+use std::fmt::{self, Display};
 
 /**
  * @typedef HubType
@@ -23,6 +24,19 @@ pub enum HubType {
     DuploTrainBase = 5,
     TechnicMediumHub = 6,
     Mario = 7,
+}
+
+impl Display for HubType {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        use HubType::*;
+        match self {
+            Unknown | MoveHub | Hub | Mario => write!(fmt, "{:?}", self),
+            Wedo2SmartHub => write!(fmt, "Wedo 2 Smart Hub"),
+            RemoteControl => write!(fmt, "Remote Control"),
+            DuploTrainBase => write!(fmt, "Duplo Train Base"),
+            TechnicMediumHub => write!(fmt, "Technic Medium Hub"),
+        }
+    }
 }
 
 /**

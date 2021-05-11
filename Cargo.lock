@@ -914,6 +914,7 @@ dependencies = [
  "clap 3.0.0-beta.2",
  "env_logger",
  "lego-powered-up",
+ "log",
 ]
 
 [[package]]

@@ -1,7 +1,6 @@
 use anyhow::Result;
 use argparse::Command;
 use env_logger::Env;
-use lego_powered_up::PoweredUp;
 
 mod argparse;
 mod devices;
@@ -12,7 +11,7 @@ fn main() -> Result<()> {
     let args = argparse::parse_args();
     env_logger::Builder::from_env(Env::default().default_filter_or(
         match args.verbosity {
-            0 => "info",
+            0 => "warn",
             1 => "debug",
             _ => "trace",
         },
