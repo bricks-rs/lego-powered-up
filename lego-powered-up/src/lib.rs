@@ -1,11 +1,11 @@
 use anyhow::{Context, Result};
+pub use btleplug::api::Peripheral;
 use btleplug::api::{BDAddr, PeripheralProperties};
+use btleplug::api::{Central, CentralEvent};
 use num_traits::FromPrimitive;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, RwLock};
 use std::thread::{self, JoinHandle};
-use btleplug::api::{Central, CentralEvent,  };
-pub use btleplug::api::Peripheral;
 
 #[cfg(target_os = "linux")]
 use btleplug::bluez::{adapter::Adapter, manager::Manager};
@@ -121,6 +121,57 @@ impl PoweredUp {
 
     pub fn peripheral(&self, dev: BDAddr) -> Option<impl Peripheral> {
         self.adapter.write().unwrap().peripheral(dev)
+    }
+
+    pub fn create_hub(
+        &self,
+        hub_type: HubType,
+        dev: BDAddr,
+    ) -> Result<Box<dyn Hub>> {
+        let peripheral =
+            self.adapter.write().unwrap().peripheral(dev).context("Unable to identify device")?;
+        peripheral.connect()?;
+
+            Ok(Box::new(match hub_type {
+                HubType::TechnicMediumHub => {
+                    TechnicHub {
+                        peripheral
+                    }
+                }
+                _ => unimplemented!(),
+            }))
+    }
+
+    pub fn connect(&self, dev: BDAddr) -> Result<Box<dyn Hub>> {
+        let peripheral = self
+            .adapter
+            .write()
+            .unwrap()
+            .peripheral(dev)
+            .context("No device found")?;
+
+        peripheral.connect()?;
+
+        let chars = peripheral.discover_characteristics();
+        if peripheral.is_connected() {
+            println!(
+                "Discover peripheral : \'{:?}\' characteristics...",
+                peripheral.properties().local_name
+            );
+            for chars_vector in chars.into_iter() {
+                for char_item in chars_vector.iter() {
+                    println!("{:?}", char_item);
+                }
+            }
+            println!(
+                "disconnecting from peripheral : {:?}...",
+                peripheral.properties().local_name
+            );
+            peripheral
+                .disconnect()
+                .expect("Error on disconnecting from BLE peripheral ");
+        }
+        todo!()
     }
 }
 
@@ -244,19 +295,36 @@ fn main() {
     }
 }
 
-pub fn register_hub(peripheral: &PeripheralProperties) -> Option<impl Hub> {
-    Option::<TechnicHub>::None
-}
+/*pub fn register_hub(peripheral: &PeripheralProperties) -> Option<impl Hub> {
+    Option::<TechnicHub<P>>::None
+}*/
 
 pub trait Hub {
-    fn name(&self) -> &str;
+    fn name(&self) -> String;
+    fn disconnect(&self) -> Result<()>;
+    fn is_connected(&self) -> bool;
 }
 
-pub struct TechnicHub;
 
-impl Hub for TechnicHub {
-    fn name(&self) -> &str {
-        "game"
+
+pub struct TechnicHub<P: Peripheral> {
+    peripheral: P,
+}
+
+impl <P: Peripheral>Hub for TechnicHub<P> {
+    fn name(&self) -> String {
+        self.peripheral.properties().local_name.unwrap_or_default()
+    }
+
+    fn disconnect(&self) -> Result<()> {
+        if self.is_connected() {
+            self.peripheral.disconnect()?;
+        }
+        Ok(())
+    }
+
+     fn is_connected(&self) -> bool {
+        self.peripheral.is_connected()
     }
 }
 

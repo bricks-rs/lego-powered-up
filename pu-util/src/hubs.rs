@@ -1,5 +1,5 @@
 use crate::argparse::HubArgs;
-use anyhow::Result;
+use anyhow::{Context, Result};
 use lego_powered_up::{Peripheral, PoweredUp, PoweredUpEvent};
 use log::info;
 
@@ -27,21 +27,30 @@ pub fn run(args: &HubArgs) -> Result<()> {
             };
 
             if let Some(name_filter) = &args.name {
-            	if name != *name_filter {
-            		continue;
-            	}
+                if name != *name_filter {
+                    continue;
+                }
             }
 
             if let Some(addr_filter) = &args.address {
-            	if addr.to_string() != *addr_filter {
-            		continue;
-            	}
+                if addr.to_string() != *addr_filter {
+                    continue;
+                }
             }
 
+            let verb = if args.connect {
+                "Connecting to"
+            } else {
+                "Discovered"
+            };
             println!(
-                "Discovered `{}` `{}` with address `{}`",
-                hub_type, name, addr
+                "{} `{}` `{}` with address `{}`",
+                verb, hub_type, name, addr
             );
+
+            if args.connect {
+                let hub = pu.create_hub(hub_type, addr)?;
+            }
         }
     }
 
