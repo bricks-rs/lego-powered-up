@@ -18,10 +18,26 @@ pub fn run(args: &HubArgs) -> Result<()> {
         info!("Received event: {:?}", evt);
         if let PoweredUpEvent::HubDiscovered(hub_type, addr) = evt {
             let name = if let Some(peripheral) = pu.peripheral(addr) {
-                peripheral.properties().local_name.unwrap_or("Unknown".to_string())
+                peripheral
+                    .properties()
+                    .local_name
+                    .unwrap_or("Unknown".to_string())
             } else {
                 "Unknown".to_string()
             };
+
+            if let Some(name_filter) = &args.name {
+            	if name != *name_filter {
+            		continue;
+            	}
+            }
+
+            if let Some(addr_filter) = &args.address {
+            	if addr.to_string() != *addr_filter {
+            		continue;
+            	}
+            }
+
             println!(
                 "Discovered `{}` `{}` with address `{}`",
                 hub_type, name, addr

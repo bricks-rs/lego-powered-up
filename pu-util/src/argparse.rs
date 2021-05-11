@@ -20,6 +20,7 @@ pub struct HubArgs {
     pub device_index: Option<usize>,
     pub address: Option<String>,
     pub name: Option<String>,
+    pub connect: bool,
 }
 
 pub struct MotorTestArgs {
@@ -50,18 +51,24 @@ pub fn parse_args() -> Args {
                 .arg(
                     Arg::new("device")
                         .long("device")
-                        .about("Device index (from `devices`)"),
+                        .about("Device index (from `devices`)")
+                        .takes_value(true),
                 )
                 .arg(
                     Arg::new("name")
                         .long("name")
-                        .about("Search for hub with this name"),
+                        .about("Search for hub with this name")
+                        .takes_value(true),
                 )
                 .arg(
                     Arg::new("address")
                         .long("address")
-                        .about("Search for hub with this address"),
-                ),
+                        .about("Search for hub with this address")
+                        .takes_value(true),
+                )
+                .arg(Arg::new("connect").long("connect").about(
+                    "Connect to the discovered hub(s) and display more info",
+                )),
         )
         .get_matches();
 
@@ -81,6 +88,7 @@ pub fn parse_args() -> Args {
             }),
             name: matches.value_of("name").map(String::from),
             address: matches.value_of("address").map(String::from),
+            connect: matches.is_present("connect"),
         })
     } else {
         unreachable!();
