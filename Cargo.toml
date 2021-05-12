@@ -2,4 +2,5 @@
 members = [
 	"lego-powered-up",
 	"pu-util",
+	"gui",
 ]

@@ -1,0 +1,11 @@
+[package]
+name = "gui"
+version = "0.1.0"
+authors = ["David Young <david@thedavidyoung.co.uk>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bevy = { version = "0.5", features = ["dynamic"] }
+lego-powered-up = { path = "../lego-powered-up" }
