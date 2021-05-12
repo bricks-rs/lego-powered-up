@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 pub use btleplug::api::Peripheral;
-use btleplug::api::{BDAddr, PeripheralProperties};
+use btleplug::api::{BDAddr, Characteristic, PeripheralProperties};
 use btleplug::api::{Central, CentralEvent};
 use num_traits::FromPrimitive;
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -20,9 +20,13 @@ use btleplug::winrtble::{adapter::Adapter, manager::Manager};
 use log::{debug, error, info, trace, warn};
 
 use consts::*;
+use hubs::Port;
+
+#[allow(unused)]
 mod consts;
 
-mod hubs;
+pub mod devices;
+pub mod hubs;
 
 #[cfg(target_os = "linux")]
 pub fn print_adapter_info(idx: usize, adapter: &Adapter) -> Result<()> {
@@ -137,9 +141,12 @@ impl PoweredUp {
             .peripheral(dev)
             .context("Unable to identify device")?;
         peripheral.connect()?;
+        let chars = peripheral.discover_characteristics()?;
 
         Ok(Box::new(match hub_type {
-            HubType::TechnicMediumHub => hubs::TechnicHub { peripheral },
+            HubType::TechnicMediumHub => {
+                hubs::TechnicHub::init(peripheral, chars)?
+            }
             _ => unimplemented!(),
         }))
     }
@@ -222,6 +229,25 @@ pub trait Hub {
     fn name(&self) -> String;
     fn disconnect(&self) -> Result<()>;
     fn is_connected(&self) -> bool;
+    // The init function cannot be a trait method until we have GAT :(
+    //fn init(peripheral: P);
+    fn properties(&self) -> &hubs::HubProperties;
+
+    fn port_map(&self) -> &hubs::PortMap {
+        &self.properties().port_map
+    }
+
+    // cannot provide a default implementation without access to the
+    // Peripheral trait from here
+    fn send(
+        &self,
+        port: Port,
+        mode: u8,
+        msg: &[u8],
+        request_reply: bool,
+    ) -> Result<()>;
+
+    fn subscribe(&self, char: Characteristic) -> Result<()>;
 }
 
 pub trait IdentifyHub {

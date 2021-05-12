@@ -1,7 +1,11 @@
 use crate::argparse::HubArgs;
 use anyhow::{Context, Result};
-use lego_powered_up::{Peripheral, PoweredUp, PoweredUpEvent};
+use lego_powered_up::{
+    devices::HubLED, hubs::Port, Peripheral, PoweredUp, PoweredUpEvent,
+};
 use log::info;
+use std::thread::sleep;
+use std::time::Duration;
 
 pub fn run(args: &HubArgs) -> Result<()> {
     let mut pu = if let Some(dev) = args.device_index {
@@ -50,6 +54,30 @@ pub fn run(args: &HubArgs) -> Result<()> {
 
             if args.connect {
                 let hub = pu.create_hub(hub_type, addr)?;
+
+                println!("Setting hub LED");
+
+                // Set the hub LED if available
+                if hub.port_map().contains_key(&Port::HubLed) {
+                    for colour in [[0, 0xff, 0], [0xff, 0, 0], [0, 0, 0xff]]
+                        .iter()
+                        .cycle()
+                        .take(10)
+                    {
+                        println!("Setting to: {:?}", colour);
+                        let mut led = HubLED::new();
+                        led.set_colour(&colour, &hub)?;
+                        sleep(Duration::from_secs(1));
+                    }
+                }
+
+                println!("Done!");
+
+                sleep(Duration::from_secs(10));
+
+                println!("Disconnecting...");
+                hub.disconnect()?;
+                println!("Done");
             }
         }
     }

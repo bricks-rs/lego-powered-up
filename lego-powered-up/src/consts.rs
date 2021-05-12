@@ -217,6 +217,9 @@ pub mod bleservice {
 }
 
 pub mod blecharacteristic {
+    use lazy_static::lazy_static;
+    use uuid::Uuid;
+
     pub const WEDO2_BATTERY: &str = "2a19";
     pub const WEDO2_FIRMWARE_REVISION: &str = "2a26";
     pub const WEDO2_BUTTON: &str = "00001526-1212-efde-1523-785feabcd123"; // "1526"
@@ -235,7 +238,10 @@ pub mod blecharacteristic {
     pub const WEDO2_MOTOR_VALUE_WRITE: &str =
         "00001565-1212-efde-1523-785feabcd123"; // "1565"
     pub const WEDO2_NAME_ID: &str = "00001524-1212-efde-1523-785feabcd123"; // "1524"
-    pub const LPF2_ALL: &str = "00001624-1212-efde-1623-785feabcd123";
+    lazy_static! {
+        pub static ref LPF2_ALL: Uuid =
+            Uuid::parse_str("00001624-1212-efde-1623-785feabcd123").unwrap();
+    }
 }
 
 /**
