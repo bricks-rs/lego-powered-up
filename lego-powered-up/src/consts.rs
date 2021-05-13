@@ -272,7 +272,7 @@ pub mod blecharacteristic {
  * @description https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#message-types
  */
 #[repr(u8)]
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive)]
 pub enum MessageType {
     HubProperties = 0x01,
     HubActions = 0x02,
@@ -319,7 +319,7 @@ pub enum MessageType {
  * @description https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#hub-property-reference
  */
 #[repr(u8)]
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive)]
 pub enum HubPropertyReference {
     AdvertisingName = 0x01,
     Button = 0x02,
@@ -349,7 +349,7 @@ pub enum HubPropertyReference {
  * @description https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#hub-property-reference
  */
 #[repr(u8)]
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive)]
 pub enum HubPropertyOperation {
     SetDownstream = 0x01,
     EnableUpdatesDownstream = 0x02,
@@ -379,7 +379,7 @@ pub enum HubPropertyOperation {
  * @description https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#hub-property-reference
  */
 #[repr(u8)]
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive)]
 pub enum HubPropertyPayload {
     AdvertisingName = 0x01,
     ButtonState = 0x02,

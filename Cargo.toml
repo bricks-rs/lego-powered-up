@@ -4,4 +4,4 @@ members = [
 	"pu-util",
 	"gui",
 ]
-default-members = ["pu-util"]
+default-members = ["pu-util", "lego-powered-up"]

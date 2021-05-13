@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 pub use btleplug::api::Peripheral;
-use btleplug::api::{BDAddr, Characteristic, PeripheralProperties};
+use btleplug::api::{BDAddr, Characteristic};
 use btleplug::api::{Central, CentralEvent};
 use num_traits::FromPrimitive;
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -21,12 +21,14 @@ use log::{debug, error, info, trace, warn};
 
 use consts::*;
 use hubs::Port;
+use notifications::NotificationMessage;
 
 #[allow(unused)]
 mod consts;
 
 pub mod devices;
 pub mod hubs;
+pub mod notifications;
 
 #[cfg(target_os = "linux")]
 pub fn print_adapter_info(idx: usize, adapter: &Adapter) -> Result<()> {
@@ -143,15 +145,32 @@ impl PoweredUp {
         peripheral.connect()?;
         let chars = peripheral.discover_characteristics()?;
 
+        let (notif_tx, notif_rx) = mpsc::channel();
+
+        // Set notification handler
+        peripheral.on_notification(Box::new(move |msg| {
+            if let Ok(msg) = NotificationMessage::parse(&msg.value) {
+                notif_tx.send(msg).unwrap();
+            }
+        }));
+
+        // get LPF2 characteristic and subscribe to it
+        let lpf_char = chars
+            .iter()
+            .find(|c| c.uuid == *blecharacteristic::LPF2_ALL)
+            .context("Device does not advertise LPF2_ALL characteristic")?
+            .clone();
+        peripheral.subscribe(&lpf_char)?;
+
         Ok(Box::new(match hub_type {
             HubType::TechnicMediumHub => {
-                hubs::TechnicHub::init(peripheral, chars)?
+                hubs::TechnicHub::init(peripheral, chars, notif_rx)?
             }
             _ => unimplemented!(),
         }))
     }
 
-    pub fn connect(&self, dev: BDAddr) -> Result<Box<dyn Hub>> {
+    /* pub fn connect(&self, dev: BDAddr) -> Result<Box<dyn Hub>> {
         let peripheral = self
             .adapter
             .write()
@@ -161,16 +180,17 @@ impl PoweredUp {
 
         peripheral.connect()?;
 
-        let chars = peripheral.discover_characteristics();
+        let chars = peripheral.discover_characteristics()?;
         if peripheral.is_connected() {
             println!(
                 "Discover peripheral : \'{:?}\' characteristics...",
                 peripheral.properties().local_name
             );
-            for chars_vector in chars.into_iter() {
-                for char_item in chars_vector.iter() {
-                    println!("{:?}", char_item);
-                }
+
+
+
+            for char_item in chars.iter() {
+                println!("{:?}", char_item);
             }
             println!(
                 "disconnecting from peripheral : {:?}...",
@@ -181,7 +201,7 @@ impl PoweredUp {
                 .expect("Error on disconnecting from BLE peripheral ");
         }
         todo!()
-    }
+    }*/
 }
 
 struct Worker {

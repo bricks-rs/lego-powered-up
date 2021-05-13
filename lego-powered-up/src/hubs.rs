@@ -1,8 +1,10 @@
 use crate::consts::blecharacteristic;
+use crate::notifications::NotificationMessage;
 use crate::Hub;
 use anyhow::{Context, Result};
 use btleplug::api::{Characteristic, Peripheral, WriteType};
 use std::collections::HashMap;
+use std::sync::mpsc::Receiver;
 
 #[derive(Debug, Default)]
 pub struct HubProperties {
@@ -30,6 +32,7 @@ pub enum Port {
     Accelerometer,
     GyroSensor,
     TiltSensor,
+    GestureSensor,
 }
 
 impl Port {
@@ -96,7 +99,11 @@ impl<P: Peripheral> Hub for TechnicHub<P> {
 }
 
 impl<P: Peripheral> TechnicHub<P> {
-    pub fn init(peripheral: P, chars: Vec<Characteristic>) -> Result<Self> {
+    pub fn init(
+        peripheral: P,
+        chars: Vec<Characteristic>,
+        notif_rx: Receiver<NotificationMessage>,
+    ) -> Result<Self> {
         // Peripheral is already connected before we get here
 
         println!("\n\nCHARACTERISTICS:\n\n{:?}\n\n", chars);
