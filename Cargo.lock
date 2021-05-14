@@ -125,12 +125,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "28b2cd92db5cbd74e8e5028f7e27dd7aa3090e89e4f2a197cc7c8dfb69c7063b"
 
 [[package]]
-name = "anymap"
-version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "33954243bd79057c2de7338850b85983a44588021f8a5fee574a8888c6de4344"
-
-[[package]]
 name = "approx"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1578,9 +1572,9 @@ checksum = "00b0228411908ca8685dba7fc2cdd70ec9990a6e753e89b6ac91a84c40fbaf4b"
 
 [[package]]
 name = "fsevent"
-version = "2.1.0"
+version = "2.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fc2022c30489008b13a36cd488d4bca1db92ff610310efb96c8919733dcaddd8"
+checksum = "97f347202c95c98805c216f9e1df210e8ebaec9fdb2365700a43c10797a35e63"
 dependencies = [
  "bitflags",
  "fsevent-sys",
@@ -1588,9 +1582,9 @@ dependencies = [
 
 [[package]]
 name = "fsevent-sys"
-version = "3.2.0"
+version = "3.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a5decf3b2dae6345f20356d6656a4ecda6abd24ecc102d15fcdcaa594fcefabf"
+checksum = "ca6f5e6817058771c10f0eb0f05ddf1e35844266f972004fe8e4b21fda295bd5"
 dependencies = [
  "libc",
 ]
@@ -2671,11 +2665,10 @@ dependencies = [
 
 [[package]]
 name = "notify"
-version = "5.0.0-pre.7"
+version = "5.0.0-pre.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ebe7699a0f8c5759450716ee03d231685c22b4fe8f406c42c22e0ad94d40ce7"
+checksum = "46bbbcd078f1f00ddb7a9abe70b96e91229b44b0b3afdec610f8e5137f8f014b"
 dependencies = [
- "anymap",
  "bitflags",
  "crossbeam-channel",
  "filetime",
@@ -3232,18 +3225,18 @@ checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 
 [[package]]
 name = "serde"
-version = "1.0.125"
+version = "1.0.126"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "558dc50e1a5a5fa7112ca2ce4effcb321b0300c0d4ccf0776a9f60cd89031171"
+checksum = "ec7505abeacaec74ae4778d9d9328fe5a5d04253220a85c4ee022239fc996d03"
 dependencies = [
  "serde_derive",
 ]
 
 [[package]]
 name = "serde_derive"
-version = "1.0.125"
+version = "1.0.126"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b093b7a2bb58203b5da3056c05b4ec1fed827dcfdb37347a8841695263b3d06d"
+checksum = "963a7dbc9895aeac7ac90e74f34a5d5261828f79df35cbed41e10189d3804d43"
 dependencies = [
  "proc-macro2",
  "quote",
