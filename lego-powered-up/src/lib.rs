@@ -23,7 +23,6 @@ use consts::*;
 use hubs::Port;
 use notifications::NotificationMessage;
 
-#[allow(unused)]
 mod consts;
 
 pub mod devices;

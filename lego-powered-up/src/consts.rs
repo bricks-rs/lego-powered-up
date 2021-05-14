@@ -148,15 +148,6 @@ pub enum Color {
  * @property {number} DOWN 3
  * @property {number} STOP 4
  */
-#[repr(u8)]
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum ButtonState {
-    Pressed = 2,
-    Released = 0,
-    Up = 1,
-    Down = 255,
-    Stop = 127,
-}
 
 /**
  * @typedef BrakingStyle
@@ -428,40 +419,6 @@ pub enum ActionType {
 }
 
 /**
- * @typedef AlertType
- * @param {number} LOW_VOLTAGE 0x01
- * @param {number} HIGH_CURRENT 0x02
- * @param {number} LOW_SIGNAL_STRENGTH 0x03
- * @param {number} OVER_POWER_CONDITION 0x04
- * @description https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#alert-type
- */
-#[repr(u8)]
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum AlertType {
-    LowVoltage = 0x01,
-    HighCurrent = 0x02,
-    LowSignalStrength = 0x03,
-    OverPowerCondition = 0x04,
-}
-
-/**
- * @typedef AlertOperation
- * @param {number} ENABLE_UPDATE 0x01
- * @param {number} DISABLE_UPDATE 0x02
- * @param {number} REQUEST_UPDATE 0x03
- * @param {number} UPDATE 0x04
- * @description https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#alert-operation
- */
-#[repr(u8)]
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum AlertOperation {
-    LowVoltage = 0x01,
-    HighCurrent = 0x02,
-    LowSignalStrength = 0x03,
-    OverPowerCondition = 0x04,
-}
-
-/**
  * @typedef AlertPayload
  * @param {number} STATUS_OK 0x00
  * @param {number} ALERT 0xFF
@@ -482,73 +439,11 @@ pub enum AlertPayload {
  * @description https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#event
  */
 #[repr(u8)]
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive)]
 pub enum Event {
     DetachedIo = 0x00,
     AttachedIo = 0x01,
     AttachedVirtualIo = 0x02,
-}
-
-/**
- * @typedef IOTypeID
- * @param {number} MOTOR 0x0001
- * @param {number} SYSTEM_TRAIN_MOTOR 0x0002
- * @param {number} BUTTON 0x0005
- * @param {number} LED_LIGHT 0x0008
- * @param {number} VOLTAGE 0x0014
- * @param {number} CURRENT 0x0015
- * @param {number} PIEZO_TONE_SOUND 0x0016
- * @param {number} RGB_LIGHT 0x0017
- * @param {number} EXTERNAL_TILT_SENSOR 0x0022
- * @param {number} MOTION_SENSOR 0x0023
- * @param {number} VISION_SENSOR 0x0025
- * @param {number} EXTERNAL_MOTOR 0x0026
- * @param {number} INTERNAL_MOTOR 0x0027
- * @param {number} INTERNAL_TILT 0x0028
- * @description https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#io-type-id
- */
-#[repr(u16)]
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum IOTypeID {
-    Motor = 0x0001,
-    SystemTrainMotor = 0x0002,
-    Button = 0x0005,
-    LedLight = 0x0008,
-    Voltage = 0x0014,
-    Current = 0x0015,
-    PiezoToneSound = 0x0016,
-    RgbLight = 0x0017,
-    ExternalTiltSensor = 0x0022,
-    MotionSensor = 0x0023,
-    VisionSensor = 0x0025,
-    ExternalMotor = 0x0026,
-    InternalMotor = 0x0027,
-    InternalTilt = 0x0028,
-}
-
-/**
- * @typedef ErrorCode
- * @param {number} ACK 0x01
- * @param {number} MACK 0x02
- * @param {number} BUFFER_OVERFLOW 0x03
- * @param {number} TIMEOUT 0x04
- * @param {number} COMMAND_NOT_RECOGNIZED 0x05
- * @param {number} INVALID_USE 0x06
- * @param {number} OVERCURRENT 0x07
- * @param {number} INTERNAL_ERROR 0x08
- * @description https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#error-codes
- */
-#[repr(u8)]
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum ErrorCode {
-    Ack = 0x01,
-    Mack = 0x02,
-    BufferOverflow = 0x03,
-    Timeout = 0x04,
-    CommandNotRecognized = 0x05,
-    InvalidUse = 0x06,
-    Overcurrent = 0x07,
-    InternalError = 0x08,
 }
 
 /**
@@ -569,8 +464,8 @@ pub enum ErrorCode {
  * @description https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#h-w-network-command-type
  */
 #[repr(u8)]
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum HWNetWorkCommandType {
+#[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive)]
+pub enum HwNetworkCommandType {
     ConnectionRequest = 0x02,
     FamilyRequest = 0x03,
     FamilySet = 0x04,
@@ -587,85 +482,6 @@ pub enum HWNetWorkCommandType {
 }
 
 /**
- * @typedef HWNetworkFamily
- * @param {number} GREEN 0x01
- * @param {number} YELLOW 0x02
- * @param {number} RED 0x03
- * @param {number} BLUE 0x04
- * @param {number} PURPLE 0x05
- * @param {number} LIGHT_BLUE 0x06
- * @param {number} TEAL 0x07
- * @param {number} PINK 0x08
- * @param {number} WHITE 0x00
- * @description https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#h-w-network-family
- */
-#[repr(u8)]
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum HWNetworkFamily {
-    Green = 0x01,
-    Yellow = 0x02,
-    Red = 0x03,
-    Blue = 0x04,
-    Purple = 0x05,
-    LightBlue = 0x06,
-    Teal = 0x07,
-    Pink = 0x08,
-    White = 0x00,
-}
-
-/**
- * @typedef HWNetworkSubFamily
- * @param {number} ONE_FLASH 0x01
- * @param {number} TWO_FLASHES 0x02
- * @param {number} THREE_FLASHES 0x03
- * @param {number} FOUR_FLASHES 0x04
- * @param {number} FIVE_FLASHES 0x05
- * @param {number} SIX_FLASHES 0x06
- * @param {number} SEVEN_FLASHES 0x07
- * @description https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#h-w-network-sub-family
- */
-#[repr(u8)]
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum HWNetworkSubFamily {
-    OneFlash = 0x01,
-    TwoFlashes = 0x02,
-    ThreeFlashes = 0x03,
-    FourFlashes = 0x04,
-    FiveFlashes = 0x05,
-    SixFlashes = 0x06,
-    SevenFlashes = 0x07,
-}
-
-/**
- * @typedef ModeInformationType
- * @param {number} NAME 0x00
- * @param {number} RAW 0x01
- * @param {number} PCT 0x02
- * @param {number} SI 0x03
- * @param {number} SYMBOL 0x04
- * @param {number} MAPPING 0x05
- * @param {number} USED_INTERNALLY 0x06
- * @param {number} MOTOR_BIAS 0x07
- * @param {number} CAPABILITY_BITS 0x08
- * @param {number} VALUE_FORMAT 0x80
- * @description https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#mode-information-types
- */
-#[repr(u8)]
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum ModeInformationType {
-    Name = 0x00,
-    Raw = 0x01,
-    Pct = 0x02,
-    Si = 0x03,
-    Symbol = 0x04,
-    Mapping = 0x05,
-    UsedInternally = 0x06,
-    MotorBias = 0x07,
-    CapabilityBits = 0x08,
-    ValueFormat = 0x80,
-}
-
-/**
  * @typedef PortInputFormatSetupSubCommand
  * @param {number} SET_MODEANDDATASET_COMBINATIONS 0x01
  * @param {number} LOCK_LPF2_DEVICE_FOR_SETUP 0x02
@@ -676,12 +492,12 @@ pub enum ModeInformationType {
  * @description https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-input-format-setup-sub-commands
  */
 #[repr(u8)]
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive)]
 pub enum PortInputFormatSetupSubCommand {
     SetModeanddatasetCombinations = 0x01,
     LockLpf2DeviceForSetup = 0x02,
-    Unlockandstartwithmultiupdateenabled = 0x03,
-    Unlockandstartwithmultiupdatedisabled = 0x04,
+    UnlockAndStartMultiEnabled = 0x03,
+    UnlockAndStartMultiDisabled = 0x04,
     NotUsed = 0x05,
     ResetSensor = 0x06,
 }
