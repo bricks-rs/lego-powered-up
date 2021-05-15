@@ -150,6 +150,8 @@ impl PoweredUp {
         peripheral.on_notification(Box::new(move |msg| {
             if let Ok(msg) = NotificationMessage::parse(&msg.value) {
                 notif_tx.send(msg).unwrap();
+            } else {
+                error!("Message parse error: {:?}", msg);
             }
         }));
 
@@ -267,6 +269,8 @@ pub trait Hub {
     ) -> Result<()>;
 
     fn subscribe(&self, char: Characteristic) -> Result<()>;
+
+    fn poll(&self) -> Option<NotificationMessage>;
 }
 
 pub trait IdentifyHub {

@@ -3,6 +3,7 @@ use crate::notifications::NotificationMessage;
 use crate::Hub;
 use anyhow::{Context, Result};
 use btleplug::api::{Characteristic, Peripheral, WriteType};
+use log::trace;
 use std::collections::HashMap;
 use std::sync::mpsc::Receiver;
 
@@ -45,6 +46,7 @@ pub struct TechnicHub<P: Peripheral> {
     peripheral: P,
     lpf_characteristic: Characteristic,
     properties: HubProperties,
+    notif_rx: Receiver<NotificationMessage>,
 }
 
 impl<P: Peripheral> Hub for TechnicHub<P> {
@@ -83,18 +85,31 @@ impl<P: Peripheral> Hub for TechnicHub<P> {
             self.port_map().get(&port).context("Invalid port for hub")?;
 
         let mut buf = Vec::new();
+        buf.push(6 + msg.len() as u8);
+        buf.push(0); // hub ID
         buf.push(0x81);
+        buf.push(0x51);
         buf.push(*port_id);
-        buf.extend_from_slice(&[0x11, 0x51]);
+        //buf.extend_from_slice(&[0x11, 0x51]);
         buf.push(mode);
         buf.extend_from_slice(&msg);
+        println!("Send buf: {:?}", buf);
 
         Ok(self
             .peripheral
             .write(&self.lpf_characteristic, &buf, write_type)?)
     }
+
     fn subscribe(&self, char: Characteristic) -> Result<()> {
         Ok(self.peripheral.subscribe(&char)?)
+    }
+
+    fn poll(&self) -> Option<NotificationMessage> {
+        if let Ok(msg) = self.notif_rx.try_recv() {
+            println!("Received message: {:?}", msg);
+            return Some(msg);
+        }
+        None
     }
 }
 
@@ -139,6 +154,7 @@ impl<P: Peripheral> TechnicHub<P> {
             peripheral,
             lpf_characteristic,
             properties,
+            notif_rx,
         })
     }
 }

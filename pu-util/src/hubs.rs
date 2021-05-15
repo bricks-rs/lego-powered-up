@@ -64,6 +64,9 @@ pub fn run(args: &HubArgs) -> Result<()> {
                         .cycle()
                         .take(10)
                     {
+                        while let Some(msg) = hub.poll() {
+                            println!("[pu-util]: msg received");
+                        }
                         println!("Setting to: {:?}", colour);
                         let mut led = HubLED::new();
                         led.set_colour(&colour, &hub)?;

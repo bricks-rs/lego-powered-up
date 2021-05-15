@@ -2302,6 +2302,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "btleplug",
+ "env_logger 0.8.3",
  "lazy_static",
  "log",
  "lpu-macros",

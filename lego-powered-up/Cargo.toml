@@ -13,8 +13,11 @@ anyhow = "1.0"
 btleplug = "0.7"
 lazy_static = "1.4"
 log = "0.4"
+lpu-macros = { path = "../lpu-macros" }
 num-derive = "0.3"
 num-traits = "0.2"
 rand = "0.8"
 uuid = "0.8"
-lpu-macros = { path = "../lpu-macros" }
+
+[dev-dependencies]
+env_logger = "0.8"

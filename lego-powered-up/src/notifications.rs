@@ -1,5 +1,6 @@
 use crate::consts::*;
 use anyhow::{bail, Context, Result};
+use log::trace;
 use lpu_macros::Parse;
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
@@ -93,13 +94,13 @@ pub const MAX_NAME_SIZE: usize = 14;
 ///
 /// As it stands we have a horrendous bodge involving consts::MessageType.
 #[non_exhaustive]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum NotificationMessage {
     HubProperties(HubProperty),
     HubActions(HubAction),
     HubAlerts(AlertType),
     HubAttachedIo(AttachedIo),
-    GenericErrorMessages(ErrorCode),
+    GenericErrorMessages(ErrorMessageFormat),
     HwNetworkCommands(NetworkCommand),
     FwUpdateGoIntoBootMode([u8; 9]),
     FwUpdateLockMemory([u8; 8]),
@@ -130,12 +131,18 @@ impl NotificationMessage {
 
         // consume the length bytes
         Self::validate_length(&mut msg_iter, msg.len())?;
+        trace!("Length: {}", msg.len());
 
         let _hub_id = next!(msg_iter);
+        trace!("Hub ID: {}", _hub_id);
 
         let message_type = ok!(MessageType::from_u8(next!(msg_iter)));
 
-        eprintln!("Identified message type: {:?}", message_type);
+        trace!(
+            "Identified message type: {:?} = {:x}",
+            message_type,
+            message_type as u8
+        );
 
         Ok(match message_type {
             MessageType::HubProperties => {
@@ -155,7 +162,7 @@ impl NotificationMessage {
                 HubAttachedIo(attach)
             }
             MessageType::GenericErrorMessages => {
-                let error = ErrorCode::parse(&mut msg_iter)?;
+                let error = ErrorMessageFormat::parse(&mut msg_iter)?;
                 GenericErrorMessages(error)
             }
             MessageType::HwNetworkCommands => {
@@ -293,8 +300,6 @@ impl NotificationMessage {
     fn length<'a>(mut msg: impl Iterator<Item = &'a u8>) -> Result<usize> {
         let first = next!(msg);
 
-        eprintln!("first: {:x}", first);
-
         let length = if first & 0x80 == 0x00 {
             // high bit not set - length is one byte
             (first & 0x7f) as usize
@@ -314,7 +319,7 @@ impl NotificationMessage {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct HubProperty {
     property: HubPropertyValue,
     operation: HubPropertyOperation,
@@ -333,7 +338,7 @@ impl HubProperty {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum HubPropertyValue {
     AdvertisingName(Vec<u8>),
     Button(u8),
@@ -425,14 +430,14 @@ impl HubPropertyValue {
 }
 
 #[repr(u8)]
-#[derive(Copy, Clone, Debug, FromPrimitive, Parse)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive, Parse)]
 pub enum HubBatteryType {
     Normal = 0x00,
     Rechargeable = 0x01,
 }
 
 #[repr(u8)]
-#[derive(Copy, Clone, Debug, FromPrimitive, Parse)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive, Parse)]
 pub enum HubAction {
     SwitchOffHub = 0x01,
     Disconnect = 0x02,
@@ -455,7 +460,7 @@ pub enum AlertType {
     OverPowerCondition = 0x04,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct AttachedIo {
     port: u8,
     event: IoAttachEvent,
@@ -470,7 +475,7 @@ impl AttachedIo {
 }
 
 #[repr(u8)]
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum IoAttachEvent {
     DetachedIo { io_type_id: IoTypeId },
     AttachedIo { hw_rev: i32, fw_rev: i32 },
@@ -517,6 +522,24 @@ pub enum IoTypeId {
     ExternalMotor = 0x0026,
     InternalMotor = 0x0027,
     InternalTilt = 0x0028,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct ErrorMessageFormat {
+    command_type: u8,
+    error_code: ErrorCode,
+}
+
+impl ErrorMessageFormat {
+    pub fn parse<'a>(mut msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
+        trace!("ErrorMessageFormat");
+        let command_type = next!(msg);
+        let error_code = ErrorCode::parse(&mut msg)?;
+        Ok(Self {
+            command_type,
+            error_code,
+        })
+    }
 }
 
 #[repr(u8)]
@@ -1214,6 +1237,9 @@ pub enum CompletionInfo {
 pub enum PortOutputSubcommand {
     /// This has a subcommand number and also a "writedirectmodedata"
     /// annotation so I have no idea where this really lives
+    ///
+    /// According to (*) it does live here
+    /// (*) https://github.com/LEGO/lego-ble-wireless-protocol-docs/issues/15
     StartPower2 {
         power1: i8,
         power2: i8,
@@ -1306,6 +1332,7 @@ impl PortOutputSubcommand {
         use PortOutputSubcommand::*;
 
         let subcomm = next!(msg);
+        trace!("Port output subcommand: {:x}", subcomm);
         Ok(match subcomm {
             0x02 => {
                 // StartPower(Power1, Power2)
@@ -1489,12 +1516,12 @@ impl PortOutputSubcommand {
                     right_position,
                 }
             }
-            0x50 => {
+            50 => {
                 // WriteDirect(Byte[0],Byte[0 + n])
                 let data = WriteDirectPayload::parse(&mut msg)?;
                 WriteDirect(data)
             }
-            0x51 => {
+            51 => {
                 // WriteDirectModeData(Mode, PayLoad[0] PayLoad [0 + n]
                 let data = WriteDirectModeDataPayload::parse(&mut msg)?;
                 WriteDirectModeData(data)
@@ -1680,16 +1707,61 @@ impl FeedbackMessage {
 #[cfg(test)]
 mod test {
     use super::*;
+    use log::LevelFilter;
+
+    fn init() {
+        let _ = env_logger::builder()
+            .is_test(true)
+            .filter(None, LevelFilter::Trace)
+            .try_init();
+    }
 
     #[test]
-    fn a_message() {
-        let msg = &[15, 0, 4, 0, 1, 47, 0, 0, 16, 0, 0, 0, 16, 0, 0];
+    fn attach_io_message() {
+        init();
+        let msgs: &[&[u8]] = &[
+            &[15, 0, 4, 0, 1, 47, 0, 0, 16, 0, 0, 0, 16, 0, 0],
+            &[15, 0, 4, 50, 1, 23, 0, 0, 0, 0, 16, 0, 0, 0, 16],
+            &[15, 0, 4, 59, 1, 21, 0, 0, 0, 0, 16, 0, 0, 0, 16],
+            &[15, 0, 4, 60, 1, 20, 0, 0, 0, 0, 16, 0, 0, 0, 16],
+            &[15, 0, 4, 61, 1, 60, 0, 0, 0, 0, 16, 0, 0, 0, 16],
+            &[15, 0, 4, 96, 1, 60, 0, 1, 0, 0, 0, 1, 0, 0, 0],
+            &[15, 0, 4, 97, 1, 57, 0, 1, 0, 0, 0, 1, 0, 0, 0],
+            &[15, 0, 4, 98, 1, 58, 0, 1, 0, 0, 0, 1, 0, 0, 0],
+            &[15, 0, 4, 99, 1, 59, 0, 1, 0, 0, 0, 1, 0, 0, 0],
+            &[15, 0, 4, 100, 1, 54, 0, 1, 0, 0, 0, 1, 0, 0, 0],
+        ];
+        for msg in msgs {
+            let notif = NotificationMessage::parse(msg).unwrap();
+            if let NotificationMessage::HubAttachedIo(_) = notif {
+                // OK
+            } else {
+                panic!("wrong type");
+            }
+        }
+    }
 
-        let notif = NotificationMessage::parse(msg).unwrap();
+    #[test]
+    fn error_message() {
+        init();
+        let msgs: &[&[u8]] = &[&[5, 0, 5, 17, 5]];
+        for msg in msgs {
+            let notif = NotificationMessage::parse(msg).unwrap();
+        }
+    }
+
+    #[test]
+    fn write_direct() {
+        init();
+        let msgs: &[&[u8]] = &[&[9, 0, 129, 81, 50, 1, 0, 255, 0]];
+        for msg in msgs {
+            let notif = NotificationMessage::parse(msg).unwrap();
+        }
     }
 
     #[test]
     fn message_length() {
+        init();
         let test_cases = &[
             ([0x34, 0x00], 0x34),
             ([0x7f, 0x00], 0x7f),
