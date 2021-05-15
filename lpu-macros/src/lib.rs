@@ -12,7 +12,7 @@ pub fn parse_derive(input: TokenStream) -> TokenStream {
         impl #name {
             pub fn parse<'a>(mut msg: impl Iterator<Item = &'a u8>) ->
                 Result<Self> {
-                Ok(ok!(#name::from_u8(next!(msg))))
+                Ok(ok!(Self::from_u8(next!(msg))))
             }
         }
     };

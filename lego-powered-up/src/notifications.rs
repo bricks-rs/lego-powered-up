@@ -17,42 +17,56 @@ macro_rules! next {
     };
 }
 
-macro_rules! next_i32 {
-    ($iter:ident) => {
-        i32::from_le_bytes([
+macro_rules! four_bytes {
+    ($t:ty, $iter:ident) => {
+        <$t>::from_le_bytes([
             next!($iter),
             next!($iter),
             next!($iter),
             next!($iter),
         ])
+    };
+}
+
+macro_rules! two_bytes {
+    ($t:ty, $iter:ident) => {
+        <$t>::from_le_bytes([next!($iter), next!($iter)])
+    };
+}
+
+macro_rules! next_i32 {
+    ($iter:ident) => {
+        four_bytes!(i32, $iter)
     };
 }
 
 macro_rules! next_u32 {
     ($iter:ident) => {
-        u32::from_le_bytes([
-            next!($iter),
-            next!($iter),
-            next!($iter),
-            next!($iter),
-        ])
+        four_bytes!(u32, $iter)
     };
 }
 
 macro_rules! next_f32 {
     ($iter:ident) => {
-        f32::from_le_bytes([
-            next!($iter),
-            next!($iter),
-            next!($iter),
-            next!($iter),
-        ])
+        four_bytes!(f32, $iter)
     };
 }
 
 macro_rules! next_u16 {
     ($iter:ident) => {
-        u16::from_le_bytes([next!($iter), next!($iter)])
+        two_bytes!(u16, $iter)
+    };
+}
+
+macro_rules! next_i16 {
+    ($iter:ident) => {
+        two_bytes!(i16, $iter)
+    };
+}
+
+macro_rules! next_i8 {
+    ($iter:ident) => {
+        i8::from_le_bytes([next!($iter)])
     };
 }
 
@@ -102,8 +116,8 @@ pub enum NotificationMessage {
     PortInputFormatSingle(PortInputFormatSingleFormat),
     PortInputFormatCombinedmode(PortInputFormatCombinedFormat),
     VirtualPortSetup(VirtualPortSetupFormat),
-    PortOutputCommand,
-    PortOutputCommandFeedback,
+    PortOutputCommand(PortOutputCommandFormat),
+    PortOutputCommandFeedback(PortOutputCommandFeedbackFormat),
 }
 
 impl NotificationMessage {
@@ -211,6 +225,15 @@ impl NotificationMessage {
                 let setup = VirtualPortSetupFormat::parse(&mut msg_iter)?;
                 VirtualPortSetup(setup)
             }
+            MessageType::PortOutputCommand => {
+                let cmd = PortOutputCommandFormat::parse(&mut msg_iter)?;
+                PortOutputCommand(cmd)
+            }
+            MessageType::PortOutputCommandFeedback => {
+                let feedback =
+                    PortOutputCommandFeedbackFormat::parse(&mut msg_iter)?;
+                PortOutputCommandFeedback(feedback)
+            }
             _ => todo!(),
         })
     }
@@ -248,8 +271,10 @@ impl NotificationMessage {
                 MessageType::PortInputFormatCombinedmode
             }
             VirtualPortSetup(_) => MessageType::VirtualPortSetup,
-            PortOutputCommand => MessageType::PortOutputCommand,
-            PortOutputCommandFeedback => MessageType::PortOutputCommandFeedback,
+            PortOutputCommand(_) => MessageType::PortOutputCommand,
+            PortOutputCommandFeedback(_) => {
+                MessageType::PortOutputCommandFeedback
+            }
         }) as u8
     }
 
@@ -281,6 +306,11 @@ impl NotificationMessage {
         };
 
         Ok(length)
+    }
+
+    /// ChkSum = PayLoad[0] ^ … PayLoad[n] ^ 0xFF
+    pub fn checksum(buf: &[u8]) -> u8 {
+        buf.iter().fold(0xff, |acc, x| acc ^ x)
     }
 }
 
@@ -1135,6 +1165,514 @@ impl VirtualPortSetupFormat {
                 Connect { port_a, port_b }
             }
             c => bail!("Invalid virtual port subcommand {}", c),
+        })
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PortOutputCommandFormat {
+    port_id: u8,
+    startup_info: StartupInfo,
+    completion_info: CompletionInfo,
+    subcommand: PortOutputSubcommand,
+}
+
+impl PortOutputCommandFormat {
+    pub fn parse<'a>(mut msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
+        let port_id = next!(msg);
+        let startup_and_command_byte = next!(msg);
+        let startup_info =
+            ok!(StartupInfo::from_u8((startup_and_command_byte & 0xf0) >> 4));
+        let completion_info =
+            ok!(CompletionInfo::from_u8(startup_and_command_byte & 0x0f));
+        let subcommand = PortOutputSubcommand::parse(&mut msg)?;
+
+        Ok(Self {
+            port_id,
+            startup_info,
+            completion_info,
+            subcommand,
+        })
+    }
+}
+
+#[repr(u8)]
+#[derive(Clone, Debug, PartialEq, Eq, FromPrimitive)]
+pub enum StartupInfo {
+    BufferIfNecessary = 0b0000,
+    ExecuteImmediately = 0b0001,
+}
+
+#[repr(u8)]
+#[derive(Clone, Debug, PartialEq, Eq, FromPrimitive)]
+pub enum CompletionInfo {
+    NoAction = 0b0000,
+    CommandFeedback = 0b0001,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum PortOutputSubcommand {
+    /// This has a subcommand number and also a "writedirectmodedata"
+    /// annotation so I have no idea where this really lives
+    StartPower2 {
+        power1: i8,
+        power2: i8,
+    },
+    SetAccTime {
+        time: i16,
+        profile_number: i8,
+    },
+    SetDecTime {
+        time: i16,
+        profile_number: i8,
+    },
+    StartSpeed {
+        speed: i8,
+        max_power: i8,
+        use_acc_profile: bool,
+        use_dec_profile: bool,
+    },
+    StartSpeed2 {
+        speed1: i8,
+        speed2: i8,
+        max_power: i8,
+        use_acc_profile: bool,
+        use_dec_profile: bool,
+    },
+    StartSpeedForTime {
+        time: i16,
+        speed: i8,
+        max_power: i8,
+        end_state: EndState,
+        use_acc_profile: bool,
+        use_dec_profile: bool,
+    },
+    StartSpeedForTime2 {
+        time: i16,
+        speed_l: i8,
+        speed_r: i8,
+        max_power: i8,
+        end_state: EndState,
+        use_acc_profile: bool,
+        use_dec_profile: bool,
+    },
+    StartSpeedForDegrees {
+        degrees: i32,
+        speed: i8,
+        max_power: i8,
+        end_state: EndState,
+        use_acc_profile: bool,
+        use_dec_profile: bool,
+    },
+    StartSpeedForDegrees2 {
+        degrees: i32,
+        speed_l: i8,
+        speed_r: i8,
+        max_power: i8,
+        end_state: EndState,
+        use_acc_profile: bool,
+        use_dec_profile: bool,
+    },
+    GotoAbsolutePosition {
+        abs_pos: i32,
+        speed: i8,
+        max_power: i8,
+        end_state: EndState,
+        use_acc_profile: bool,
+        use_dec_profile: bool,
+    },
+    GotoAbsolutePosition2 {
+        abs_pos1: i32,
+        abs_pos2: i32,
+        speed: i8,
+        max_power: i8,
+        end_state: EndState,
+        use_acc_profile: bool,
+        use_dec_profile: bool,
+    },
+    PresetEncoder2 {
+        left_position: i32,
+        right_position: i32,
+    },
+    WriteDirect(WriteDirectPayload),
+    WriteDirectModeData(WriteDirectModeDataPayload),
+}
+
+impl PortOutputSubcommand {
+    pub const POWER_FLOAT: i8 = 0;
+    pub const POWER_BRAKE: i8 = 127;
+
+    pub fn parse<'a>(mut msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
+        use PortOutputSubcommand::*;
+
+        let subcomm = next!(msg);
+        Ok(match subcomm {
+            0x02 => {
+                // StartPower(Power1, Power2)
+                let power1 = next_i8!(msg);
+                let power2 = next_i8!(msg);
+                StartPower2 { power1, power2 }
+            }
+            0x05 => {
+                // SetAccTime(Time, ProfileNo)
+                let time = next_i16!(msg);
+                let profile_number = next_i8!(msg);
+                SetAccTime {
+                    time,
+                    profile_number,
+                }
+            }
+            0x06 => {
+                // SetDecTime(Time, ProfileNo)
+                let time = next_i16!(msg);
+                let profile_number = next_i8!(msg);
+                SetDecTime {
+                    time,
+                    profile_number,
+                }
+            }
+            0x07 => {
+                // StartSpeed(Speed, MaxPower, UseProfile)
+                let speed = next_i8!(msg);
+                let max_power = next_i8!(msg);
+                let use_prof = next!(msg);
+                let use_acc_profile = (use_prof & 0x01) != 0;
+                let use_dec_profile = (use_prof & 0x02) != 0;
+                StartSpeed {
+                    speed,
+                    max_power,
+                    use_acc_profile,
+                    use_dec_profile,
+                }
+            }
+            0x08 => {
+                // StartSpeed(Speed1, Speed2, MaxPower, UseProfile)
+                let speed1 = next_i8!(msg);
+                let speed2 = next_i8!(msg);
+                let max_power = next_i8!(msg);
+                let use_prof = next!(msg);
+                let use_acc_profile = (use_prof & 0x01) != 0;
+                let use_dec_profile = (use_prof & 0x02) != 0;
+                StartSpeed2 {
+                    speed1,
+                    speed2,
+                    max_power,
+                    use_acc_profile,
+                    use_dec_profile,
+                }
+            }
+            0x09 => {
+                // StartSpeedForTime (Time, Speed, MaxPower, EndState, UseProfile)
+                let time = next_i16!(msg);
+                let speed = next_i8!(msg);
+                let max_power = next_i8!(msg);
+                let end_state = EndState::parse(&mut msg)?;
+                let use_prof = next!(msg);
+                let use_acc_profile = (use_prof & 0x01) != 0;
+                let use_dec_profile = (use_prof & 0x02) != 0;
+                StartSpeedForTime {
+                    time,
+                    speed,
+                    max_power,
+                    end_state,
+                    use_acc_profile,
+                    use_dec_profile,
+                }
+            }
+            0x0a => {
+                // StartSpeedForTime(Time, SpeedL, SpeedR, MaxPower, EndState,
+                // UseProfile)
+                let time = next_i16!(msg);
+                let speed_l = next_i8!(msg);
+                let speed_r = next_i8!(msg);
+                let max_power = next_i8!(msg);
+                let end_state = EndState::parse(&mut msg)?;
+                let use_prof = next!(msg);
+                let use_acc_profile = (use_prof & 0x01) != 0;
+                let use_dec_profile = (use_prof & 0x02) != 0;
+                StartSpeedForTime2 {
+                    time,
+                    speed_l,
+                    speed_r,
+                    max_power,
+                    end_state,
+                    use_acc_profile,
+                    use_dec_profile,
+                }
+            }
+            0x0b => {
+                // StartSpeedForDegrees (Degrees, Speed, MaxPower, EndState,
+                // UseProfile)
+                let degrees = next_i32!(msg);
+                let speed = next_i8!(msg);
+                let max_power = next_i8!(msg);
+                let end_state = EndState::parse(&mut msg)?;
+                let use_prof = next!(msg);
+                let use_acc_profile = (use_prof & 0x01) != 0;
+                let use_dec_profile = (use_prof & 0x02) != 0;
+                StartSpeedForDegrees {
+                    degrees,
+                    speed,
+                    max_power,
+                    end_state,
+                    use_acc_profile,
+                    use_dec_profile,
+                }
+            }
+            0x0c => {
+                // StartSpeedForDegrees2 (Degrees, SpeedL, SpeedR, MaxPower,
+                // EndState, UseProfile)
+                let degrees = next_i32!(msg);
+                let speed_l = next_i8!(msg);
+                let speed_r = next_i8!(msg);
+                let max_power = next_i8!(msg);
+                let end_state = EndState::parse(&mut msg)?;
+                let use_prof = next!(msg);
+                let use_acc_profile = (use_prof & 0x01) != 0;
+                let use_dec_profile = (use_prof & 0x02) != 0;
+                StartSpeedForDegrees2 {
+                    degrees,
+                    speed_l,
+                    speed_r,
+                    max_power,
+                    end_state,
+                    use_acc_profile,
+                    use_dec_profile,
+                }
+            }
+            0x0d => {
+                // GotoAbsolutePosition(AbsPos, Speed, MaxPower, EndState,
+                // UseProfile)
+                let abs_pos = next_i32!(msg);
+                let speed = next_i8!(msg);
+                let max_power = next_i8!(msg);
+                let end_state = EndState::parse(&mut msg)?;
+                let use_prof = next!(msg);
+                let use_acc_profile = (use_prof & 0x01) != 0;
+                let use_dec_profile = (use_prof & 0x02) != 0;
+                GotoAbsolutePosition {
+                    abs_pos,
+                    speed,
+                    max_power,
+                    end_state,
+                    use_acc_profile,
+                    use_dec_profile,
+                }
+            }
+            0x0e => {
+                // GotoAbsolutePosition(AbsPos1, AbsPos2, Speed, MaxPower,
+                // EndState, UseProfile)
+                let abs_pos1 = next_i32!(msg);
+                let abs_pos2 = next_i32!(msg);
+                let speed = next_i8!(msg);
+                let max_power = next_i8!(msg);
+                let end_state = EndState::parse(&mut msg)?;
+                let use_prof = next!(msg);
+                let use_acc_profile = (use_prof & 0x01) != 0;
+                let use_dec_profile = (use_prof & 0x02) != 0;
+                GotoAbsolutePosition2 {
+                    abs_pos1,
+                    abs_pos2,
+                    speed,
+                    max_power,
+                    end_state,
+                    use_acc_profile,
+                    use_dec_profile,
+                }
+            }
+            0x14 => {
+                // PresetEncoder(LeftPosition, RightPosition)
+                let left_position = next_i32!(msg);
+                let right_position = next_i32!(msg);
+                PresetEncoder2 {
+                    left_position,
+                    right_position,
+                }
+            }
+            0x50 => {
+                // WriteDirect(Byte[0],Byte[0 + n])
+                let data = WriteDirectPayload::parse(&mut msg)?;
+                WriteDirect(data)
+            }
+            0x51 => {
+                // WriteDirectModeData(Mode, PayLoad[0] PayLoad [0 + n]
+                let data = WriteDirectModeDataPayload::parse(&mut msg)?;
+                WriteDirectModeData(data)
+            }
+            c => bail!("Invalid port output subcommand {}", c),
+        })
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum WriteDirectPayload {
+    TiltFactoryCalibration {
+        orientation: CalibrationOrientation,
+        pass_code: String,
+    },
+    HardwareReset,
+}
+
+impl WriteDirectPayload {
+    pub fn parse<'a>(_msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
+        todo!()
+    }
+}
+
+#[repr(i8)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive)]
+pub enum CalibrationOrientation {
+    LayingFlat = 1,
+    Standing = 2,
+}
+
+impl CalibrationOrientation {
+    pub fn parse<'a>(mut msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
+        Ok(ok!(Self::from_i8(next_i8!(msg))))
+    }
+}
+
+#[repr(u8)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive, Parse)]
+pub enum EndState {
+    Float = 0,
+    Hold = 126,
+    Brake = 127,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum WriteDirectModeDataPayload {
+    StartPower(i8),
+    PresetEncoder(i32),
+    TiltImpactPreset(i32),
+    TiltConfigOrientation(Orientation),
+    TiltConfigImpact {
+        impact_threshold: i8,
+        bump_holdoff: i8,
+    },
+    SetRgbColorNo(i8),
+    SetRgbColors {
+        red: u8,
+        green: u8,
+        blue: u8,
+    },
+}
+
+impl WriteDirectModeDataPayload {
+    pub fn parse<'a>(mut msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
+        use WriteDirectModeDataPayload::*;
+
+        let mode = next!(msg);
+        Ok(match mode {
+            0x01 => {
+                // StartPower(Power)
+                let power = next_i8!(msg);
+                StartPower(power)
+            }
+            0x02 => {
+                // PresetEncoder(Position)
+                let position = next_i32!(msg);
+                PresetEncoder(position)
+            }
+            0x03 => {
+                // TiltImpactPreset(PresetValue)
+                // "Mode 3 impact counts"
+                let preset_value = next_i32!(msg);
+                TiltImpactPreset(preset_value)
+            }
+            0x05 => {
+                // TiltConfigOrientation(Orientation)
+                // "Mode 5"
+                let orientation = Orientation::parse(&mut msg)?;
+                TiltConfigOrientation(orientation)
+            }
+            0x06 => {
+                // TiltConfigImpact(ImpactThreshold, BumpHoldoff)
+                // "Mode 6"
+                let impact_threshold = next_i8!(msg);
+                let bump_holdoff = next_i8!(msg);
+                TiltConfigImpact {
+                    impact_threshold,
+                    bump_holdoff,
+                }
+            }
+            0x08 => {
+                // SetRgbColorNo(ColorNo)
+                let col = next_i8!(msg);
+                SetRgbColorNo(col)
+            }
+            0x09 => {
+                // SetRgbColors(RedColor, GreenColor, BlueColor)
+                let red = next!(msg);
+                let green = next!(msg);
+                let blue = next!(msg);
+                SetRgbColors { red, green, blue }
+            }
+            m => bail!("Invalid write direct mode {}", m),
+        })
+    }
+}
+
+#[repr(i8)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive)]
+pub enum Orientation {
+    Bottom = 0,
+    Front = 1,
+    Back = 2,
+    Left = 3,
+    Right = 4,
+    Top = 5,
+    UseActualAsBottomReference = 6,
+}
+
+impl Orientation {
+    pub fn parse<'a>(mut msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
+        Ok(ok!(Self::from_i8(next_i8!(msg))))
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct PortOutputCommandFeedbackFormat {
+    msg1: FeedbackMessage,
+    msg2: Option<FeedbackMessage>,
+    msg3: Option<FeedbackMessage>,
+}
+
+impl PortOutputCommandFeedbackFormat {
+    pub fn parse<'a>(mut msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
+        let msg1 = FeedbackMessage::parse(&mut msg)?;
+        let msg2 = FeedbackMessage::parse(&mut msg).ok();
+        let msg3 = FeedbackMessage::parse(&mut msg).ok();
+        Ok(PortOutputCommandFeedbackFormat { msg1, msg2, msg3 })
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct FeedbackMessage {
+    port_id: u8,
+    empty_cmd_in_progress: bool,
+    empty_cmd_completed: bool,
+    discarded: bool,
+    idle: bool,
+    busy_full: bool,
+}
+
+impl FeedbackMessage {
+    pub fn parse<'a>(mut msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
+        let port_id = next!(msg);
+        let bitfields = next!(msg);
+        let empty_cmd_in_progress = (bitfields & 0x01) != 0;
+        let empty_cmd_completed = (bitfields & 0x02) != 0;
+        let discarded = (bitfields & 0x04) != 0;
+        let idle = (bitfields & 0x08) != 0;
+        let busy_full = (bitfields & 0x10) != 0;
+        Ok(FeedbackMessage {
+            port_id,
+            empty_cmd_in_progress,
+            empty_cmd_completed,
+            discarded,
+            idle,
+            busy_full,
         })
     }
 }
