@@ -1,8 +1,11 @@
+use crate::devices::Device;
 use anyhow::{bail, Context, Result};
 pub use btleplug::api::Peripheral;
 use btleplug::api::{BDAddr, Characteristic};
 use btleplug::api::{Central, CentralEvent};
 use num_traits::FromPrimitive;
+use std::collections::HashMap;
+use std::ops::{Deref, DerefMut};
 use std::sync::mpsc;
 use std::sync::{Arc, RwLock};
 use tokio::sync::mpsc::{channel, Receiver, Sender};
@@ -54,6 +57,7 @@ pub struct PoweredUp {
     manager: Manager,
     adapter: Arc<RwLock<Adapter>>,
     control_tx: Option<Sender<PoweredUpInternalControlMessage>>,
+    hub_manager_tx: Option<Sender<HubManagerMessage>>,
     pub hubs: Vec<Box<dyn Hub>>,
 }
 
@@ -77,6 +81,7 @@ impl PoweredUp {
             manager,
             adapter: Arc::new(RwLock::new(adapter)),
             control_tx: None,
+            hub_manager_tx: None,
             hubs: Vec::new(),
         };
         pu.run()?;
@@ -101,6 +106,13 @@ impl PoweredUp {
 
         self.control_tx = Some(control_tx);
 
+        let (hm_tx, hm_rx) = channel(10);
+        self.hub_manager_tx = Some(hm_tx.clone());
+        let adapter_clone = self.adapter.clone();
+        tokio::spawn(async move {
+            HubManager::run(adapter_clone, hm_rx, hm_tx).await.unwrap();
+        });
+
         self.adapter.write().unwrap().start_scan()?;
 
         Ok(())
@@ -117,45 +129,17 @@ impl PoweredUp {
         self.adapter.write().unwrap().peripheral(dev)
     }
 
-    pub fn create_hub(
+    pub async fn create_hub(
         &self,
-        hub_type: HubType,
-        dev: BDAddr,
-    ) -> Result<Box<dyn Hub>> {
-        let peripheral = self
-            .adapter
-            .write()
+        hub: DiscoveredHub,
+    ) -> Result<HubController> {
+        let (resp_tx, resp_rx) = oneshot::channel();
+        self.hub_manager_tx
+            .as_ref()
             .unwrap()
-            .peripheral(dev)
-            .context("Unable to identify device")?;
-        peripheral.connect()?;
-        let chars = peripheral.discover_characteristics()?;
-
-        let (notif_tx, notif_rx) = mpsc::channel();
-
-        // Set notification handler
-        peripheral.on_notification(Box::new(move |msg| {
-            if let Ok(msg) = NotificationMessage::parse(&msg.value) {
-                notif_tx.send(msg).unwrap();
-            } else {
-                error!("Message parse error: {:?}", msg);
-            }
-        }));
-
-        // get LPF2 characteristic and subscribe to it
-        let lpf_char = chars
-            .iter()
-            .find(|c| c.uuid == *blecharacteristic::LPF2_ALL)
-            .context("Device does not advertise LPF2_ALL characteristic")?
-            .clone();
-        peripheral.subscribe(&lpf_char)?;
-
-        Ok(Box::new(match hub_type {
-            HubType::TechnicMediumHub => {
-                hubs::TechnicHub::init(peripheral, chars, notif_rx)?
-            }
-            _ => unimplemented!(),
-        }))
+            .send(HubManagerMessage::ConnectToHub(hub, resp_tx))
+            .await?;
+        resp_rx.await?
     }
 
     pub async fn wait_for_hub(&self) -> Result<DiscoveredHub> {
@@ -283,7 +267,8 @@ impl PoweredUpInternal {
                 event_rx,
                 device_notification_sender,
                 adapter_clone,
-            ).await
+            )
+            .await
         });
         loop {
             tokio::select!(
@@ -389,6 +374,143 @@ impl PoweredUpInternal {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct HubController {
+    addr: BDAddr,
+    hub_type: HubType,
+    name: String,
+    hub_manager_tx: Sender<HubManagerMessage>,
+}
+
+impl HubController {
+    pub fn get_name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn get_type(&self) -> HubType {
+        self.hub_type
+    }
+
+    pub fn get_addr(&self) -> &BDAddr {
+        &self.addr
+    }
+
+    pub async fn disconnect(&self) -> Result<()> {
+        let (tx, rx) = oneshot::channel();
+        self.hub_manager_tx
+            .send(HubManagerMessage::Disconnect(self.addr, tx))
+            .await?;
+
+        rx.await?
+    }
+
+    pub async fn port(&self, port: Port) -> Result<PortController> {
+        todo!()
+    }
+}
+
+#[derive(Debug)]
+pub struct PortController {
+    port_id: u8,
+    port_type: Port,
+    device: Box<dyn Device>,
+}
+
+impl Deref for PortController {
+    type Target = Box<dyn Device + 'static>;
+    fn deref(&self) -> &Self::Target {
+        &self.device
+    }
+}
+impl DerefMut for PortController {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.device
+    }
+}
+
+#[derive(Debug)]
+enum HubManagerMessage {
+    ConnectToHub(DiscoveredHub, oneshot::Sender<Result<HubController>>),
+    HubInfo(usize),
+    Notification(BDAddr, NotificationMessage),
+    Disconnect(BDAddr, oneshot::Sender<Result<()>>),
+}
+
+struct HubManager;
+
+impl HubManager {
+    pub async fn run(
+        adapter: Arc<RwLock<Adapter>>,
+        mut command_rx: Receiver<HubManagerMessage>,
+        command_tx: Sender<HubManagerMessage>,
+    ) -> Result<()> {
+        use HubManagerMessage::*;
+
+        let mut hubs: HashMap<BDAddr, Box<dyn Hub + Send + Sync>> =
+            Default::default();
+
+        while let Some(msg) = command_rx.recv().await {
+            debug!("HubManager: received `{:?}`", msg);
+            match msg {
+                ConnectToHub(hub, response) => {
+                    let peripheral = adapter
+                        .write()
+                        .unwrap()
+                        .peripheral(hub.addr)
+                        .context("Unable to identify device")?;
+                    peripheral.connect()?;
+                    let chars = peripheral.discover_characteristics()?;
+
+                    let notif_tx = command_tx.clone();
+
+                    // Set notification handler
+                    let hub_addr = hub.addr.clone();
+                    peripheral.on_notification(Box::new(move |msg| {
+                        if let Ok(msg) = NotificationMessage::parse(&msg.value)
+                        {
+                            let notif =
+                                HubManagerMessage::Notification(hub_addr, msg);
+                            notif_tx.blocking_send(notif).unwrap();
+                        } else {
+                            error!("Message parse error: {:?}", msg);
+                        }
+                    }));
+
+                    // get LPF2 characteristic and subscribe to it
+                    let lpf_char = chars
+                        .iter()
+                        .find(|c| c.uuid == *blecharacteristic::LPF2_ALL)
+                        .context(
+                            "Device does not advertise LPF2_ALL characteristic",
+                        )?
+                        .clone();
+                    peripheral.subscribe(&lpf_char)?;
+
+                    let h = Box::new(match hub.hub_type {
+                        HubType::TechnicMediumHub => {
+                            hubs::TechnicHub::init(peripheral, chars)?
+                        }
+                        _ => unimplemented!(),
+                    });
+                    hubs.insert(hub.addr, h);
+                    let controller = HubController {
+                        addr: hub.addr,
+                        hub_type: hub.hub_type,
+                        name: hub.name,
+                        hub_manager_tx: command_tx.clone(),
+                    };
+                    response.send(Ok(controller)).unwrap();
+                }
+                Notification(addr, msg) => {
+                    todo!()
+                }
+                _ => todo!(),
+            }
+        }
+        Ok(())
+    }
+}
+
 pub trait Hub {
     fn name(&self) -> String;
     fn disconnect(&self) -> Result<()>;
@@ -403,17 +525,11 @@ pub trait Hub {
 
     // cannot provide a default implementation without access to the
     // Peripheral trait from here
-    fn send(
-        &self,
-        port: Port,
-        mode: u8,
-        msg: &[u8],
-        request_reply: bool,
-    ) -> Result<()>;
+    fn send_raw(&self, msg: &[u8]) -> Result<()>;
+
+    fn send(&self, msg: NotificationMessage) -> Result<()>;
 
     fn subscribe(&self, char: Characteristic) -> Result<()>;
-
-    fn poll(&self) -> Option<NotificationMessage>;
 }
 
 pub trait IdentifyHub {

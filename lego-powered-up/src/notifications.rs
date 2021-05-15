@@ -241,7 +241,6 @@ impl NotificationMessage {
                     PortOutputCommandFeedbackFormat::parse(&mut msg_iter)?;
                 PortOutputCommandFeedback(feedback)
             }
-            _ => todo!(),
         })
     }
 
@@ -316,6 +315,10 @@ impl NotificationMessage {
     /// ChkSum = PayLoad[0] ^ … PayLoad[n] ^ 0xFF
     pub fn checksum(buf: &[u8]) -> u8 {
         buf.iter().fold(0xff, |acc, x| acc ^ x)
+    }
+
+    pub fn serialise(&self) -> Vec<u8> {
+        todo!()
     }
 }
 

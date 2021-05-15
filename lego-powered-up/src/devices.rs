@@ -1,11 +1,18 @@
 use crate::hubs::Port;
-use crate::Hub;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
+use async_trait::async_trait;
+use std::fmt::Debug;
+use std::ops::Deref;
 
-pub trait Device {
+#[async_trait]
+pub trait Device: Debug + Send + Sync {
     fn port(&self) -> Port;
+    async fn set_colour(&mut self, _colour: &[u8; 3]) -> Result<()> {
+        Err(anyhow!("Not implemented for type"))
+    }
 }
 
+#[derive(Debug, Clone)]
 pub struct HubLED {
     colour: [u8; 3],
     mode: HubLedMode,
@@ -18,9 +25,16 @@ pub enum HubLedMode {
     Rgb = 0x01,
 }
 
+#[async_trait]
 impl Device for HubLED {
     fn port(&self) -> Port {
         Port::HubLed
+    }
+
+    async fn set_colour(&mut self, colour: &[u8; 3]) -> Result<()> {
+        self.colour = *colour;
+        //hub.send(Port::HubLed, HubLedMode::Rgb as u8, colour, false)
+        todo!()
     }
 }
 
@@ -32,14 +46,5 @@ impl HubLED {
             colour: [0; 3],
             mode,
         }
-    }
-
-    pub fn set_colour(
-        &mut self,
-        colour: &[u8; 3],
-        hub: &Box<dyn Hub>,
-    ) -> Result<()> {
-        self.colour = *colour;
-        hub.send(Port::HubLed, HubLedMode::Rgb as u8, colour, false)
     }
 }

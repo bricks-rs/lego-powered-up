@@ -28,9 +28,6 @@ pub async fn run(args: &HubArgs) -> Result<()> {
         pu.wait_for_hub().await?
     };
 
-    let hub_type = hub.hub_type;
-    let name = hub.name;
-
     let verb = if args.connect {
         "Connecting to"
     } else {
@@ -38,29 +35,24 @@ pub async fn run(args: &HubArgs) -> Result<()> {
     };
     println!(
         "{} `{}` `{}` with address `{}`",
-        verb, hub_type, name, hub.addr
+        verb, hub.hub_type, hub.name, hub.addr
     );
 
     if args.connect {
-        let hub = pu.create_hub(hub_type, hub.addr)?;
+        let hub = pu.create_hub(hub).await?;
 
         println!("Setting hub LED");
 
         // Set the hub LED if available
-        if hub.port_map().contains_key(&Port::HubLed) {
-            for colour in [[0, 0xff, 0], [0xff, 0, 0], [0, 0, 0xff]]
-                .iter()
-                .cycle()
-                .take(10)
-            {
-                while let Some(_msg) = hub.poll() {
-                    println!("[pu-util]: msg received");
-                }
-                println!("Setting to: {:?}", colour);
-                let mut led = HubLED::new();
-                led.set_colour(&colour, &hub)?;
-                sleep(Duration::from_secs(1));
-            }
+        let mut hub_led = hub.port(Port::HubLed).await?;
+        for colour in [[0, 0xff, 0], [0xff, 0, 0], [0, 0, 0xff]]
+            .iter()
+            .cycle()
+            .take(10)
+        {
+            println!("Setting to: {:?}", colour);
+            hub_led.set_colour(&colour).await?;
+            sleep(Duration::from_secs(1));
         }
 
         println!("Done!");
@@ -68,7 +60,7 @@ pub async fn run(args: &HubArgs) -> Result<()> {
         sleep(Duration::from_secs(5));
 
         println!("Disconnecting...");
-        hub.disconnect()?;
+        hub.disconnect().await?;
         println!("Done");
     }
 

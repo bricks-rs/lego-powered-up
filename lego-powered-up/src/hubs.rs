@@ -46,7 +46,6 @@ pub struct TechnicHub<P: Peripheral> {
     peripheral: P,
     lpf_characteristic: Characteristic,
     properties: HubProperties,
-    notif_rx: Receiver<NotificationMessage>,
 }
 
 impl<P: Peripheral> Hub for TechnicHub<P> {
@@ -68,57 +67,27 @@ impl<P: Peripheral> Hub for TechnicHub<P> {
     fn properties(&self) -> &HubProperties {
         &self.properties
     }
-    fn send(
-        &self,
-        port: Port,
-        mode: u8,
-        msg: &[u8],
-        request_reply: bool,
-    ) -> Result<()> {
-        let write_type = if request_reply {
-            WriteType::WithResponse
-        } else {
-            WriteType::WithoutResponse
-        };
 
-        let port_id =
-            self.port_map().get(&port).context("Invalid port for hub")?;
-
-        let mut buf = Vec::new();
-        buf.push(6 + msg.len() as u8);
-        buf.push(0); // hub ID
-        buf.push(0x81);
-        buf.push(0x51);
-        buf.push(*port_id);
-        //buf.extend_from_slice(&[0x11, 0x51]);
-        buf.push(mode);
-        buf.extend_from_slice(&msg);
-        println!("Send buf: {:?}", buf);
-
+    fn send_raw(&self, msg: &[u8]) -> Result<()> {
+        let write_type = WriteType::WithoutResponse;
         Ok(self
             .peripheral
-            .write(&self.lpf_characteristic, &buf, write_type)?)
+            .write(&self.lpf_characteristic, &msg, write_type)?)
+    }
+
+    fn send(&self, msg: NotificationMessage) -> Result<()> {
+        let msg = msg.serialise();
+        self.send_raw(&msg)?;
+        Ok(())
     }
 
     fn subscribe(&self, char: Characteristic) -> Result<()> {
         Ok(self.peripheral.subscribe(&char)?)
     }
-
-    fn poll(&self) -> Option<NotificationMessage> {
-        if let Ok(msg) = self.notif_rx.try_recv() {
-            println!("Received message: {:?}", msg);
-            return Some(msg);
-        }
-        None
-    }
 }
 
 impl<P: Peripheral> TechnicHub<P> {
-    pub fn init(
-        peripheral: P,
-        chars: Vec<Characteristic>,
-        notif_rx: Receiver<NotificationMessage>,
-    ) -> Result<Self> {
+    pub fn init(peripheral: P, chars: Vec<Characteristic>) -> Result<Self> {
         // Peripheral is already connected before we get here
 
         println!("\n\nCHARACTERISTICS:\n\n{:?}\n\n", chars);
@@ -154,7 +123,6 @@ impl<P: Peripheral> TechnicHub<P> {
             peripheral,
             lpf_characteristic,
             properties,
-            notif_rx,
         })
     }
 }
