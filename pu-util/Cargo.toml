@@ -13,3 +13,4 @@ clap = "3.0.0-beta.2"
 env_logger = "0.8"
 lego-powered-up = { path="../lego-powered-up" }
 log = "0.4"
+tokio = { version ="1.6", features = ["full"] }

@@ -1,11 +1,13 @@
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 pub use btleplug::api::Peripheral;
 use btleplug::api::{BDAddr, Characteristic};
 use btleplug::api::{Central, CentralEvent};
 use num_traits::FromPrimitive;
-use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::mpsc;
 use std::sync::{Arc, RwLock};
-use std::thread::{self, JoinHandle};
+use tokio::sync::mpsc::{channel, Receiver, Sender};
+use tokio::sync::oneshot;
+use tokio::time::{self, Duration};
 
 #[cfg(target_os = "linux")]
 use btleplug::bluez::{adapter::Adapter, manager::Manager};
@@ -23,6 +25,7 @@ use consts::*;
 use hubs::Port;
 use notifications::NotificationMessage;
 
+#[allow(unused)]
 mod consts;
 
 pub mod devices;
@@ -47,24 +50,10 @@ pub fn print_adapter_info(idx: usize, _adapter: &Adapter) -> Result<()> {
     Ok(())
 }
 
-fn get_central(manager: &Manager) -> Adapter {
-    let adapters = manager.adapters().unwrap();
-    adapters.into_iter().next().unwrap()
-}
-
-#[non_exhaustive]
-#[derive(Copy, Clone, Debug)]
-pub enum PoweredUpEvent {
-    HubDiscovered(HubType, BDAddr),
-}
-
 pub struct PoweredUp {
     manager: Manager,
     adapter: Arc<RwLock<Adapter>>,
-    event_rx: Option<Receiver<CentralEvent>>,
-    pu_event_tx: Option<Sender<PoweredUpEvent>>,
-    pu_event_rx: Option<Receiver<PoweredUpEvent>>,
-    worker_thread: Option<JoinHandle<Result<()>>>,
+    control_tx: Option<Sender<PoweredUpInternalControlMessage>>,
     pub hubs: Vec<Box<dyn Hub>>,
 }
 
@@ -83,46 +72,44 @@ impl PoweredUp {
         let adapters = manager.adapters()?;
         let adapter =
             adapters.into_iter().nth(dev).context("No adapter found")?;
-        let event_rx = Some(
-            adapter
-                .event_receiver()
-                .context("Unable to access event receiver")?,
-        );
 
-        let (pu_event_tx, pu_event_rx) = mpsc::channel();
-
-        Ok(Self {
+        let mut pu = Self {
             manager,
             adapter: Arc::new(RwLock::new(adapter)),
-            event_rx,
-            pu_event_tx: Some(pu_event_tx),
-            pu_event_rx: Some(pu_event_rx),
-            worker_thread: None,
+            control_tx: None,
             hubs: Vec::new(),
-        })
+        };
+        pu.run()?;
+
+        Ok(pu)
     }
 
-    pub fn event_receiver(&mut self) -> Option<Receiver<PoweredUpEvent>> {
-        self.pu_event_rx.take()
-    }
+    fn run(&mut self) -> Result<()> {
+        let event_rx = self
+            .adapter
+            .write()
+            .unwrap()
+            .event_receiver()
+            .context("Unable to access event receiver")?;
+        let mut worker = PoweredUpInternal::new(self.adapter.clone());
 
-    pub fn start_scan(&mut self) -> Result<()> {
+        let (control_tx, control_rx) = channel(10);
+
+        tokio::spawn(async move {
+            worker.run(control_rx, event_rx).await.unwrap();
+        });
+
+        self.control_tx = Some(control_tx);
+
         self.adapter.write().unwrap().start_scan()?;
 
-        let mut worker = Worker {
-            pu_event_tx: self
-                .pu_event_tx
-                .take()
-                .context("Unable to access event transmitter")?,
-            event_rx: self
-                .event_rx
-                .take()
-                .context("Unable to access btle event receiver")?,
-            adapter: self.adapter.clone(),
-        };
+        Ok(())
+    }
 
-        let handle = thread::spawn(move || worker.run());
-        self.worker_thread = Some(handle);
+    pub async fn stop(&mut self) -> Result<()> {
+        if let Some(tx) = &self.control_tx {
+            tx.send(PoweredUpInternalControlMessage::Stop).await?;
+        }
         Ok(())
     }
 
@@ -171,76 +158,232 @@ impl PoweredUp {
         }))
     }
 
-    /* pub fn connect(&self, dev: BDAddr) -> Result<Box<dyn Hub>> {
-        let peripheral = self
-            .adapter
-            .write()
+    pub async fn wait_for_hub(&self) -> Result<DiscoveredHub> {
+        let timeout = Duration::from_secs(9999);
+        self.wait_for_hub_filter_timeout_internal(None, timeout)
+            .await
+    }
+
+    pub async fn wait_for_hub_filter(
+        &self,
+        filter: HubFilter,
+    ) -> Result<DiscoveredHub> {
+        let timeout = Duration::from_secs(9999);
+        self.wait_for_hub_filter_timeout_internal(Some(filter), timeout)
+            .await
+    }
+
+    pub async fn wait_for_hub_filter_timeout(
+        &self,
+        filter: HubFilter,
+        timeout: Duration,
+    ) -> Result<DiscoveredHub> {
+        self.wait_for_hub_filter_timeout_internal(Some(filter), timeout)
+            .await
+    }
+
+    async fn wait_for_hub_filter_timeout_internal(
+        &self,
+        filter: Option<HubFilter>,
+        timeout: Duration,
+    ) -> Result<DiscoveredHub> {
+        let sleep = time::sleep(timeout);
+
+        let (tx, rx) = oneshot::channel();
+        let params = HubNotificationParams {
+            response: tx,
+            filter,
+        };
+
+        self.control_tx
+            .as_ref()
             .unwrap()
-            .peripheral(dev)
-            .context("No device found")?;
+            .send(PoweredUpInternalControlMessage::WaitForHub(params))
+            .await?;
 
-        peripheral.connect()?;
-
-        let chars = peripheral.discover_characteristics()?;
-        if peripheral.is_connected() {
-            println!(
-                "Discover peripheral : \'{:?}\' characteristics...",
-                peripheral.properties().local_name
-            );
-
-
-
-            for char_item in chars.iter() {
-                println!("{:?}", char_item);
+        tokio::select! {
+            _ = sleep => {
+                bail!("Timeout reached")
             }
-            println!(
-                "disconnecting from peripheral : {:?}...",
-                peripheral.properties().local_name
-            );
-            peripheral
-                .disconnect()
-                .expect("Error on disconnecting from BLE peripheral ");
+            Ok(msg) = rx => {
+               Ok(msg)
+            }
         }
-        todo!()
-    }*/
+    }
 }
 
-struct Worker {
-    pub pu_event_tx: Sender<PoweredUpEvent>,
-    pub event_rx: Receiver<CentralEvent>,
-    pub adapter: Arc<RwLock<Adapter>>,
+#[non_exhaustive]
+#[derive(Clone, Debug)]
+pub enum DeviceNotificationMessage {
+    HubDiscovered(DiscoveredHub),
 }
 
-impl Worker {
-    pub fn run(&mut self) -> Result<()> {
-        use CentralEvent::*;
+#[derive(Debug)]
+pub enum HubFilter {
+    Name(String),
+    Addr(String),
+}
+
+impl HubFilter {
+    pub fn matches(&self, hub: &DiscoveredHub) -> bool {
+        use HubFilter::*;
+        match self {
+            Name(n) => hub.name == *n,
+            Addr(a) => hub.addr.to_string() == *a,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct DiscoveredHub {
+    pub hub_type: HubType,
+    pub addr: BDAddr,
+    pub name: String,
+}
+
+#[derive(Debug)]
+enum PoweredUpInternalControlMessage {
+    Stop,
+    WaitForHub(HubNotificationParams),
+}
+
+#[derive(Debug)]
+struct HubNotificationParams {
+    response: oneshot::Sender<DiscoveredHub>,
+    filter: Option<HubFilter>,
+}
+
+struct PoweredUpInternal {
+    adapter: Arc<RwLock<Adapter>>,
+    discovered_hubs: Vec<DiscoveredHub>,
+    hub_notifications: Option<HubNotificationParams>,
+}
+
+impl PoweredUpInternal {
+    pub fn new(adapter: Arc<RwLock<Adapter>>) -> Self {
+        Self {
+            adapter,
+            discovered_hubs: Default::default(),
+            hub_notifications: None,
+        }
+    }
+    pub async fn run(
+        &mut self,
+        mut control_channel: Receiver<PoweredUpInternalControlMessage>,
+        event_rx: mpsc::Receiver<CentralEvent>,
+    ) -> Result<()> {
+        use DeviceNotificationMessage::*;
+        info!("Starting PoweredUp connection manager");
+
+        let (device_notification_sender, mut device_notification_receiver) =
+            channel(16);
+        let adapter_clone = self.adapter.clone();
+        tokio::spawn(async move {
+            PoweredUpInternal::btle_notification_listener(
+                event_rx,
+                device_notification_sender,
+                adapter_clone,
+            ).await
+        });
         loop {
-            // This is in a loop rather than a while let so that the
-            // mpsc error gets propagated
-            let evt = self.event_rx.recv()?;
-            match evt {
-                DeviceDiscovered(dev) => {
-                    let adapter = self.adapter.write().unwrap();
-                    let peripheral = adapter.peripheral(dev).unwrap();
-                    debug!(
-                        "peripheral : {:?} is connected: {:?}",
-                        peripheral.properties().local_name,
-                        peripheral.is_connected()
-                    );
-                    if peripheral.properties().local_name.is_some()
-                        && !peripheral.is_connected()
-                    {
-                        if let Some(hub_type) = peripheral.identify() {
-                            debug!("Looks like a '{:?}' hub!", hub_type);
-                            self.pu_event_tx.send(
-                                PoweredUpEvent::HubDiscovered(hub_type, dev),
-                            )?;
-                        } else {
-                            debug!("Device does not look like a PoweredUp Hub");
+            tokio::select!(
+                Some(msg) = device_notification_receiver.recv() => {
+                    println!("PU INTERNAL MSG: {:?}", msg);
+                    match msg {
+                        HubDiscovered(hub) => {
+                            if let Some(notify) = self.hub_notifications.take() {
+                                // Take ownership of the HubNotificationParams
+                                // struct because we need to own the channel to
+                                // send through it.
+                                let mut send_it = true;
+                                if let Some(filter) = &notify.filter {
+                                    if !filter.matches(&hub) {
+                                        send_it = false;
+                                    }
+                                }
+                                if send_it {
+                                    // ignore the status of the send - this
+                                    // will be an Err if the receiving end
+                                    // has timed out
+                                    let _ = notify.response.send(hub.clone());
+                                } else {
+                                    // If no notification was sent then put
+                                    // the params struct back for next time
+                                    self.hub_notifications = Some(notify);
+                                }
+                            }
+                            self.discovered_hubs.push(hub);
+
                         }
                     }
                 }
-                _ => {}
+                Some(msg) = control_channel.recv() => {
+                    use PoweredUpInternalControlMessage::*;
+                    match msg { // TODO disconnect all hubs
+                        Stop => return Ok(()),
+                        WaitForHub(params) => {
+                            self.hub_notifications = Some(params);
+                        }
+                    }
+                }
+            );
+        }
+    }
+
+    async fn btle_notification_listener(
+        event_rx: mpsc::Receiver<CentralEvent>,
+        device_notification_sender: Sender<DeviceNotificationMessage>,
+        adapter: Arc<RwLock<Adapter>>,
+    ) -> ! {
+        use CentralEvent::*;
+        info!("Starting btleplug async notification proxy");
+        loop {
+            let mut notification = None;
+            if let Ok(evt) = event_rx.recv() {
+                info!("evt: {:?}", evt);
+                match evt {
+                    DeviceDiscovered(dev) => {
+                        let adapter = adapter.write().unwrap();
+                        let peripheral = adapter.peripheral(dev).unwrap();
+                        debug!(
+                            "peripheral : {:?} is connected: {:?}",
+                            peripheral.properties().local_name,
+                            peripheral.is_connected()
+                        );
+                        if peripheral.properties().local_name.is_some()
+                            && !peripheral.is_connected()
+                        {
+                            let name =
+                                peripheral.properties().local_name.unwrap();
+                            if let Some(hub_type) = peripheral.identify() {
+                                debug!("Looks like a '{:?}' hub!", hub_type);
+                                notification = Some(
+                                    DeviceNotificationMessage::HubDiscovered(
+                                        DiscoveredHub {
+                                            hub_type,
+                                            addr: dev,
+                                            name,
+                                        },
+                                    ),
+                                );
+                            } else {
+                                debug!(
+                                    "Device does not look like a PoweredUp Hub"
+                                );
+                            }
+                        }
+                    }
+                    _ => {} //TODO handle other events
+                }
+            } else {
+                panic!("Events channel disconnected!");
+            }
+
+            if let Some(notif) = notification {
+                device_notification_sender
+                    .send(notif)
+                    .await
+                    .expect("Device notification channel failed");
             }
         }
     }

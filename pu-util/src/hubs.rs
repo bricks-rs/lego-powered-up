@@ -1,88 +1,75 @@
 use crate::argparse::HubArgs;
 use anyhow::{Context, Result};
 use lego_powered_up::{
-    devices::HubLED, hubs::Port, Peripheral, PoweredUp, PoweredUpEvent,
+    devices::HubLED, hubs::Port, HubFilter, Peripheral, PoweredUp,
 };
 use log::info;
 use std::thread::sleep;
 use std::time::Duration;
 
-pub fn run(args: &HubArgs) -> Result<()> {
-    let mut pu = if let Some(dev) = args.device_index {
+pub async fn run(args: &HubArgs) -> Result<()> {
+    let pu = if let Some(dev) = args.device_index {
         PoweredUp::with_device(dev)?
     } else {
         PoweredUp::init()?
     };
-    let rx = pu.event_receiver().unwrap();
-    pu.start_scan().unwrap();
+    // let rx = pu.event_receiver().unwrap();
+    // pu.run().unwrap();
 
     println!("Listening for hub announcements...");
 
-    while let Ok(evt) = rx.recv() {
-        info!("Received event: {:?}", evt);
-        if let PoweredUpEvent::HubDiscovered(hub_type, addr) = evt {
-            let name = if let Some(peripheral) = pu.peripheral(addr) {
-                peripheral
-                    .properties()
-                    .local_name
-                    .unwrap_or("Unknown".to_string())
-            } else {
-                "Unknown".to_string()
-            };
+    let hub = if let Some(addr) = &args.address {
+        pu.wait_for_hub_filter(HubFilter::Addr(addr.to_string()))
+            .await?
+    } else if let Some(name) = &args.name {
+        pu.wait_for_hub_filter(HubFilter::Name(name.to_string()))
+            .await?
+    } else {
+        pu.wait_for_hub().await?
+    };
 
-            if let Some(name_filter) = &args.name {
-                if name != *name_filter {
-                    continue;
+    let hub_type = hub.hub_type;
+    let name = hub.name;
+
+    let verb = if args.connect {
+        "Connecting to"
+    } else {
+        "Discovered"
+    };
+    println!(
+        "{} `{}` `{}` with address `{}`",
+        verb, hub_type, name, hub.addr
+    );
+
+    if args.connect {
+        let hub = pu.create_hub(hub_type, hub.addr)?;
+
+        println!("Setting hub LED");
+
+        // Set the hub LED if available
+        if hub.port_map().contains_key(&Port::HubLed) {
+            for colour in [[0, 0xff, 0], [0xff, 0, 0], [0, 0, 0xff]]
+                .iter()
+                .cycle()
+                .take(10)
+            {
+                while let Some(_msg) = hub.poll() {
+                    println!("[pu-util]: msg received");
                 }
-            }
-
-            if let Some(addr_filter) = &args.address {
-                if addr.to_string() != *addr_filter {
-                    continue;
-                }
-            }
-
-            let verb = if args.connect {
-                "Connecting to"
-            } else {
-                "Discovered"
-            };
-            println!(
-                "{} `{}` `{}` with address `{}`",
-                verb, hub_type, name, addr
-            );
-
-            if args.connect {
-                let hub = pu.create_hub(hub_type, addr)?;
-
-                println!("Setting hub LED");
-
-                // Set the hub LED if available
-                if hub.port_map().contains_key(&Port::HubLed) {
-                    for colour in [[0, 0xff, 0], [0xff, 0, 0], [0, 0, 0xff]]
-                        .iter()
-                        .cycle()
-                        .take(10)
-                    {
-                        while let Some(msg) = hub.poll() {
-                            println!("[pu-util]: msg received");
-                        }
-                        println!("Setting to: {:?}", colour);
-                        let mut led = HubLED::new();
-                        led.set_colour(&colour, &hub)?;
-                        sleep(Duration::from_secs(1));
-                    }
-                }
-
-                println!("Done!");
-
-                sleep(Duration::from_secs(10));
-
-                println!("Disconnecting...");
-                hub.disconnect()?;
-                println!("Done");
+                println!("Setting to: {:?}", colour);
+                let mut led = HubLED::new();
+                led.set_colour(&colour, &hub)?;
+                sleep(Duration::from_secs(1));
             }
         }
+
+        println!("Done!");
+
+        sleep(Duration::from_secs(5));
+
+        println!("Disconnecting...");
+        hub.disconnect()?;
+        println!("Done");
     }
 
     Ok(())

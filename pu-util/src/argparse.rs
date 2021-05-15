@@ -72,7 +72,7 @@ pub fn parse_args() -> Args {
         )
         .get_matches();
 
-    let verbosity = min(matches.occurrences_of("v"), 2);
+    let verbosity = min(matches.occurrences_of("verbose"), 2);
 
     let command = if let Some(matches) = matches.subcommand_matches("devices") {
         let index = matches
