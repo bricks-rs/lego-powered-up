@@ -1,6 +1,7 @@
 use crate::consts::*;
+use crate::devices::HubLedMode;
 use anyhow::{bail, Context, Result};
-use log::trace;
+use log::{debug, trace};
 use lpu_macros::Parse;
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
@@ -125,7 +126,7 @@ impl NotificationMessage {
     pub fn parse(msg: &[u8]) -> Result<Self> {
         use NotificationMessage::*;
 
-        println!("NOTIFICATION: {:?}", msg);
+        debug!("NOTIFICATION: {:?}", msg);
 
         let mut msg_iter = msg.iter();
 
@@ -318,7 +319,44 @@ impl NotificationMessage {
     }
 
     pub fn serialise(&self) -> Vec<u8> {
-        todo!()
+        use NotificationMessage::*;
+
+        let mut ser = match self {
+            HubProperties(_) => todo!(),
+            HubActions(_) => todo!(),
+            HubAlerts(_) => todo!(),
+            HubAttachedIo(_) => todo!(),
+            GenericErrorMessages(_) => todo!(),
+            HwNetworkCommands(_) => todo!(),
+            FwUpdateGoIntoBootMode(_) => todo!(),
+            FwUpdateLockMemory(_) => todo!(),
+            FwUpdateLockStatusRequest => todo!(),
+            FwLockStatus(_) => todo!(),
+            PortInformationRequest(_) => todo!(),
+            PortModeInformationRequest(_) => {
+                todo!()
+            }
+            PortInputFormatSetupSingle(msg) => msg.serialise(),
+            PortInputFormatSetupCombinedmode(_) => {
+                todo!()
+            }
+            PortInformation(_) => todo!(),
+            PortModeInformation(_) => todo!(),
+            PortValueSingle(_) => todo!(),
+            PortValueCombinedmode(_) => todo!(),
+            PortInputFormatSingle(_) => todo!(),
+            PortInputFormatCombinedmode(_) => {
+                todo!()
+            }
+            VirtualPortSetup(_) => todo!(),
+            PortOutputCommand(cmd) => cmd.serialise(),
+            PortOutputCommandFeedback(_) => {
+                todo!()
+            }
+        };
+        ser[0] = ser.len() as u8;
+        debug!("Serialised to: {:02x?}", ser);
+        ser
     }
 }
 
@@ -768,10 +806,10 @@ pub enum ModeInformationType {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct InputSetupSingle {
-    port_id: u8,
-    mode: u8,
-    delta: u32,
-    notification_enabled: bool,
+    pub(crate) port_id: u8,
+    pub(crate) mode: u8,
+    pub(crate) delta: u32,
+    pub(crate) notification_enabled: bool,
 }
 
 impl InputSetupSingle {
@@ -791,6 +829,20 @@ impl InputSetupSingle {
             delta,
             notification_enabled,
         })
+    }
+
+    pub fn serialise(&self) -> Vec<u8> {
+        let mut msg = Vec::with_capacity(10);
+        msg.extend_from_slice(&[
+            0,
+            0,
+            MessageType::PortInputFormatSetupSingle as u8,
+            self.port_id,
+            self.mode,
+        ]);
+        msg.extend_from_slice(&self.delta.to_le_bytes());
+        msg.push(self.notification_enabled as u8);
+        msg
     }
 }
 
@@ -1197,10 +1249,10 @@ impl VirtualPortSetupFormat {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PortOutputCommandFormat {
-    port_id: u8,
-    startup_info: StartupInfo,
-    completion_info: CompletionInfo,
-    subcommand: PortOutputSubcommand,
+    pub port_id: u8,
+    pub startup_info: StartupInfo,
+    pub completion_info: CompletionInfo,
+    pub subcommand: PortOutputSubcommand,
 }
 
 impl PortOutputCommandFormat {
@@ -1220,20 +1272,34 @@ impl PortOutputCommandFormat {
             subcommand,
         })
     }
+
+    pub fn serialise(&self) -> Vec<u8> {
+        use PortOutputSubcommand::*;
+        match &self.subcommand {
+            WriteDirectModeData(data) => data.serialise(&self),
+            _ => todo!(),
+        }
+    }
 }
 
 #[repr(u8)]
-#[derive(Clone, Debug, PartialEq, Eq, FromPrimitive)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive)]
 pub enum StartupInfo {
     BufferIfNecessary = 0b0000,
     ExecuteImmediately = 0b0001,
 }
 
 #[repr(u8)]
-#[derive(Clone, Debug, PartialEq, Eq, FromPrimitive)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive)]
 pub enum CompletionInfo {
     NoAction = 0b0000,
     CommandFeedback = 0b0001,
+}
+
+impl StartupInfo {
+    pub fn serialise(&self, completion: &CompletionInfo) -> u8 {
+        ((*self as u8) << 4) | (*completion as u8)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -1641,6 +1707,29 @@ impl WriteDirectModeDataPayload {
             m => bail!("Invalid write direct mode {}", m),
         })
     }
+
+    pub fn serialise(&self, meta: &PortOutputCommandFormat) -> Vec<u8> {
+        use WriteDirectModeDataPayload::*;
+        match self {
+            SetRgbColors { red, green, blue } => {
+                let startup_and_completion =
+                    meta.startup_info.serialise(&meta.completion_info);
+                vec![
+                    0,
+                    0, // hub id
+                    MessageType::PortOutputCommand as u8,
+                    meta.port_id,
+                    startup_and_completion,
+                    0x51, // WriteDirect
+                    HubLedMode::Rgb as u8,
+                    *red,
+                    *green,
+                    *blue,
+                ]
+            }
+            _ => todo!(),
+        }
+    }
 }
 
 #[repr(i8)]
@@ -1749,18 +1838,18 @@ mod test {
         init();
         let msgs: &[&[u8]] = &[&[5, 0, 5, 17, 5]];
         for msg in msgs {
-            let notif = NotificationMessage::parse(msg).unwrap();
+            let _notif = NotificationMessage::parse(msg).unwrap();
         }
     }
 
-    #[test]
+    /*#[test]
     fn write_direct() {
         init();
         let msgs: &[&[u8]] = &[&[9, 0, 129, 81, 50, 1, 0, 255, 0]];
         for msg in msgs {
-            let notif = NotificationMessage::parse(msg).unwrap();
+            let _notif = NotificationMessage::parse(msg).unwrap();
         }
-    }
+    }*/
 
     #[test]
     fn message_length() {
@@ -1779,5 +1868,64 @@ mod test {
                 case.1
             );
         }
+    }
+
+    #[test]
+    fn serialise_write_direct() {
+        /* Hub LED, from the arduino lib:
+        byte port = getPortForDeviceType((byte)DeviceType::HUB_LED);
+        byte setRGBMode[8] = {0x41, port, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00};
+        WriteValue(setRGBMode, 8);
+        byte setRGBColor[8] = {0x81, port, 0x11, 0x51, 0x01, red, green, blue};
+        WriteValue(setRGBColor, 8);
+        // WriteValue adds the length header and hub id = 0 header
+        // https://github.com/corneliusmunz/legoino/blob/master/src/Lpf2Hub.cpp#L952
+        */
+        init();
+        let startup_info = StartupInfo::ExecuteImmediately;
+        let completion_info = CompletionInfo::CommandFeedback;
+
+        let subcommand = PortOutputSubcommand::WriteDirectModeData(
+            WriteDirectModeDataPayload::SetRgbColors {
+                red: 0x12,
+                green: 0x34,
+                blue: 0x56,
+            },
+        );
+
+        let msg =
+            NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
+                port_id: 50,
+                startup_info,
+                completion_info,
+                subcommand,
+            });
+
+        let serialised = msg.serialise();
+        let correct =
+            &mut [0_u8, 0, 0x81, 50, 0x11, 0x51, 0x01, 0x12, 0x34, 0x56];
+        correct[0] = correct.len() as u8;
+
+        assert_eq!(&serialised, correct);
+    }
+
+    #[test]
+    fn port_input_format_setup_single() {
+        init();
+
+        let msg =
+            NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
+                port_id: 50,
+                mode: 0x01,
+                delta: 0x00000001,
+                notification_enabled: false,
+            });
+
+        let serialised = msg.serialise();
+        let correct =
+            &mut [0_u8, 0, 0x41, 50, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00];
+        correct[0] = correct.len() as u8;
+
+        assert_eq!(&serialised, correct);
     }
 }

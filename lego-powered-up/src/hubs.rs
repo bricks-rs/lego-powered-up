@@ -3,9 +3,7 @@ use crate::notifications::NotificationMessage;
 use crate::Hub;
 use anyhow::{Context, Result};
 use btleplug::api::{Characteristic, Peripheral, WriteType};
-use log::trace;
 use std::collections::HashMap;
-use std::sync::mpsc::Receiver;
 
 #[derive(Debug, Default)]
 pub struct HubProperties {
@@ -34,6 +32,7 @@ pub enum Port {
     GyroSensor,
     TiltSensor,
     GestureSensor,
+    Virtual(u8),
 }
 
 impl Port {

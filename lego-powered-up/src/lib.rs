@@ -1,7 +1,7 @@
-use crate::devices::Device;
-use anyhow::{bail, Context, Result};
-pub use btleplug::api::Peripheral;
-use btleplug::api::{BDAddr, Characteristic};
+use crate::devices::{create_device, Device};
+use anyhow::{anyhow, bail, Context, Result};
+use btleplug::api::Characteristic;
+pub use btleplug::api::{BDAddr, Peripheral};
 use btleplug::api::{Central, CentralEvent};
 use num_traits::FromPrimitive;
 use std::collections::HashMap;
@@ -10,7 +10,7 @@ use std::sync::mpsc;
 use std::sync::{Arc, RwLock};
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio::sync::oneshot;
-use tokio::time::{self, Duration};
+use tokio::time::{self, sleep, Duration};
 
 #[cfg(target_os = "linux")]
 use btleplug::bluez::{adapter::Adapter, manager::Manager};
@@ -29,7 +29,7 @@ use hubs::Port;
 use notifications::NotificationMessage;
 
 #[allow(unused)]
-mod consts;
+pub mod consts;
 
 pub mod devices;
 pub mod hubs;
@@ -54,7 +54,7 @@ pub fn print_adapter_info(idx: usize, _adapter: &Adapter) -> Result<()> {
 }
 
 pub struct PoweredUp {
-    manager: Manager,
+    _manager: Manager,
     adapter: Arc<RwLock<Adapter>>,
     control_tx: Option<Sender<PoweredUpInternalControlMessage>>,
     hub_manager_tx: Option<Sender<HubManagerMessage>>,
@@ -78,7 +78,7 @@ impl PoweredUp {
             adapters.into_iter().nth(dev).context("No adapter found")?;
 
         let mut pu = Self {
-            manager,
+            _manager: manager,
             adapter: Arc::new(RwLock::new(adapter)),
             control_tx: None,
             hub_manager_tx: None,
@@ -133,13 +133,33 @@ impl PoweredUp {
         &self,
         hub: DiscoveredHub,
     ) -> Result<HubController> {
-        let (resp_tx, resp_rx) = oneshot::channel();
-        self.hub_manager_tx
-            .as_ref()
-            .unwrap()
-            .send(HubManagerMessage::ConnectToHub(hub, resp_tx))
-            .await?;
-        resp_rx.await?
+        let retries: usize = 10;
+        for idx in 1..=retries {
+            info!(
+                "Connecting to hub {} attempt {} of {}...",
+                hub.addr, idx, retries
+            );
+            let (resp_tx, resp_rx) = oneshot::channel();
+            self.hub_manager_tx
+                .as_ref()
+                .unwrap()
+                .send(HubManagerMessage::ConnectToHub(hub.clone(), resp_tx))
+                .await?;
+            match resp_rx.await? {
+                Ok(controller) => return Ok(controller),
+                Err(e) => warn!("{}", e),
+            }
+            sleep(Duration::from_secs(3)).await;
+        }
+        Err(anyhow!(
+            "Unable to connect to {} after {} tries",
+            hub.addr,
+            retries
+        ))
+    }
+
+    pub async fn connect_to_hub(&self, _addr: &str) -> Result<HubController> {
+        todo!()
     }
 
     pub async fn wait_for_hub(&self) -> Result<DiscoveredHub> {
@@ -405,7 +425,11 @@ impl HubController {
     }
 
     pub async fn port(&self, port: Port) -> Result<PortController> {
-        todo!()
+        let (tx, rx) = oneshot::channel::<Result<PortController>>();
+        self.hub_manager_tx
+            .send(HubManagerMessage::GetPort(self.addr, port, tx))
+            .await?;
+        rx.await?
     }
 }
 
@@ -431,9 +455,10 @@ impl DerefMut for PortController {
 #[derive(Debug)]
 enum HubManagerMessage {
     ConnectToHub(DiscoveredHub, oneshot::Sender<Result<HubController>>),
-    HubInfo(usize),
     Notification(BDAddr, NotificationMessage),
+    SendToHub(BDAddr, NotificationMessage, oneshot::Sender<Result<()>>),
     Disconnect(BDAddr, oneshot::Sender<Result<()>>),
+    GetPort(BDAddr, Port, oneshot::Sender<Result<PortController>>),
 }
 
 struct HubManager;
@@ -453,60 +478,140 @@ impl HubManager {
             debug!("HubManager: received `{:?}`", msg);
             match msg {
                 ConnectToHub(hub, response) => {
-                    let peripheral = adapter
-                        .write()
-                        .unwrap()
-                        .peripheral(hub.addr)
-                        .context("Unable to identify device")?;
-                    peripheral.connect()?;
-                    let chars = peripheral.discover_characteristics()?;
-
-                    let notif_tx = command_tx.clone();
-
-                    // Set notification handler
-                    let hub_addr = hub.addr.clone();
-                    peripheral.on_notification(Box::new(move |msg| {
-                        if let Ok(msg) = NotificationMessage::parse(&msg.value)
-                        {
-                            let notif =
-                                HubManagerMessage::Notification(hub_addr, msg);
-                            notif_tx.blocking_send(notif).unwrap();
-                        } else {
-                            error!("Message parse error: {:?}", msg);
-                        }
-                    }));
-
-                    // get LPF2 characteristic and subscribe to it
-                    let lpf_char = chars
-                        .iter()
-                        .find(|c| c.uuid == *blecharacteristic::LPF2_ALL)
-                        .context(
-                            "Device does not advertise LPF2_ALL characteristic",
-                        )?
-                        .clone();
-                    peripheral.subscribe(&lpf_char)?;
-
-                    let h = Box::new(match hub.hub_type {
-                        HubType::TechnicMediumHub => {
-                            hubs::TechnicHub::init(peripheral, chars)?
-                        }
-                        _ => unimplemented!(),
-                    });
-                    hubs.insert(hub.addr, h);
-                    let controller = HubController {
-                        addr: hub.addr,
-                        hub_type: hub.hub_type,
-                        name: hub.name,
-                        hub_manager_tx: command_tx.clone(),
-                    };
-                    response.send(Ok(controller)).unwrap();
+                    response
+                        .send(HubManager::connect_to_hub(
+                            &adapter,
+                            hub,
+                            &mut hubs,
+                            command_tx.clone(),
+                        ))
+                        .unwrap();
                 }
                 Notification(addr, msg) => {
-                    todo!()
+                    println!("[{}] Received message: {:?}", addr, msg);
                 }
-                _ => todo!(),
+                GetPort(addr, port, response) => {
+                    if let Some(hub) = &hubs.get(&addr) {
+                        // hub exists
+                        let port_map = hub.port_map();
+                        if let Some(port_id) = port_map.get(&port) {
+                            // create a port controller with this information
+                            let device = create_device(
+                                *port_id,
+                                port,
+                                addr,
+                                command_tx.clone(),
+                            );
+                            let controller = PortController {
+                                device,
+                                port_id: *port_id,
+                                port_type: port,
+                            };
+                            response.send(Ok(controller)).unwrap();
+                        } else {
+                            // chosen port does not exist on this hub
+                            let m = Err(anyhow!(
+                                "Port {:?} does not exist on hub {}",
+                                port,
+                                addr
+                            ));
+                            response.send(m).unwrap();
+                        }
+                    } else {
+                        // address does not correspond to a hub
+                        let m =
+                            Err(anyhow!("No hub found for address {}", addr));
+                        response.send(m).unwrap();
+                    }
+                }
+
+                SendToHub(addr, msg, response) => {
+                    if let Some(hub) = hubs.get(&addr) {
+                        // hub exists - now get peripheral handle
+                        let status = hub.send(msg);
+                        response.send(status).unwrap();
+                    } else {
+                        // address does not correspond to a hub
+                        let m =
+                            Err(anyhow!("No hub found for address {}", addr));
+                        response.send(m).unwrap();
+                    }
+                }
+                Disconnect(addr, response) => {
+                    response
+                        .send(HubManager::disconnect(addr, &mut hubs))
+                        .unwrap();
+                }
             }
         }
+        Ok(())
+    }
+
+    fn connect_to_hub(
+        adapter: &Arc<RwLock<Adapter>>,
+        hub: DiscoveredHub,
+        hubs: &mut HashMap<BDAddr, Box<dyn Hub + Send + Sync>>,
+        command_tx: Sender<HubManagerMessage>,
+    ) -> Result<HubController> {
+        let peripheral =
+            adapter.write().unwrap().peripheral(hub.addr).context("")?;
+
+        peripheral.connect()?;
+        let chars = peripheral.discover_characteristics()?;
+
+        let (hub_type, name) = if hub.hub_type == HubType::Unknown {
+            // discover the type
+            let hub_type = peripheral.identify().unwrap_or(HubType::Unknown);
+            let name = peripheral.properties().local_name.unwrap_or_default();
+            (hub_type, name)
+        } else {
+            // trust the provided type
+            (hub.hub_type, hub.name)
+        };
+
+        let notif_tx = command_tx.clone();
+
+        // Set notification handler
+        let hub_addr = hub.addr.clone();
+        peripheral.on_notification(Box::new(move |msg| {
+            if let Ok(msg) = NotificationMessage::parse(&msg.value) {
+                let notif = HubManagerMessage::Notification(hub_addr, msg);
+                notif_tx.blocking_send(notif).unwrap();
+            } else {
+                error!("Message parse error: {:?}", msg);
+            }
+        }));
+
+        // get LPF2 characteristic and subscribe to it
+        let lpf_char = chars
+            .iter()
+            .find(|c| c.uuid == *blecharacteristic::LPF2_ALL)
+            .context("Device does not advertise LPF2_ALL characteristic")?
+            .clone();
+        peripheral.subscribe(&lpf_char)?;
+
+        let h = Box::new(match hub_type {
+            HubType::TechnicMediumHub => {
+                hubs::TechnicHub::init(peripheral, chars)?
+            }
+            _ => unimplemented!(),
+        });
+        hubs.insert(hub.addr, h);
+        let controller = HubController {
+            addr: hub.addr,
+            hub_type,
+            name,
+            hub_manager_tx: command_tx,
+        };
+        Ok(controller)
+    }
+
+    fn disconnect(
+        addr: BDAddr,
+        hubs: &mut HashMap<BDAddr, Box<dyn Hub + Send + Sync>>,
+    ) -> Result<()> {
+        let hub = hubs.remove(&addr).context("Hub not registered")?;
+        hub.disconnect()?;
         Ok(())
     }
 }

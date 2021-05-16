@@ -1,14 +1,14 @@
 use crate::argparse::HubArgs;
-use anyhow::{Context, Result};
+use anyhow::Result;
 use lego_powered_up::{
-    devices::HubLED, hubs::Port, HubFilter, Peripheral, PoweredUp,
+    consts::HubType, hubs::Port, BDAddr, DiscoveredHub, HubFilter, PoweredUp,
 };
-use log::info;
+use std::str::FromStr;
 use std::thread::sleep;
 use std::time::Duration;
 
 pub async fn run(args: &HubArgs) -> Result<()> {
-    let pu = if let Some(dev) = args.device_index {
+    let mut pu = if let Some(dev) = args.device_index {
         PoweredUp::with_device(dev)?
     } else {
         PoweredUp::init()?
@@ -18,9 +18,15 @@ pub async fn run(args: &HubArgs) -> Result<()> {
 
     println!("Listening for hub announcements...");
 
+    // 90:84:2B:60:3C:B8
+    // 90:84:2B:60:3A:6C
+
     let hub = if let Some(addr) = &args.address {
-        pu.wait_for_hub_filter(HubFilter::Addr(addr.to_string()))
-            .await?
+        DiscoveredHub {
+            hub_type: HubType::Unknown,
+            addr: BDAddr::from_str(addr)?,
+            name: "".to_string(),
+        }
     } else if let Some(name) = &args.name {
         pu.wait_for_hub_filter(HubFilter::Name(name.to_string()))
             .await?
@@ -45,13 +51,13 @@ pub async fn run(args: &HubArgs) -> Result<()> {
 
         // Set the hub LED if available
         let mut hub_led = hub.port(Port::HubLed).await?;
-        for colour in [[0, 0xff, 0], [0xff, 0, 0], [0, 0, 0xff]]
+        for colour in [[0_u8, 0xff, 0], [0xff, 0, 0], [0, 0, 0xff]]
             .iter()
             .cycle()
             .take(10)
         {
-            println!("Setting to: {:?}", colour);
-            hub_led.set_colour(&colour).await?;
+            println!("Setting to: {:02x?}", colour);
+            hub_led.set_rgb(&colour).await?;
             sleep(Duration::from_secs(1));
         }
 
@@ -63,6 +69,7 @@ pub async fn run(args: &HubArgs) -> Result<()> {
         hub.disconnect().await?;
         println!("Done");
     }
+    pu.stop().await?;
 
     Ok(())
 }
