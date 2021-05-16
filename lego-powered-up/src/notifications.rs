@@ -6,6 +6,7 @@ use lpu_macros::Parse;
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 use std::collections::HashMap;
+use std::fmt::{self, Debug, Display};
 
 macro_rules! ok {
     ($thing:expr) => {
@@ -518,9 +519,17 @@ impl AttachedIo {
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum IoAttachEvent {
-    DetachedIo { io_type_id: IoTypeId },
-    AttachedIo { hw_rev: i32, fw_rev: i32 },
-    AttachedVirtualIo { port_a: u8, port_b: u8 },
+    DetachedIo {
+        io_type_id: IoTypeId,
+    },
+    AttachedIo {
+        hw_rev: VersionNumber,
+        fw_rev: VersionNumber,
+    },
+    AttachedVirtualIo {
+        port_a: u8,
+        port_b: u8,
+    },
 }
 
 impl IoAttachEvent {
@@ -533,8 +542,8 @@ impl IoAttachEvent {
                 IoAttachEvent::DetachedIo { io_type_id }
             }
             Event::AttachedIo => {
-                let hw_rev = next_i32!(msg);
-                let fw_rev = next_i32!(msg);
+                let hw_rev = VersionNumber::parse(&mut msg)?;
+                let fw_rev = VersionNumber::parse(&mut msg)?;
                 IoAttachEvent::AttachedIo { hw_rev, fw_rev }
             }
             Event::AttachedVirtualIo => {
@@ -543,6 +552,91 @@ impl IoAttachEvent {
                 IoAttachEvent::AttachedVirtualIo { port_a, port_b }
             }
         })
+    }
+}
+
+/// One observed version number (for a large motor) is 0x1000002f,
+/// for which the build number component is decidedly *not* valid BCD,
+/// so instead for the build number we just take the two bytes and
+/// store them unconverted. As long as the build is printed as hex every
+/// time then no one will notice
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct VersionNumber {
+    pub major: u8,
+    pub minor: u8,
+    pub bugfix: u8,
+    pub build: u16,
+}
+
+impl VersionNumber {
+    pub fn parse<'a>(mut msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
+        //let byte0 = next!(msg);
+        //let byte1 = next!(msg);
+        let build = next_u16!(msg);
+        let byte2 = next!(msg);
+        let byte3 = next!(msg);
+        //trace!("Bytes: {:02x?}", [byte3, byte2, byte1, byte0]);
+
+        let major = (byte3 & 0x70) >> 4;
+        let minor = byte3 & 0x0f;
+        // BCD
+        let bugfix = (byte2 >> 4) * 10 + (byte2 & 0x0f);
+        /*
+        let build = (byte1 >> 4) as u16 * 1000
+            + (byte1 & 0x0f) as u16 * 100
+            + (byte0 >> 4) as u16 * 10
+            + (byte0 & 0x0f) as u16;
+            */
+
+        Ok(Self {
+            major,
+            minor,
+            bugfix,
+            build,
+        })
+    }
+
+    pub fn serialise(&self) -> Vec<u8> {
+        let byte3 = (self.major << 4) | self.minor;
+        let byte2 = ((self.bugfix / 10) << 4) | (self.bugfix % 10);
+        /*
+        let mut digits = [0_u8; 4];
+        let mut build = self.build;
+        for digit in digits.iter_mut() {
+            *digit = (build % 10) as u8;
+            build /= 10;
+        }
+        trace!("digits: {:02x?}", digits);
+
+        let byte1 = (digits[3] << 4) | digits[2];
+        let byte0 = (digits[1] << 4) | digits[0];
+        */
+        let byte1 = (self.build >> 8) as u8;
+        let byte0 = self.build as u8;
+
+        vec![byte0, byte1, byte2, byte3]
+    }
+}
+
+impl Display for VersionNumber {
+    fn fmt(
+        &self,
+        fmt: &mut fmt::Formatter,
+    ) -> std::result::Result<(), fmt::Error> {
+        write!(
+            fmt,
+            "{}.{}.{}.{:x}",
+            self.major, self.minor, self.bugfix, self.build
+        )
+    }
+}
+
+impl Debug for VersionNumber {
+    fn fmt(
+        &self,
+        fmt: &mut fmt::Formatter,
+    ) -> std::result::Result<(), fmt::Error> {
+        write!(fmt, "{}", self)
     }
 }
 
@@ -1927,5 +2021,152 @@ mod test {
         correct[0] = correct.len() as u8;
 
         assert_eq!(&serialised, correct);
+    }
+
+    #[test]
+    fn version_number() {
+        init();
+        // first test case from documentation
+        // remainder from observed hardware
+        let test_cases: &[(i32, VersionNumber)] = &[
+            (
+                0x17371510,
+                VersionNumber {
+                    major: 1,
+                    minor: 7,
+                    bugfix: 37,
+                    build: 0x1510,
+                },
+            ),
+            (
+                268435503,
+                VersionNumber {
+                    major: 1,
+                    minor: 0,
+                    bugfix: 0,
+                    build: 0x2f,
+                },
+            ),
+            (
+                268435456,
+                VersionNumber {
+                    major: 1,
+                    minor: 0,
+                    bugfix: 0,
+                    build: 0,
+                },
+            ),
+            (
+                23,
+                VersionNumber {
+                    major: 0,
+                    minor: 0,
+                    bugfix: 0,
+                    build: 23,
+                },
+            ),
+            (
+                21,
+                VersionNumber {
+                    major: 0,
+                    minor: 0,
+                    bugfix: 0,
+                    build: 21,
+                },
+            ),
+            (
+                20,
+                VersionNumber {
+                    major: 0,
+                    minor: 0,
+                    bugfix: 0,
+                    build: 20,
+                },
+            ),
+            (
+                60,
+                VersionNumber {
+                    major: 0,
+                    minor: 0,
+                    bugfix: 0,
+                    build: 60,
+                },
+            ),
+            (
+                4096,
+                VersionNumber {
+                    major: 0,
+                    minor: 0,
+                    bugfix: 0,
+                    build: 4096,
+                },
+            ),
+            (
+                65596,
+                VersionNumber {
+                    major: 0,
+                    minor: 0,
+                    bugfix: 1,
+                    build: 60,
+                },
+            ),
+            (
+                65536,
+                VersionNumber {
+                    major: 0,
+                    minor: 0,
+                    bugfix: 1,
+                    build: 0,
+                },
+            ),
+            (
+                65593,
+                VersionNumber {
+                    major: 0,
+                    minor: 0,
+                    bugfix: 1,
+                    build: 57,
+                },
+            ),
+            (
+                65594,
+                VersionNumber {
+                    major: 0,
+                    minor: 0,
+                    bugfix: 1,
+                    build: 58,
+                },
+            ),
+            (
+                65595,
+                VersionNumber {
+                    major: 0,
+                    minor: 0,
+                    bugfix: 1,
+                    build: 59,
+                },
+            ),
+            (
+                65590,
+                VersionNumber {
+                    major: 0,
+                    minor: 0,
+                    bugfix: 1,
+                    build: 54,
+                },
+            ),
+        ];
+
+        for (number, correct) in test_cases {
+            eprintln!("\ntest case: {:08x} - {}", number, correct);
+            let parsed =
+                VersionNumber::parse(number.to_le_bytes().iter()).unwrap();
+            assert_eq!(parsed, *correct);
+
+            let serialised = correct.serialise();
+            eprintln!("serialised: {:02x?}", serialised);
+            eprintln!("correct LE: {:02x?}", number.to_le_bytes());
+            assert_eq!(serialised, &number.to_le_bytes());
+        }
     }
 }
