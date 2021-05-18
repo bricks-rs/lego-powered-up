@@ -1938,9 +1938,9 @@ dependencies = [
 
 [[package]]
 name = "glam"
-version = "0.14.0"
+version = "0.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "333928d5eb103c5d4050533cec0384302db6be8ef7d3cebd30ec6a35350353da"
+checksum = "411e0584defa447c328f25c756ba3d0685727ecc126b46c3c1176001141cd4b6"
 
 [[package]]
 name = "glob"
@@ -2113,11 +2113,11 @@ checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 
 [[package]]
 name = "hexasphere"
-version = "3.3.0"
+version = "3.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "975eea4013d77d7de292f50e77884fa879e0aa24197f95468681a2bd8209c344"
+checksum = "497fa99092cc737fe649ae39194b515fbc15ae27ebd437c9e3d9c8210341e0fc"
 dependencies = [
- "glam 0.14.0",
+ "glam 0.15.1",
  "lazy_static",
 ]
 
@@ -3783,11 +3783,12 @@ dependencies = [
 
 [[package]]
 name = "value-bag"
-version = "1.0.0-alpha.6"
+version = "1.0.0-alpha.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6b676010e055c99033117c2343b33a40a30b91fecd6c49055ac9cd2d6c305ab1"
+checksum = "dd320e1520f94261153e96f7534476ad869c14022aee1e59af7c778075d840ae"
 dependencies = [
  "ctor",
+ "version_check",
 ]
 
 [[package]]
