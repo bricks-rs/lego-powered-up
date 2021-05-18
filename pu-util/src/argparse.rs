@@ -24,7 +24,8 @@ pub struct HubArgs {
 }
 
 pub struct MotorTestArgs {
-    pub hub: Option<String>,
+    pub device_index: Option<usize>,
+    pub address: String,
 }
 
 pub fn parse_args() -> Args {
@@ -70,6 +71,23 @@ pub fn parse_args() -> Args {
                     "Connect to the discovered hub(s) and display more info",
                 )),
         )
+        .subcommand(
+            App::new("motor-test")
+                .about("Test motors connected to a hub")
+                .arg(
+                    Arg::new("device")
+                        .long("device")
+                        .about("Device index (from `devices`)")
+                        .takes_value(true),
+                )
+                .arg(
+                    Arg::new("address")
+                        .long("address")
+                        .about("Address of hub")
+                        .required(true)
+                        .takes_value(true),
+                ),
+        )
         .get_matches();
 
     let verbosity = min(matches.occurrences_of("verbose"), 2);
@@ -89,6 +107,14 @@ pub fn parse_args() -> Args {
             name: matches.value_of("name").map(String::from),
             address: matches.value_of("address").map(String::from),
             connect: matches.is_present("connect"),
+        })
+    } else if let Some(matches) = matches.subcommand_matches("motor-test") {
+        Command::MotorTest(MotorTestArgs {
+            device_index: matches.value_of("device").map(|v| {
+                v.parse()
+                    .expect("Device index must be a nonnegative integer")
+            }),
+            address: matches.value_of("address").unwrap().to_string(),
         })
     } else {
         unreachable!();

@@ -23,7 +23,7 @@ async fn main() -> Result<()> {
     match args.command {
         Command::Devices(dev_args) => devices::run(&dev_args)?,
         Command::Hubs(hub_args) => hubs::run(&hub_args).await?,
-        _ => todo!(),
+        Command::MotorTest(mot_args) => motor_test::run(&mot_args).await?,
     }
 
     Ok(())

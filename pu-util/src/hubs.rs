@@ -45,6 +45,7 @@ pub async fn run(args: &HubArgs) -> Result<()> {
     );
 
     if args.connect {
+        use lego_powered_up::notifications::Power;
         let hub = pu.create_hub(hub).await?;
 
         println!("Setting hub LED");
@@ -60,6 +61,13 @@ pub async fn run(args: &HubArgs) -> Result<()> {
             hub_led.set_rgb(&colour).await?;
             sleep(Duration::from_secs(1));
         }
+
+        println!("Setting Motor A");
+
+        let mut motor = hub.port(Port::A).await?;
+        motor.start_speed(50, Power::Cw(50)).await?;
+        sleep(Duration::from_secs(4));
+        motor.start_speed(0, Power::Float).await?;
 
         println!("Done!");
 

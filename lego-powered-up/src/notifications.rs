@@ -1370,6 +1370,27 @@ impl PortOutputCommandFormat {
     pub fn serialise(&self) -> Vec<u8> {
         use PortOutputSubcommand::*;
         match &self.subcommand {
+            StartSpeed {
+                speed,
+                max_power,
+                use_acc_profile,
+                use_dec_profile,
+            } => {
+                let profile =
+                    ((*use_acc_profile as u8) << 1) | (*use_dec_profile as u8);
+                let speed = speed.to_le_bytes()[0];
+                vec![
+                    0, // len
+                    0, // hub id
+                    MessageType::PortOutputCommand as u8,
+                    self.port_id,
+                    0x11,
+                    0x01,
+                    speed,
+                    max_power.to_u8(),
+                    profile,
+                ]
+            }
             WriteDirectModeData(data) => data.serialise(&self),
             _ => todo!(),
         }
@@ -1404,8 +1425,8 @@ pub enum PortOutputSubcommand {
     /// According to (*) it does live here
     /// (*) https://github.com/LEGO/lego-ble-wireless-protocol-docs/issues/15
     StartPower2 {
-        power1: i8,
-        power2: i8,
+        power1: Power,
+        power2: Power,
     },
     SetAccTime {
         time: i16,
@@ -1417,7 +1438,7 @@ pub enum PortOutputSubcommand {
     },
     StartSpeed {
         speed: i8,
-        max_power: i8,
+        max_power: Power,
         use_acc_profile: bool,
         use_dec_profile: bool,
     },
@@ -1499,8 +1520,8 @@ impl PortOutputSubcommand {
         Ok(match subcomm {
             0x02 => {
                 // StartPower(Power1, Power2)
-                let power1 = next_i8!(msg);
-                let power2 = next_i8!(msg);
+                let power1 = Power::parse(&mut msg)?;
+                let power2 = Power::parse(&mut msg)?;
                 StartPower2 { power1, power2 }
             }
             0x05 => {
@@ -1524,7 +1545,7 @@ impl PortOutputSubcommand {
             0x07 => {
                 // StartSpeed(Speed, MaxPower, UseProfile)
                 let speed = next_i8!(msg);
-                let max_power = next_i8!(msg);
+                let max_power = Power::parse(&mut msg)?;
                 let use_prof = next!(msg);
                 let use_acc_profile = (use_prof & 0x01) != 0;
                 let use_dec_profile = (use_prof & 0x02) != 0;
@@ -1694,6 +1715,39 @@ impl PortOutputSubcommand {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Power {
+    Cw(u8),
+    Ccw(u8),
+    Float,
+    Brake,
+}
+
+impl Power {
+    pub fn parse<'a>(mut msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
+        use Power::*;
+        let val = next_i8!(msg);
+        Ok(match val {
+            0 => Float,
+            127 => Brake,
+            p if (1..=100).contains(&p) => Cw(p as u8),
+            p if (-100..=-1).contains(&p) => Ccw((-p) as u8),
+            p => bail!("Invalid value for power: {}", p),
+        })
+    }
+
+    pub fn to_u8(&self) -> u8 {
+        use Power::*;
+        let integer: i8 = match self {
+            Float => 0,
+            Brake => 127,
+            Cw(p) => *p as i8,
+            Ccw(p) => -(*p as i8),
+        };
+        integer.to_le_bytes()[0]
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum WriteDirectPayload {
     TiltFactoryCalibration {
@@ -1732,7 +1786,7 @@ pub enum EndState {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum WriteDirectModeDataPayload {
-    StartPower(i8),
+    StartPower(Power),
     PresetEncoder(i32),
     TiltImpactPreset(i32),
     TiltConfigOrientation(Orientation),
@@ -1756,7 +1810,7 @@ impl WriteDirectModeDataPayload {
         Ok(match mode {
             0x01 => {
                 // StartPower(Power)
-                let power = next_i8!(msg);
+                let power = Power::parse(&mut msg)?;
                 StartPower(power)
             }
             0x02 => {
@@ -1819,6 +1873,21 @@ impl WriteDirectModeDataPayload {
                     *red,
                     *green,
                     *blue,
+                ]
+            }
+            StartPower(p) => {
+                let startup_and_completion =
+                    meta.startup_info.serialise(&meta.completion_info);
+                let power = p.to_u8();
+                vec![
+                    0,
+                    0, // hub id
+                    MessageType::PortOutputCommand as u8,
+                    meta.port_id,
+                    startup_and_completion,
+                    0x51, // WriteDirect
+                    0x00, // magic value from docs
+                    power,
                 ]
             }
             _ => todo!(),
@@ -2168,5 +2237,28 @@ mod test {
             eprintln!("correct LE: {:02x?}", number.to_le_bytes());
             assert_eq!(serialised, &number.to_le_bytes());
         }
+    }
+
+    #[test]
+    fn motor_set_speed() {
+        init();
+        let subcommand = PortOutputSubcommand::StartSpeed {
+            speed: 0x12,
+            max_power: Power::Cw(0x34),
+            use_acc_profile: true,
+            use_dec_profile: true,
+        };
+        let msg =
+            NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
+                port_id: 1,
+                startup_info: StartupInfo::ExecuteImmediately,
+                completion_info: CompletionInfo::NoAction,
+                subcommand,
+            });
+        let serialised = msg.serialise();
+        let correct = &mut [0, 0, 0x81, 1, 0x11, 0x01, 0x12, 0x34, 0x03];
+        correct[0] = correct.len() as u8;
+
+        assert_eq!(&serialised, correct);
     }
 }
