@@ -1,5 +1,10 @@
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContext, EguiPlugin, EguiSettings};
+use lego_powered_up::{BDAddr, PoweredUp};
+use std::{
+    borrow::BorrowMut,
+    collections::{HashMap, HashSet},
+};
 
 fn main() {
     App::build()
@@ -7,7 +12,7 @@ fn main() {
         .insert_resource(Msaa { samples: 4 })
         .init_resource::<UiState>()
         .add_plugins(DefaultPlugins)
-        .add_plugin(bevy::diagnostic::FrameTimeDiagnosticsPlugin::default())
+        //.add_plugin(bevy::diagnostic::FrameTimeDiagnosticsPlugin::default())
         .add_plugin(bevy::diagnostic::LogDiagnosticsPlugin::default())
         .add_plugin(EguiPlugin)
         .add_startup_system(startup_system.system())
@@ -19,13 +24,61 @@ fn main() {
 #[derive(Default)]
 struct UiState {
     label: String,
+    devices: Vec<DeviceInfo>,
+    selected_device_idx: usize,
+    available_hubs: HashSet<BDAddr>,
+    connected_hubs: HashMap<BDAddr, HubInfo>,
+    connection_state: ConnectionState,
+}
+
+impl UiState {
+    pub fn pu(&self) -> Option<&PoweredUp> {
+        if let ConnectionState::Connected(pu) = &self.connection_state {
+            Some(pu)
+        } else {
+            None
+        }
+    }
+}
+
+struct HubInfo {
+    addr: BDAddr,
+}
+
+struct DeviceInfo {
+    idx: usize,
+    name: String,
+}
+
+enum ConnectionState {
+    NotConnected,
+    Connected(PoweredUp),
+}
+
+impl Default for ConnectionState {
+    fn default() -> Self {
+        ConnectionState::NotConnected
+    }
 }
 
 fn startup_system(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut materials: ResMut<Assets<ColorMaterial>>,
+    mut ui_state: ResMut<UiState>,
 ) {
+    // Populate the devices list
+    PoweredUp::devices()
+        .unwrap()
+        .iter()
+        .enumerate()
+        .for_each(|(idx, dev)| {
+            ui_state.devices.push(DeviceInfo {
+                idx,
+                name: dev.name().unwrap_or_else(|_| "unknown".to_string()),
+            });
+        });
+    info!("Found {} Bluetooth devices", ui_state.devices.len());
 }
 
 fn update_ui_scale_factor(
@@ -50,6 +103,48 @@ fn ui(
                     std::process::exit(0);
                 }
             });
+
+            let mut selected_device_idx = ui_state.selected_device_idx;
+            egui::ComboBox::from_label("").show_index(
+                ui,
+                &mut selected_device_idx,
+                ui_state.devices.len(),
+                |idx| ui_state.devices[idx].name.clone(),
+            );
+            ui_state.selected_device_idx = selected_device_idx;
+
+            match &ui_state.connection_state {
+                ConnectionState::NotConnected => {
+                    if ui.button("Start BLE").clicked() {
+                        info!(
+                            "Connecting to device {}",
+                            ui_state.selected_device_idx
+                        );
+                        match PoweredUp::with_device(
+                            ui_state.selected_device_idx,
+                        ) {
+                            Ok(pu) => {
+                                // Successfully created the BLE background process
+                                ui_state.connection_state =
+                                    ConnectionState::Connected(pu);
+                            }
+                            Err(e) => {
+                                error!("Error starting BLE process: {}", e);
+                            }
+                        }
+                    }
+                }
+                ConnectionState::Connected(pu) => {
+                    if ui.button("Stop BLE").clicked() {
+                        info!("Shutting down BLE process");
+                        if let Err(e) = pu.stop_blocking() {
+                            error!("Error shutting down BLE process: {}", e);
+                        }
+                        ui_state.connection_state =
+                            ConnectionState::NotConnected;
+                    }
+                }
+            }
         });
     });
 

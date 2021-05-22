@@ -5,7 +5,7 @@ members = [
 	"gui",
 	"lpu-macros",
 ]
-default-members = ["pu-util", "lego-powered-up"]
+default-members = ["gui", "lego-powered-up"]
 
 # Enable optimizations for dependencies (incl. Bevy), but not for our code:
 [profile.dev.package."*"]

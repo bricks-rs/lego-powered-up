@@ -58,7 +58,7 @@ pub struct PoweredUp {
     adapter: Arc<RwLock<Adapter>>,
     control_tx: Option<Sender<PoweredUpInternalControlMessage>>,
     hub_manager_tx: Option<Sender<HubManagerMessage>>,
-    pub hubs: Vec<Box<dyn Hub>>,
+    pub hubs: Vec<Box<dyn Hub + Send + Sync>>,
 }
 
 impl PoweredUp {
@@ -121,6 +121,13 @@ impl PoweredUp {
     pub async fn stop(&mut self) -> Result<()> {
         if let Some(tx) = &self.control_tx {
             tx.send(PoweredUpInternalControlMessage::Stop).await?;
+        }
+        Ok(())
+    }
+
+    pub fn stop_blocking(&self) -> Result<()> {
+        if let Some(tx) = &self.control_tx {
+            tx.blocking_send(PoweredUpInternalControlMessage::Stop)?;
         }
         Ok(())
     }
