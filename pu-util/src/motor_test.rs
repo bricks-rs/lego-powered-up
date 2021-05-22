@@ -8,7 +8,7 @@ use std::str::FromStr;
 use std::thread::sleep;
 use std::time::Duration;
 
-pub async fn run(args: &MotorTestArgs) -> Result<()> {
+pub fn run(args: &MotorTestArgs) -> Result<()> {
     let mut pu = if let Some(dev) = args.device_index {
         PoweredUp::with_device(dev)?
     } else {
@@ -33,22 +33,22 @@ pub async fn run(args: &MotorTestArgs) -> Result<()> {
         hub.hub_type, hub.name, hub.addr
     );
 
-    let hub = pu.create_hub(hub).await?;
+    let hub = pu.create_hub(hub)?;
 
     println!("Setting hub LED");
 
     // Set the hub LED if available
-    let mut hub_led = hub.port(Port::HubLed).await?;
+    let mut hub_led = hub.port(Port::HubLed)?;
     let colour = [0x00, 0xff, 0x00];
     println!("Setting to: {:02x?}", colour);
-    hub_led.set_rgb(&colour).await?;
+    hub_led.set_rgb(&colour)?;
     sleep(Duration::from_secs(1));
 
     for port in &[Port::A, Port::B, Port::C, Port::D] {
-        let mut motor = hub.port(*port).await?;
-        motor.start_speed(50, Power::Cw(100)).await?;
+        let mut motor = hub.port(*port)?;
+        motor.start_speed(50, Power::Cw(100))?;
         sleep(Duration::from_secs(2));
-        motor.start_speed(0, Power::Float).await?;
+        motor.start_speed(0, Power::Float)?;
         sleep(Duration::from_secs(1));
     }
 
@@ -57,10 +57,10 @@ pub async fn run(args: &MotorTestArgs) -> Result<()> {
     sleep(Duration::from_secs(5));
 
     println!("Disconnecting...");
-    hub.disconnect().await?;
+    hub.disconnect()?;
     println!("Done");
 
-    pu.stop().await?;
+    pu.stop()?;
 
     Ok(())
 }

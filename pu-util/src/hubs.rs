@@ -7,7 +7,7 @@ use std::str::FromStr;
 use std::thread::sleep;
 use std::time::Duration;
 
-pub async fn run(args: &HubArgs) -> Result<()> {
+pub fn run(args: &HubArgs) -> Result<()> {
     let mut pu = if let Some(dev) = args.device_index {
         PoweredUp::with_device(dev)?
     } else {
@@ -28,10 +28,9 @@ pub async fn run(args: &HubArgs) -> Result<()> {
             name: "".to_string(),
         }
     } else if let Some(name) = &args.name {
-        pu.wait_for_hub_filter(HubFilter::Name(name.to_string()))
-            .await?
+        pu.wait_for_hub_filter(HubFilter::Name(name.to_string()))?
     } else {
-        pu.wait_for_hub().await?
+        pu.wait_for_hub()?
     };
 
     let verb = if args.connect {
@@ -46,38 +45,38 @@ pub async fn run(args: &HubArgs) -> Result<()> {
 
     if args.connect {
         use lego_powered_up::notifications::Power;
-        let hub = pu.create_hub(hub).await?;
+        let hub = pu.create_hub(hub)?;
 
         println!("Setting hub LED");
 
         // Set the hub LED if available
-        let mut hub_led = hub.port(Port::HubLed).await?;
+        let mut hub_led = hub.port(Port::HubLed)?;
         for colour in [[0_u8, 0xff, 0], [0xff, 0, 0], [0, 0, 0xff]]
             .iter()
             .cycle()
             .take(10)
         {
             println!("Setting to: {:02x?}", colour);
-            hub_led.set_rgb(&colour).await?;
+            hub_led.set_rgb(&colour)?;
             sleep(Duration::from_secs(1));
         }
 
         println!("Setting Motor A");
 
-        let mut motor = hub.port(Port::A).await?;
-        motor.start_speed(50, Power::Cw(50)).await?;
+        let mut motor = hub.port(Port::A)?;
+        motor.start_speed(50, Power::Cw(50))?;
         sleep(Duration::from_secs(4));
-        motor.start_speed(0, Power::Float).await?;
+        motor.start_speed(0, Power::Float)?;
 
         println!("Done!");
 
         sleep(Duration::from_secs(5));
 
         println!("Disconnecting...");
-        hub.disconnect().await?;
+        hub.disconnect()?;
         println!("Done");
     }
-    pu.stop().await?;
+    pu.stop()?;
 
     Ok(())
 }

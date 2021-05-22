@@ -1,16 +1,14 @@
 use crate::devices::{create_device, Device};
 use anyhow::{anyhow, bail, Context, Result};
-use btleplug::api::Characteristic;
 pub use btleplug::api::{BDAddr, Peripheral};
-use btleplug::api::{Central, CentralEvent};
+use btleplug::api::{Central, CentralEvent, Characteristic};
+use crossbeam_channel::{bounded, select, unbounded, Receiver, Sender};
 use num_traits::FromPrimitive;
 use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
-use std::sync::mpsc;
 use std::sync::{Arc, RwLock};
-use tokio::sync::mpsc::{channel, Receiver, Sender};
-use tokio::sync::oneshot;
-use tokio::time::{self, sleep, Duration};
+use std::thread::{self, sleep};
+use std::time::Duration;
 
 #[cfg(target_os = "linux")]
 use btleplug::bluez::{adapter::Adapter, manager::Manager};
@@ -54,7 +52,7 @@ pub fn print_adapter_info(idx: usize, _adapter: &Adapter) -> Result<()> {
 }
 
 pub struct PoweredUp {
-    _manager: Manager,
+    // _manager: Manager,
     adapter: Arc<RwLock<Adapter>>,
     control_tx: Option<Sender<PoweredUpInternalControlMessage>>,
     hub_manager_tx: Option<Sender<HubManagerMessage>>,
@@ -78,7 +76,7 @@ impl PoweredUp {
             adapters.into_iter().nth(dev).context("No adapter found")?;
 
         let mut pu = Self {
-            _manager: manager,
+            //   _manager: manager,
             adapter: Arc::new(RwLock::new(adapter)),
             control_tx: None,
             hub_manager_tx: None,
@@ -98,19 +96,19 @@ impl PoweredUp {
             .context("Unable to access event receiver")?;
         let mut worker = PoweredUpInternal::new(self.adapter.clone());
 
-        let (control_tx, control_rx) = channel(10);
+        let (control_tx, control_rx) = bounded(10);
 
-        tokio::spawn(async move {
-            worker.run(control_rx, event_rx).await.unwrap();
+        thread::spawn(move || {
+            worker.run(control_rx, event_rx).unwrap();
         });
 
         self.control_tx = Some(control_tx);
 
-        let (hm_tx, hm_rx) = channel(10);
+        let (hm_tx, hm_rx) = unbounded();
         self.hub_manager_tx = Some(hm_tx.clone());
         let adapter_clone = self.adapter.clone();
-        tokio::spawn(async move {
-            HubManager::run(adapter_clone, hm_rx, hm_tx).await.unwrap();
+        thread::spawn(move || {
+            HubManager::run(adapter_clone, hm_rx, hm_tx).unwrap();
         });
 
         self.adapter.write().unwrap().start_scan()?;
@@ -118,16 +116,9 @@ impl PoweredUp {
         Ok(())
     }
 
-    pub async fn stop(&mut self) -> Result<()> {
+    pub fn stop(&mut self) -> Result<()> {
         if let Some(tx) = &self.control_tx {
-            tx.send(PoweredUpInternalControlMessage::Stop).await?;
-        }
-        Ok(())
-    }
-
-    pub fn stop_blocking(&self) -> Result<()> {
-        if let Some(tx) = &self.control_tx {
-            tx.blocking_send(PoweredUpInternalControlMessage::Stop)?;
+            tx.send(PoweredUpInternalControlMessage::Stop)?;
         }
         Ok(())
     }
@@ -136,27 +127,23 @@ impl PoweredUp {
         self.adapter.write().unwrap().peripheral(dev)
     }
 
-    pub async fn create_hub(
-        &self,
-        hub: DiscoveredHub,
-    ) -> Result<HubController> {
+    pub fn create_hub(&self, hub: DiscoveredHub) -> Result<HubController> {
         let retries: usize = 10;
         for idx in 1..=retries {
             info!(
                 "Connecting to hub {} attempt {} of {}...",
                 hub.addr, idx, retries
             );
-            let (resp_tx, resp_rx) = oneshot::channel();
+            let (resp_tx, resp_rx) = bounded(1);
             self.hub_manager_tx
                 .as_ref()
                 .unwrap()
-                .send(HubManagerMessage::ConnectToHub(hub.clone(), resp_tx))
-                .await?;
-            match resp_rx.await? {
+                .send(HubManagerMessage::ConnectToHub(hub.clone(), resp_tx))?;
+            match resp_rx.recv()? {
                 Ok(controller) => return Ok(controller),
                 Err(e) => warn!("{}", e),
             }
-            sleep(Duration::from_secs(3)).await;
+            sleep(Duration::from_secs(3));
         }
         Err(anyhow!(
             "Unable to connect to {} after {} tries",
@@ -165,42 +152,37 @@ impl PoweredUp {
         ))
     }
 
-    pub async fn connect_to_hub(&self, _addr: &str) -> Result<HubController> {
+    pub fn connect_to_hub(&self, _addr: &str) -> Result<HubController> {
         todo!()
     }
 
-    pub async fn wait_for_hub(&self) -> Result<DiscoveredHub> {
+    pub fn wait_for_hub(&self) -> Result<DiscoveredHub> {
         let timeout = Duration::from_secs(9999);
         self.wait_for_hub_filter_timeout_internal(None, timeout)
-            .await
     }
 
-    pub async fn wait_for_hub_filter(
+    pub fn wait_for_hub_filter(
         &self,
         filter: HubFilter,
     ) -> Result<DiscoveredHub> {
         let timeout = Duration::from_secs(9999);
         self.wait_for_hub_filter_timeout_internal(Some(filter), timeout)
-            .await
     }
 
-    pub async fn wait_for_hub_filter_timeout(
+    pub fn wait_for_hub_filter_timeout(
         &self,
         filter: HubFilter,
         timeout: Duration,
     ) -> Result<DiscoveredHub> {
         self.wait_for_hub_filter_timeout_internal(Some(filter), timeout)
-            .await
     }
 
-    async fn wait_for_hub_filter_timeout_internal(
+    fn wait_for_hub_filter_timeout_internal(
         &self,
         filter: Option<HubFilter>,
         timeout: Duration,
     ) -> Result<DiscoveredHub> {
-        let sleep = time::sleep(timeout);
-
-        let (tx, rx) = oneshot::channel();
+        let (tx, rx) = bounded(1);
         let params = HubNotificationParams {
             response: tx,
             filter,
@@ -209,15 +191,14 @@ impl PoweredUp {
         self.control_tx
             .as_ref()
             .unwrap()
-            .send(PoweredUpInternalControlMessage::WaitForHub(params))
-            .await?;
+            .send(PoweredUpInternalControlMessage::WaitForHub(params))?;
 
-        tokio::select! {
-            _ = sleep => {
-                bail!("Timeout reached")
+        select! {
+            recv(rx) -> msg => {
+               Ok(msg?)
             }
-            Ok(msg) = rx => {
-               Ok(msg)
+            default(timeout) => {
+                bail!("Timeout reached")
             }
         }
     }
@@ -260,7 +241,7 @@ enum PoweredUpInternalControlMessage {
 
 #[derive(Debug)]
 struct HubNotificationParams {
-    response: oneshot::Sender<DiscoveredHub>,
+    response: Sender<DiscoveredHub>,
     filter: Option<HubFilter>,
 }
 
@@ -278,30 +259,29 @@ impl PoweredUpInternal {
             hub_notifications: None,
         }
     }
-    pub async fn run(
+    pub fn run(
         &mut self,
-        mut control_channel: Receiver<PoweredUpInternalControlMessage>,
-        event_rx: mpsc::Receiver<CentralEvent>,
+        control_channel: Receiver<PoweredUpInternalControlMessage>,
+        event_rx: std::sync::mpsc::Receiver<CentralEvent>,
     ) -> Result<()> {
         use DeviceNotificationMessage::*;
         info!("Starting PoweredUp connection manager");
 
-        let (device_notification_sender, mut device_notification_receiver) =
-            channel(16);
+        let (device_notification_sender, device_notification_receiver) =
+            bounded(16);
         let adapter_clone = self.adapter.clone();
-        tokio::spawn(async move {
+        thread::spawn(move || {
             PoweredUpInternal::btle_notification_listener(
                 event_rx,
                 device_notification_sender,
                 adapter_clone,
             )
-            .await
         });
         loop {
-            tokio::select!(
-                Some(msg) = device_notification_receiver.recv() => {
+            select! {
+                recv(device_notification_receiver) -> msg => {
                     println!("PU INTERNAL MSG: {:?}", msg);
-                    match msg {
+                    match msg.unwrap() {
                         HubDiscovered(hub) => {
                             if let Some(notify) = self.hub_notifications.take() {
                                 // Take ownership of the HubNotificationParams
@@ -329,26 +309,26 @@ impl PoweredUpInternal {
                         }
                     }
                 }
-                Some(msg) = control_channel.recv() => {
+                recv(control_channel) -> msg => {
                     use PoweredUpInternalControlMessage::*;
-                    match msg { // TODO disconnect all hubs
+                    match msg.unwrap() { // TODO disconnect all hubs
                         Stop => return Ok(()),
                         WaitForHub(params) => {
                             self.hub_notifications = Some(params);
                         }
                     }
                 }
-            );
+            };
         }
     }
 
-    async fn btle_notification_listener(
-        event_rx: mpsc::Receiver<CentralEvent>,
+    fn btle_notification_listener(
+        event_rx: std::sync::mpsc::Receiver<CentralEvent>,
         device_notification_sender: Sender<DeviceNotificationMessage>,
         adapter: Arc<RwLock<Adapter>>,
     ) -> ! {
         use CentralEvent::*;
-        info!("Starting btleplug async notification proxy");
+        info!("Starting btleplug notification proxy");
         loop {
             let mut notification = None;
             if let Ok(evt) = event_rx.recv() {
@@ -394,7 +374,6 @@ impl PoweredUpInternal {
             if let Some(notif) = notification {
                 device_notification_sender
                     .send(notif)
-                    .await
                     .expect("Device notification channel failed");
             }
         }
@@ -422,21 +401,19 @@ impl HubController {
         &self.addr
     }
 
-    pub async fn disconnect(&self) -> Result<()> {
-        let (tx, rx) = oneshot::channel();
+    pub fn disconnect(&self) -> Result<()> {
+        let (tx, rx) = bounded(1);
         self.hub_manager_tx
-            .send(HubManagerMessage::Disconnect(self.addr, tx))
-            .await?;
+            .send(HubManagerMessage::Disconnect(self.addr, tx))?;
 
-        rx.await?
+        rx.recv()?
     }
 
-    pub async fn port(&self, port: Port) -> Result<PortController> {
-        let (tx, rx) = oneshot::channel::<Result<PortController>>();
+    pub fn port(&self, port: Port) -> Result<PortController> {
+        let (tx, rx) = bounded::<Result<PortController>>(1);
         self.hub_manager_tx
-            .send(HubManagerMessage::GetPort(self.addr, port, tx))
-            .await?;
-        rx.await?
+            .send(HubManagerMessage::GetPort(self.addr, port, tx))?;
+        rx.recv()?
     }
 }
 
@@ -461,19 +438,19 @@ impl DerefMut for PortController {
 
 #[derive(Debug)]
 enum HubManagerMessage {
-    ConnectToHub(DiscoveredHub, oneshot::Sender<Result<HubController>>),
+    ConnectToHub(DiscoveredHub, Sender<Result<HubController>>),
     Notification(BDAddr, NotificationMessage),
-    SendToHub(BDAddr, NotificationMessage, oneshot::Sender<Result<()>>),
-    Disconnect(BDAddr, oneshot::Sender<Result<()>>),
-    GetPort(BDAddr, Port, oneshot::Sender<Result<PortController>>),
+    SendToHub(BDAddr, NotificationMessage, Sender<Result<()>>),
+    Disconnect(BDAddr, Sender<Result<()>>),
+    GetPort(BDAddr, Port, Sender<Result<PortController>>),
 }
 
 struct HubManager;
 
 impl HubManager {
-    pub async fn run(
+    pub fn run(
         adapter: Arc<RwLock<Adapter>>,
-        mut command_rx: Receiver<HubManagerMessage>,
+        command_rx: Receiver<HubManagerMessage>,
         command_tx: Sender<HubManagerMessage>,
     ) -> Result<()> {
         use HubManagerMessage::*;
@@ -481,7 +458,7 @@ impl HubManager {
         let mut hubs: HashMap<BDAddr, Box<dyn Hub + Send + Sync>> =
             Default::default();
 
-        while let Some(msg) = command_rx.recv().await {
+        while let Ok(msg) = command_rx.recv() {
             debug!("HubManager: received `{:?}`", msg);
             match msg {
                 ConnectToHub(hub, response) => {
@@ -583,7 +560,7 @@ impl HubManager {
         peripheral.on_notification(Box::new(move |msg| {
             if let Ok(msg) = NotificationMessage::parse(&msg.value) {
                 let notif = HubManagerMessage::Notification(hub_addr, msg);
-                notif_tx.blocking_send(notif).unwrap();
+                notif_tx.send(notif).unwrap();
             } else {
                 error!("Message parse error: {:?}", msg);
             }

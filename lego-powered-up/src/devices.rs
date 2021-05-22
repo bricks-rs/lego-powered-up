@@ -1,23 +1,17 @@
 use crate::notifications::Power;
 use crate::{hubs::Port, HubManagerMessage, NotificationMessage};
 use anyhow::{bail, Result};
-use async_trait::async_trait;
 use btleplug::api::BDAddr;
+use crossbeam_channel::{bounded, Sender};
 use std::fmt::Debug;
-use tokio::sync::{mpsc::Sender, oneshot};
 
-#[async_trait]
 pub trait Device: Debug + Send + Sync {
     fn port(&self) -> Port;
-    async fn send(&mut self, _msg: NotificationMessage) -> Result<()>;
-    async fn set_rgb(&mut self, _rgb: &[u8; 3]) -> Result<()> {
+    fn send(&mut self, _msg: NotificationMessage) -> Result<()>;
+    fn set_rgb(&mut self, _rgb: &[u8; 3]) -> Result<()> {
         bail!("Not implemented for type")
     }
-    async fn start_speed(
-        &mut self,
-        _speed: i8,
-        _max_power: Power,
-    ) -> Result<()> {
+    fn start_speed(&mut self, _speed: i8, _max_power: Power) -> Result<()> {
         bail!("Not implemented for type")
     }
 }
@@ -57,21 +51,22 @@ pub enum HubLedMode {
     Rgb = 0x01,
 }
 
-#[async_trait]
 impl Device for HubLED {
     fn port(&self) -> Port {
         Port::HubLed
     }
 
-    async fn send(&mut self, msg: NotificationMessage) -> Result<()> {
-        let (tx, rx) = oneshot::channel::<Result<()>>();
-        self.hub_manager_tx
-            .send(HubManagerMessage::SendToHub(self.hub_addr, msg, tx))
-            .await?;
-        rx.await?
+    fn send(&mut self, msg: NotificationMessage) -> Result<()> {
+        let (tx, rx) = bounded::<Result<()>>(1);
+        self.hub_manager_tx.send(HubManagerMessage::SendToHub(
+            self.hub_addr,
+            msg,
+            tx,
+        ))?;
+        rx.recv()?
     }
 
-    async fn set_rgb(&mut self, rgb: &[u8; 3]) -> Result<()> {
+    fn set_rgb(&mut self, rgb: &[u8; 3]) -> Result<()> {
         use crate::notifications::*;
 
         self.rgb = *rgb;
@@ -83,7 +78,7 @@ impl Device for HubLED {
                 delta: 0x00000001,
                 notification_enabled: false,
             });
-        self.send(mode_set_msg).await?;
+        self.send(mode_set_msg)?;
 
         let subcommand = PortOutputSubcommand::WriteDirectModeData(
             WriteDirectModeDataPayload::SetRgbColors {
@@ -100,7 +95,7 @@ impl Device for HubLED {
                 completion_info: CompletionInfo::NoAction,
                 subcommand,
             });
-        self.send(msg).await
+        self.send(msg)
     }
 }
 
@@ -130,21 +125,22 @@ pub struct Motor {
     hub_manager_tx: Sender<HubManagerMessage>,
 }
 
-#[async_trait]
 impl Device for Motor {
     fn port(&self) -> Port {
         self.port
     }
 
-    async fn send(&mut self, msg: NotificationMessage) -> Result<()> {
-        let (tx, rx) = oneshot::channel::<Result<()>>();
-        self.hub_manager_tx
-            .send(HubManagerMessage::SendToHub(self.hub_addr, msg, tx))
-            .await?;
-        rx.await?
+    fn send(&mut self, msg: NotificationMessage) -> Result<()> {
+        let (tx, rx) = bounded::<Result<()>>(1);
+        self.hub_manager_tx.send(HubManagerMessage::SendToHub(
+            self.hub_addr,
+            msg,
+            tx,
+        ))?;
+        rx.recv()?
     }
 
-    async fn start_speed(&mut self, speed: i8, max_power: Power) -> Result<()> {
+    fn start_speed(&mut self, speed: i8, max_power: Power) -> Result<()> {
         use crate::notifications::*;
 
         let subcommand = PortOutputSubcommand::StartSpeed {
@@ -160,7 +156,7 @@ impl Device for Motor {
                 completion_info: CompletionInfo::NoAction,
                 subcommand,
             });
-        self.send(msg).await
+        self.send(msg)
     }
 }
 

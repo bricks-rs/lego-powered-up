@@ -61,6 +61,17 @@ impl Default for ConnectionState {
     }
 }
 
+impl ConnectionState {
+    pub fn take(&mut self) -> Option<PoweredUp> {
+        use ConnectionState::*;
+        if let Connected(pu) = std::mem::take(self) {
+            Some(pu)
+        } else {
+            None
+        }
+    }
+}
+
 fn startup_system(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
@@ -113,6 +124,7 @@ fn ui(
             );
             ui_state.selected_device_idx = selected_device_idx;
 
+            let mut do_disconnect = false;
             match &ui_state.connection_state {
                 ConnectionState::NotConnected => {
                     if ui.button("Start BLE").clicked() {
@@ -134,15 +146,19 @@ fn ui(
                         }
                     }
                 }
-                ConnectionState::Connected(pu) => {
+                ConnectionState::Connected(_) => {
                     if ui.button("Stop BLE").clicked() {
-                        info!("Shutting down BLE process");
-                        if let Err(e) = pu.stop_blocking() {
-                            error!("Error shutting down BLE process: {}", e);
-                        }
-                        ui_state.connection_state =
-                            ConnectionState::NotConnected;
+                        do_disconnect = true;
                     }
+                }
+            }
+            if do_disconnect {
+                if let Some(mut pu) = ui_state.connection_state.take() {
+                    info!("Shutting down BLE process");
+                    if let Err(e) = pu.stop() {
+                        error!("Error shutting down BLE process: {}", e);
+                    }
+                    ui_state.connection_state = ConnectionState::NotConnected;
                 }
             }
         });
