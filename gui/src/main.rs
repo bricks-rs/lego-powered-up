@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContext, EguiPlugin, EguiSettings};
-use lego_powered_up::{BDAddr, PoweredUp};
+use lego_powered_up::{BDAddr, DiscoveredHub, PoweredUp};
 use std::{
     borrow::BorrowMut,
     collections::{HashMap, HashSet},
@@ -18,6 +18,7 @@ fn main() {
         .add_startup_system(startup_system.system())
         .add_system(update_ui_scale_factor.system())
         .add_system(ui.system())
+        .add_system(update_discovered_hubs.system())
         .run();
 }
 
@@ -26,7 +27,7 @@ struct UiState {
     label: String,
     devices: Vec<DeviceInfo>,
     selected_device_idx: usize,
-    available_hubs: HashSet<BDAddr>,
+    available_hubs: Vec<DiscoveredHub>,
     connected_hubs: HashMap<BDAddr, HubInfo>,
     connection_state: ConnectionState,
 }
@@ -69,6 +70,13 @@ impl ConnectionState {
         } else {
             None
         }
+    }
+}
+
+fn update_discovered_hubs(mut ui_state: ResMut<UiState>) {
+    if let ConnectionState::Connected(pu) = &ui_state.connection_state {
+        let hubs = pu.list_discovered_hubs().unwrap();
+        ui_state.available_hubs = hubs;
     }
 }
 
@@ -165,10 +173,12 @@ fn ui(
     });
 
     egui::SidePanel::left("side_panel", 200.0).show(egui_ctx.ctx(), |ui| {
-        ui.heading("Side panel");
+        ui.heading("Discovered hubs:");
 
-        ui.horizontal(|ui| {
-            ui.label("GAME");
-        });
+        for hub in &ui_state.available_hubs {
+            ui.horizontal(|ui| {
+                ui.label(format!("{}: {}", hub.name, hub.addr));
+            });
+        }
     });
 }

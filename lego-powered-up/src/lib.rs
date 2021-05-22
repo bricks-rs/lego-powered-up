@@ -202,6 +202,15 @@ impl PoweredUp {
             }
         }
     }
+
+    pub fn list_discovered_hubs(&self) -> Result<Vec<DiscoveredHub>> {
+        let (tx, rx) = bounded(1);
+        self.control_tx
+            .as_ref()
+            .unwrap()
+            .send(PoweredUpInternalControlMessage::ListDiscoveredHubs(tx))?;
+        Ok(rx.recv()?)
+    }
 }
 
 #[non_exhaustive]
@@ -237,6 +246,7 @@ pub struct DiscoveredHub {
 enum PoweredUpInternalControlMessage {
     Stop,
     WaitForHub(HubNotificationParams),
+    ListDiscoveredHubs(Sender<Vec<DiscoveredHub>>),
 }
 
 #[derive(Debug)]
@@ -315,6 +325,9 @@ impl PoweredUpInternal {
                         Stop => return Ok(()),
                         WaitForHub(params) => {
                             self.hub_notifications = Some(params);
+                        }
+                        ListDiscoveredHubs(response) => {
+                            response.send(self.discovered_hubs.clone()).unwrap();
                         }
                     }
                 }
