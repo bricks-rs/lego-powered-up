@@ -8,5 +8,6 @@ edition = "2018"
 
 
 [dependencies]
-bevy = { version = "0.5" }
+bevy = { version = "0.5", features = ["dynamic"] }
+env_logger = "0.8"
 lego-powered-up = { path = "../lego-powered-up" }
