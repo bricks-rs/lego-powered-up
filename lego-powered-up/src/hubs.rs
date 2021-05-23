@@ -1,6 +1,9 @@
-use crate::consts::blecharacteristic;
 use crate::notifications::NotificationMessage;
 use crate::Hub;
+use crate::{
+    consts::blecharacteristic,
+    notifications::{AttachedIo, IoAttachEvent, VersionNumber},
+};
 use anyhow::{Context, Result};
 use btleplug::api::{Characteristic, Peripheral, WriteType};
 use std::collections::HashMap;
@@ -41,10 +44,19 @@ impl Port {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct ConnectedIo {
+    pub port: Port,
+    pub port_id: u8,
+    pub fw_rev: VersionNumber,
+    pub hw_rev: VersionNumber,
+}
+
 pub struct TechnicHub<P: Peripheral> {
     peripheral: P,
     lpf_characteristic: Characteristic,
     properties: HubProperties,
+    connected_io: HashMap<u8, ConnectedIo>,
 }
 
 impl<P: Peripheral> Hub for TechnicHub<P> {
@@ -82,6 +94,38 @@ impl<P: Peripheral> Hub for TechnicHub<P> {
 
     fn subscribe(&self, char: Characteristic) -> Result<()> {
         Ok(self.peripheral.subscribe(&char)?)
+    }
+
+    fn attached_io(&self) -> Vec<ConnectedIo> {
+        let mut ret = Vec::with_capacity(self.connected_io.len());
+        for (_k, v) in self.connected_io.iter() {
+            ret.push(v.clone());
+        }
+
+        ret.sort_by_key(|x| x.port_id);
+
+        ret
+    }
+
+    fn process_io_event(&mut self, evt: AttachedIo) {
+        match evt.event {
+            IoAttachEvent::AttachedIo { hw_rev, fw_rev } => {
+                if let Some(port) = self.port_from_id(evt.port) {
+                    let io = ConnectedIo {
+                        port_id: evt.port,
+                        port,
+                        fw_rev,
+                        hw_rev,
+                    };
+                    self.connected_io.insert(evt.port, io);
+                }
+            }
+            IoAttachEvent::DetachedIo { io_type_id: _ } => {}
+            IoAttachEvent::AttachedVirtualIo {
+                port_a: _,
+                port_b: _,
+            } => {}
+        }
     }
 }
 
@@ -122,6 +166,16 @@ impl<P: Peripheral> TechnicHub<P> {
             peripheral,
             lpf_characteristic,
             properties,
+            connected_io: Default::default(),
         })
+    }
+
+    fn port_from_id(&self, port_id: u8) -> Option<Port> {
+        for (k, v) in self.port_map().iter() {
+            if *v == port_id {
+                return Some(*k);
+            }
+        }
+        None
     }
 }

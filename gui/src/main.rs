@@ -238,6 +238,24 @@ fn ui(egui_ctx: ResMut<EguiContext>, mut ui_state: ResMut<UiState>) {
                 }
             }
         }
+
+        // List of connected hubs
+        ui.heading("Connected hubs:");
+        for (_, hub) in ui_state.connected_hubs.iter() {
+            if ui
+                .button(format!(
+                    "{}: {} ({})",
+                    hub.get_addr(),
+                    hub.get_name(),
+                    hub.get_type()
+                ))
+                .clicked()
+            {
+                update_gui_selection =
+                    GuiSelection::ConnectedHub(*hub.get_addr());
+            }
+        }
+
         if !update_gui_selection.is_none() {
             ui_state.gui_selection = update_gui_selection.take();
         }
@@ -295,6 +313,17 @@ fn ui(egui_ctx: ResMut<EguiContext>, mut ui_state: ResMut<UiState>) {
                     ui.label(hub.get_name());
                     ui.label(hub.get_type().to_string());
                     ui.label(hub.get_addr().to_string());
+
+                    // List attached IO
+                    ui.colored_label(egui::Color32::RED, "Attached IO:");
+                    if let Ok(io) = hub.get_attached_io() {
+                        for dev in io {
+                            ui.label(format!(
+                                "{:?} ({})",
+                                dev.port, dev.port_id,
+                            ));
+                        }
+                    }
 
                     // Disconnect button
                     if ui.button("Disconnect").clicked() {

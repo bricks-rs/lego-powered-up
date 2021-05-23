@@ -504,8 +504,8 @@ pub enum AlertType {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct AttachedIo {
-    port: u8,
-    event: IoAttachEvent,
+    pub port: u8,
+    pub event: IoAttachEvent,
 }
 
 impl AttachedIo {

@@ -1,4 +1,5 @@
 use crate::devices::{create_device, Device};
+use crate::hubs::ConnectedIo;
 use anyhow::{anyhow, bail, Context, Result};
 pub use btleplug::api::{BDAddr, Peripheral};
 use btleplug::api::{Central, CentralEvent, Characteristic};
@@ -25,7 +26,7 @@ use log::{debug, error, info, trace, warn};
 
 use consts::*;
 use hubs::Port;
-use notifications::NotificationMessage;
+use notifications::{AttachedIo, NotificationMessage};
 
 #[allow(unused)]
 pub mod consts;
@@ -435,6 +436,13 @@ impl HubController {
             .send(HubManagerMessage::GetPort(self.addr, port, tx))?;
         rx.recv()?
     }
+
+    pub fn get_attached_io(&self) -> Result<Vec<ConnectedIo>> {
+        let (tx, rx) = bounded(1);
+        self.hub_manager_tx
+            .send(HubManagerMessage::GetAttachedIo(self.addr, tx))?;
+        rx.recv()?
+    }
 }
 
 #[derive(Debug)]
@@ -463,6 +471,7 @@ enum HubManagerMessage {
     SendToHub(BDAddr, NotificationMessage, Sender<Result<()>>),
     Disconnect(BDAddr, Sender<Result<()>>),
     GetPort(BDAddr, Port, Sender<Result<PortController>>),
+    GetAttachedIo(BDAddr, Sender<Result<Vec<ConnectedIo>>>),
 }
 
 struct HubManager;
@@ -492,7 +501,17 @@ impl HubManager {
                         .unwrap();
                 }
                 Notification(addr, msg) => {
-                    println!("[{}] Received message: {:?}", addr, msg);
+                    info!("[{}] Received message: {:?}", addr, msg);
+                    if let Some(hub) = hubs.get_mut(&addr) {
+                        match msg {
+                            NotificationMessage::HubAttachedIo(io) => {
+                                hub.process_io_event(io);
+                            }
+                            _ => {}
+                        }
+                    } else {
+                        error!("Received message for invalid hub");
+                    }
                 }
                 GetPort(addr, port, response) => {
                     if let Some(hub) = &hubs.get(&addr) {
@@ -545,6 +564,20 @@ impl HubManager {
                     response
                         .send(HubManager::disconnect(addr, &mut hubs))
                         .unwrap();
+                }
+
+                GetAttachedIo(addr, response) => {
+                    if let Some(hub) = hubs.get(&addr) {
+                        // hub exists - get the attached IO devices
+                        response.send(Ok(hub.attached_io())).unwrap();
+                    } else {
+                        response
+                            .send(Err(anyhow!(
+                                "No hub found for address {}",
+                                addr
+                            )))
+                            .unwrap();
+                    }
                 }
             }
         }
@@ -639,6 +672,11 @@ pub trait Hub {
     fn send(&self, msg: NotificationMessage) -> Result<()>;
 
     fn subscribe(&self, char: Characteristic) -> Result<()>;
+
+    /// Ideally the vec should be sorted somehow
+    fn attached_io(&self) -> Vec<ConnectedIo>;
+
+    fn process_io_event(&mut self, _evt: AttachedIo);
 }
 
 pub trait IdentifyHub {
