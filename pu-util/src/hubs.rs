@@ -45,7 +45,7 @@ pub fn run(args: &HubArgs) -> Result<()> {
 
     if args.connect {
         use lego_powered_up::notifications::Power;
-        let hub = pu.create_hub(hub)?;
+        let hub = pu.create_hub(&hub)?;
 
         println!("Setting hub LED");
 

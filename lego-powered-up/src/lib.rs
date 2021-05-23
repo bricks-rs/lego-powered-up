@@ -6,6 +6,7 @@ use crossbeam_channel::{bounded, select, unbounded, Receiver, Sender};
 use num_traits::FromPrimitive;
 use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
+use std::str::FromStr;
 use std::sync::{Arc, RwLock};
 use std::thread::{self, sleep};
 use std::time::Duration;
@@ -127,7 +128,7 @@ impl PoweredUp {
         self.adapter.write().unwrap().peripheral(dev)
     }
 
-    pub fn create_hub(&self, hub: DiscoveredHub) -> Result<HubController> {
+    pub fn create_hub(&self, hub: &DiscoveredHub) -> Result<HubController> {
         let retries: usize = 10;
         for idx in 1..=retries {
             info!(
@@ -152,8 +153,14 @@ impl PoweredUp {
         ))
     }
 
-    pub fn connect_to_hub(&self, _addr: &str) -> Result<HubController> {
-        todo!()
+    pub fn connect_to_hub(&self, addr: &str) -> Result<HubController> {
+        let dh = DiscoveredHub {
+            hub_type: HubType::Unknown,
+            addr: BDAddr::from_str(addr)?,
+            name: Default::default(),
+        };
+
+        self.create_hub(&dh)
     }
 
     pub fn wait_for_hub(&self) -> Result<DiscoveredHub> {

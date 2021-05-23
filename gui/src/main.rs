@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContext, EguiPlugin, EguiSettings};
-use lego_powered_up::{BDAddr, DiscoveredHub, PoweredUp};
+use lego_powered_up::{BDAddr, DiscoveredHub, HubController, PoweredUp};
 use std::{
     borrow::BorrowMut,
     collections::{HashMap, HashSet},
@@ -28,8 +28,10 @@ struct UiState {
     devices: Vec<DeviceInfo>,
     selected_device_idx: usize,
     available_hubs: Vec<DiscoveredHub>,
-    connected_hubs: HashMap<BDAddr, HubInfo>,
+    connected_hubs: HashMap<BDAddr, HubController>,
     connection_state: ConnectionState,
+    gui_selection: GuiSelection,
+    connect_custom_address: String,
 }
 
 impl UiState {
@@ -73,6 +75,29 @@ impl ConnectionState {
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
+enum GuiSelection {
+    None,
+    DiscoveredHub(BDAddr),
+    ConnectedHub(BDAddr),
+}
+
+impl Default for GuiSelection {
+    fn default() -> Self {
+        GuiSelection::None
+    }
+}
+
+impl GuiSelection {
+    pub fn is_none(&self) -> bool {
+        *self == GuiSelection::None
+    }
+
+    fn take(&mut self) -> Self {
+        std::mem::take(self)
+    }
+}
+
 fn update_discovered_hubs(mut ui_state: ResMut<UiState>) {
     if let ConnectionState::Connected(pu) = &ui_state.connection_state {
         let hubs = pu.list_discovered_hubs().unwrap();
@@ -109,32 +134,37 @@ fn update_ui_scale_factor(
     }
 }
 
-fn ui(
-    mut egui_ctx: ResMut<EguiContext>,
-    mut ui_state: ResMut<UiState>,
-    assets: Res<AssetServer>,
-) {
+fn ui(egui_ctx: ResMut<EguiContext>, mut ui_state: ResMut<UiState>) {
+    use ConnectionState::*;
+
     // Menu bar
     egui::TopPanel::top("Top panel").show(egui_ctx.ctx(), |ui| {
         egui::menu::bar(ui, |ui| {
+            // FILE menu
             egui::menu::menu(ui, "File", |ui| {
                 if ui.button("Quit").clicked() {
                     std::process::exit(0);
                 }
             });
 
-            let mut selected_device_idx = ui_state.selected_device_idx;
-            egui::ComboBox::from_label("").show_index(
-                ui,
-                &mut selected_device_idx,
-                ui_state.devices.len(),
-                |idx| ui_state.devices[idx].name.clone(),
-            );
-            ui_state.selected_device_idx = selected_device_idx;
+            // Drop-down selection for bluetooth interfaces
+            if !ui_state.devices.is_empty() {
+                let mut selected_device_idx = ui_state.selected_device_idx;
+                egui::ComboBox::from_label("").show_index(
+                    ui,
+                    &mut selected_device_idx,
+                    ui_state.devices.len(),
+                    |idx| ui_state.devices[idx].name.clone(),
+                );
+                ui_state.selected_device_idx = selected_device_idx;
+            } else {
+                ui.label("No Bluetooth devices");
+            }
 
+            // Button to start & stop BLE
             let mut do_disconnect = false;
             match &ui_state.connection_state {
-                ConnectionState::NotConnected => {
+                NotConnected => {
                     if ui.button("Start BLE").clicked() {
                         info!(
                             "Connecting to device {}",
@@ -154,7 +184,7 @@ fn ui(
                         }
                     }
                 }
-                ConnectionState::Connected(_) => {
+                Connected(_) => {
                     if ui.button("Stop BLE").clicked() {
                         do_disconnect = true;
                     }
@@ -166,19 +196,126 @@ fn ui(
                     if let Err(e) = pu.stop() {
                         error!("Error shutting down BLE process: {}", e);
                     }
-                    ui_state.connection_state = ConnectionState::NotConnected;
+                    ui_state.connection_state = NotConnected;
                 }
             }
         });
     });
 
-    egui::SidePanel::left("side_panel", 200.0).show(egui_ctx.ctx(), |ui| {
+    // Left panel
+    egui::SidePanel::left("side_panel", 300.0).show(egui_ctx.ctx(), |ui| {
+        // List of hubs
         ui.heading("Discovered hubs:");
-
+        let mut update_gui_selection = GuiSelection::None;
         for hub in &ui_state.available_hubs {
             ui.horizontal(|ui| {
-                ui.label(format!("{}: {}", hub.name, hub.addr));
+                if ui.button(format!("{}: {}", hub.name, hub.addr)).clicked() {
+                    // Set "selected gui element" to this DiscoveredHub instance
+                    update_gui_selection =
+                        GuiSelection::DiscoveredHub(hub.addr);
+                }
             });
+        }
+
+        // Textbox for connecting to a hub by address
+        ui.text_edit_singleline(&mut ui_state.connect_custom_address);
+        if ui.button("Connect").clicked() {
+            // Connect to this address
+            if let Connected(pu) = &ui_state.connection_state {
+                match pu.connect_to_hub(&ui_state.connect_custom_address) {
+                    Ok(hub) => {
+                        info!("Connected to hub {}", hub.get_addr());
+                        update_gui_selection =
+                            GuiSelection::ConnectedHub(*hub.get_addr());
+                        ui_state.connected_hubs.insert(*hub.get_addr(), hub);
+                    }
+                    Err(e) => {
+                        error!(
+                            "Error connecting to hub {}: {}",
+                            ui_state.connect_custom_address, e
+                        );
+                    }
+                }
+            }
+        }
+        if !update_gui_selection.is_none() {
+            ui_state.gui_selection = update_gui_selection.take();
+        }
+
+        // Details pane
+        ui.heading("Details");
+        match ui_state.gui_selection {
+            GuiSelection::None => {
+                ui.label("Nothing selected");
+            }
+            GuiSelection::DiscoveredHub(addr) => {
+                let details =
+                    ui_state.available_hubs.iter().find(|h| h.addr == addr);
+                match details {
+                    None => {
+                        ui.label(format!("Invalid selection {}", addr));
+                    }
+                    Some(hub) => {
+                        ui.label(hub.name.clone());
+                        ui.label(hub.hub_type.to_string());
+                        ui.label(hub.addr.to_string());
+
+                        // Connect button
+                        if ui.button("Connect").clicked() {
+                            if let Connected(pu) = &ui_state.connection_state {
+                                match pu.create_hub(hub) {
+                                    Ok(hub) => {
+                                        info!(
+                                            "Connected to hub {}",
+                                            hub.get_addr()
+                                        );
+                                        update_gui_selection =
+                                            GuiSelection::ConnectedHub(
+                                                *hub.get_addr(),
+                                            );
+                                        ui_state
+                                            .connected_hubs
+                                            .insert(*hub.get_addr(), hub);
+                                    }
+                                    Err(e) => {
+                                        error!(
+                                            "Error connecting to hub {}: {}",
+                                            hub.addr, e
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            GuiSelection::ConnectedHub(addr) => {
+                if let Some(hub) = ui_state.connected_hubs.get(&addr) {
+                    // Show hub details and disconnect button
+                    ui.label(hub.get_name());
+                    ui.label(hub.get_type().to_string());
+                    ui.label(hub.get_addr().to_string());
+
+                    // Disconnect button
+                    if ui.button("Disconnect").clicked() {
+                        info!("Disconnecting from {}", hub.get_addr());
+                        if let Err(e) = hub.disconnect() {
+                            error!(
+                                "Error disconnecting from hub {}: {}",
+                                addr, e
+                            );
+                        }
+                        ui_state.connected_hubs.remove(&addr);
+                        ui_state.gui_selection = GuiSelection::None;
+                    }
+                } else {
+                    ui.label(format!("Invalid selection: {}", addr));
+                }
+            }
+        }
+
+        if !update_gui_selection.is_none() {
+            ui_state.gui_selection = update_gui_selection;
         }
     });
 }
