@@ -1,4 +1,3 @@
-use crate::HubInfo;
 use bevy::prelude::*;
 
 pub enum HubAsset {
@@ -14,16 +13,5 @@ impl HubAsset {
         };
 
         asset_server.load(file)
-    }
-}
-
-pub fn draw_hubs(hubs_query: Query<(Entity, &HubInfo, &Sprite)>) {
-    for (entity, hub, sprite) in hubs_query.iter() {
-        println!(
-            "Hub {} size is: {:?}, addr is {:?}",
-            entity.id(),
-            sprite.size,
-            hub.addr
-        );
     }
 }

@@ -1,7 +1,6 @@
-use crate::HubInfo;
-use bevy::input::mouse::{MouseButtonInput, MouseMotion};
+use crate::EntitySelected;
+use bevy::input::mouse::MouseButtonInput;
 use bevy::input::ElementState;
-use bevy::math::XYZ;
 use bevy::prelude::*;
 
 #[derive(Default)]
@@ -14,11 +13,11 @@ pub struct ClickAndDragState {
 }
 
 pub fn update(
-    mut hubs_query: Query<(Entity, &HubInfo, &Sprite, &mut GlobalTransform)>,
+    mut hubs_query: Query<(Entity, &Sprite, &mut GlobalTransform)>,
     windows: Res<Windows>,
     mut mousebtn_evr: EventReader<MouseButtonInput>,
-    mut motion_evr: EventReader<MouseMotion>,
     mut state: Local<ClickAndDragState>,
+    mut selected_sender: EventWriter<EntitySelected>,
 ) {
     let window = windows.get_primary().unwrap();
     // cursor has origin at bottom left
@@ -32,6 +31,9 @@ pub fn update(
             ElementState::Pressed if evt.button == MouseButton::Left => {
                 // Grab the hub that is underneath the cursor (if any)
                 state.selected_object = get_object(&mut hubs_query, cursor);
+                if let Some((entity, _offset)) = state.selected_object {
+                    selected_sender.send(EntitySelected(entity));
+                }
             }
             ElementState::Released => {
                 state.selected_object = None;
@@ -40,28 +42,26 @@ pub fn update(
         }
     }
 
-    for evt in motion_evr.iter() {
-        if let Some((ent, offset)) = state.selected_object {
-            //println!("mouse move ({}, {})", evt.delta.x, evt.delta.y);
-            if let Ok((_, _, _, mut transform)) = hubs_query.get_mut(ent) {
-                transform.translation =
-                    (cursor + offset).extend(transform.translation.z);
-            }
+    // Doesn't matter whether the cursor moved or not - if an object is
+    // selected then we update its position to match the cursor regardless
+    if let Some((ent, offset)) = state.selected_object {
+        //println!("mouse move ({}, {})", evt.delta.x, evt.delta.y);
+        if let Ok((_, _, mut transform)) = hubs_query.get_mut(ent) {
+            transform.translation =
+                (cursor + offset).extend(transform.translation.z);
         }
     }
 }
 
 fn get_object(
-    hubs_query: &mut Query<(Entity, &HubInfo, &Sprite, &mut GlobalTransform)>,
+    hubs_query: &mut Query<(Entity, &Sprite, &mut GlobalTransform)>,
     pos: Vec2,
 ) -> Option<(Entity, Vec2)> {
-    for (entity, hub, sprite, global_transform) in hubs_query.iter_mut() {
+    for (entity, sprite, global_transform) in hubs_query.iter_mut() {
         let xy = global_transform.translation.truncate();
-        println!("pos: {:?}, entity: {:?},  size: {:?}", pos, xy, sprite.size);
         if pos.cmpge(xy - sprite.size / 2.0).all()
             && pos.cmple(xy + sprite.size / 2.0).all()
         {
-            println!("Clicked a thing! {:?}", entity);
             let offset = xy - pos;
             return Some((entity, offset));
         }

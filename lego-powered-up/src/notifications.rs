@@ -1725,15 +1725,8 @@ pub enum Power {
 
 impl Power {
     pub fn parse<'a>(mut msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
-        use Power::*;
         let val = next_i8!(msg);
-        Ok(match val {
-            0 => Float,
-            127 => Brake,
-            p if (1..=100).contains(&p) => Cw(p as u8),
-            p if (-100..=-1).contains(&p) => Ccw((-p) as u8),
-            p => bail!("Invalid value for power: {}", p),
-        })
+        Power::from_i8(val)
     }
 
     pub fn to_u8(&self) -> u8 {
@@ -1745,6 +1738,17 @@ impl Power {
             Ccw(p) => -(*p as i8),
         };
         integer.to_le_bytes()[0]
+    }
+
+    pub fn from_i8(val: i8) -> Result<Self> {
+        use Power::*;
+        Ok(match val {
+            0 => Float,
+            127 => Brake,
+            p if (1..=100).contains(&p) => Cw(p as u8),
+            p if (-100..=-1).contains(&p) => Ccw((-p) as u8),
+            p => bail!("Invalid value for power: {}", p),
+        })
     }
 }
 
