@@ -1,10 +1,12 @@
 use bevy::prelude::*;
+use bevy::{app::AppExit, transform};
 use bevy_egui::{egui, EguiContext, EguiPlugin, EguiSettings};
+use hub_objects::{draw_hubs, HubAsset};
 use lego_powered_up::{BDAddr, DiscoveredHub, HubController, PoweredUp};
-use std::{
-    borrow::BorrowMut,
-    collections::{HashMap, HashSet},
-};
+use std::collections::HashMap;
+
+mod hub_objects;
+mod mouse;
 
 fn main() {
     App::build()
@@ -19,12 +21,13 @@ fn main() {
         .add_system(update_ui_scale_factor.system())
         .add_system(ui.system())
         .add_system(update_discovered_hubs.system())
+        //.add_system(draw_hubs.system())
+        .add_system(mouse::update.system())
         .run();
 }
 
 #[derive(Default)]
 struct UiState {
-    label: String,
     devices: Vec<DeviceInfo>,
     selected_device_idx: usize,
     available_hubs: Vec<DiscoveredHub>,
@@ -34,18 +37,15 @@ struct UiState {
     connect_custom_address: String,
 }
 
-impl UiState {
-    pub fn pu(&self) -> Option<&PoweredUp> {
-        if let ConnectionState::Connected(pu) = &self.connection_state {
-            Some(pu)
-        } else {
-            None
-        }
-    }
+#[derive(Default)]
+pub struct HubInfo {
+    addr: Option<BDAddr>,
 }
 
-struct HubInfo {
-    addr: BDAddr,
+impl HubInfo {
+    pub fn new() -> Self {
+        Default::default()
+    }
 }
 
 struct DeviceInfo {
@@ -105,12 +105,7 @@ fn update_discovered_hubs(mut ui_state: ResMut<UiState>) {
     }
 }
 
-fn startup_system(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
-    mut ui_state: ResMut<UiState>,
-) {
+fn startup_system(mut commands: Commands, mut ui_state: ResMut<UiState>) {
     // Populate the devices list
     PoweredUp::devices()
         .unwrap()
@@ -123,6 +118,8 @@ fn startup_system(
             });
         });
     info!("Found {} Bluetooth devices", ui_state.devices.len());
+
+    commands.spawn_bundle(OrthographicCameraBundle::new_2d());
 }
 
 fn update_ui_scale_factor(
@@ -134,7 +131,14 @@ fn update_ui_scale_factor(
     }
 }
 
-fn ui(egui_ctx: ResMut<EguiContext>, mut ui_state: ResMut<UiState>) {
+fn ui(
+    egui_ctx: ResMut<EguiContext>,
+    mut ui_state: ResMut<UiState>,
+    mut exit: EventWriter<AppExit>,
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+) {
     use ConnectionState::*;
 
     // Menu bar
@@ -143,7 +147,40 @@ fn ui(egui_ctx: ResMut<EguiContext>, mut ui_state: ResMut<UiState>) {
             // FILE menu
             egui::menu::menu(ui, "File", |ui| {
                 if ui.button("Quit").clicked() {
-                    std::process::exit(0);
+                    // Disconnect from BT if needed
+                    for (addr, hub) in ui_state.connected_hubs.iter() {
+                        if let Err(e) = hub.disconnect() {
+                            error!(
+                                "Error disconnecting from hub {}: {}",
+                                addr, e
+                            );
+                        }
+                    }
+
+                    // Shut down BT device if running
+                    if let Some(mut pu) = ui_state.connection_state.take() {
+                        if let Err(e) = pu.stop() {
+                            error!("Error shutting down BT interface: {}", e);
+                        }
+                    }
+
+                    exit.send(AppExit);
+                }
+            });
+
+            // SCENE menu for adding objects to the scene
+            egui::menu::menu(ui, "Scene", |ui| {
+                if ui.button("Add hub").clicked() {
+                    // Add a new hub to the scene
+                    info!("Add hub");
+                    let texture_handle =
+                        HubAsset::TechnicMediumHub.load(&asset_server);
+                    commands.spawn().insert(HubInfo::new()).insert_bundle(
+                        SpriteBundle {
+                            material: materials.add(texture_handle.into()),
+                            ..Default::default()
+                        },
+                    );
                 }
             });
 
@@ -218,26 +255,30 @@ fn ui(egui_ctx: ResMut<EguiContext>, mut ui_state: ResMut<UiState>) {
         }
 
         // Textbox for connecting to a hub by address
-        ui.text_edit_singleline(&mut ui_state.connect_custom_address);
-        if ui.button("Connect").clicked() {
-            // Connect to this address
-            if let Connected(pu) = &ui_state.connection_state {
-                match pu.connect_to_hub(&ui_state.connect_custom_address) {
-                    Ok(hub) => {
-                        info!("Connected to hub {}", hub.get_addr());
-                        update_gui_selection =
-                            GuiSelection::ConnectedHub(*hub.get_addr());
-                        ui_state.connected_hubs.insert(*hub.get_addr(), hub);
-                    }
-                    Err(e) => {
-                        error!(
-                            "Error connecting to hub {}: {}",
-                            ui_state.connect_custom_address, e
-                        );
+        ui.horizontal(|ui| {
+            ui.text_edit_singleline(&mut ui_state.connect_custom_address);
+            if ui.button("Connect").clicked() {
+                // Connect to this address
+                if let Connected(pu) = &ui_state.connection_state {
+                    match pu.connect_to_hub(&ui_state.connect_custom_address) {
+                        Ok(hub) => {
+                            info!("Connected to hub {}", hub.get_addr());
+                            update_gui_selection =
+                                GuiSelection::ConnectedHub(*hub.get_addr());
+                            ui_state
+                                .connected_hubs
+                                .insert(*hub.get_addr(), hub);
+                        }
+                        Err(e) => {
+                            error!(
+                                "Error connecting to hub {}: {}",
+                                ui_state.connect_custom_address, e
+                            );
+                        }
                     }
                 }
             }
-        }
+        });
 
         // List of connected hubs
         ui.heading("Connected hubs:");
