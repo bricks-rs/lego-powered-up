@@ -9,7 +9,8 @@ pub struct ClickAndDragState {
     // is Some(_) if clicked state on an object, otherwise None.
     // An extra bool to track whether is_clicked or not is not needed
     // because the Option encodes this
-    selected_object: Option<Entity>,
+    // The vec2 is the cursor offset from the origin of the shape
+    selected_object: Option<(Entity, Vec2)>,
 }
 
 pub fn update(
@@ -40,11 +41,11 @@ pub fn update(
     }
 
     for evt in motion_evr.iter() {
-        if let Some(ent) = state.selected_object {
+        if let Some((ent, offset)) = state.selected_object {
             //println!("mouse move ({}, {})", evt.delta.x, evt.delta.y);
             if let Ok((_, _, _, mut transform)) = hubs_query.get_mut(ent) {
-                transform.translation.x += evt.delta.x;
-                transform.translation.y += evt.delta.y;
+                transform.translation =
+                    (cursor + offset).extend(transform.translation.z);
             }
         }
     }
@@ -53,7 +54,7 @@ pub fn update(
 fn get_object(
     hubs_query: &mut Query<(Entity, &HubInfo, &Sprite, &mut GlobalTransform)>,
     pos: Vec2,
-) -> Option<Entity> {
+) -> Option<(Entity, Vec2)> {
     for (entity, hub, sprite, global_transform) in hubs_query.iter_mut() {
         let xy = global_transform.translation.truncate();
         println!("pos: {:?}, entity: {:?},  size: {:?}", pos, xy, sprite.size);
@@ -61,7 +62,8 @@ fn get_object(
             && pos.cmple(xy + sprite.size / 2.0).all()
         {
             println!("Clicked a thing! {:?}", entity);
-            return Some(entity);
+            let offset = xy - pos;
+            return Some((entity, offset));
         }
     }
     None
