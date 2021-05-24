@@ -2126,6 +2126,8 @@ dependencies = [
  "bevy",
  "bevy_egui",
  "lego-powered-up",
+ "rhai",
+ "serde",
 ]
 
 [[package]]
@@ -3255,6 +3257,32 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f497285884f3fcff424ffc933e56d7cbca511def0c9831a7f9b5f6153e3cc89b"
 
 [[package]]
+name = "rhai"
+version = "0.20.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "84125e961ca5cd0c6f207dbc56c5a9ebb75a08a269182c249e48750806074ac0"
+dependencies = [
+ "ahash 0.7.3",
+ "instant",
+ "num-traits",
+ "rhai_codegen",
+ "serde",
+ "smallvec",
+ "smartstring",
+]
+
+[[package]]
+name = "rhai_codegen"
+version = "0.3.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "643fd67d19aafd45a9e335afe4183dc58ba0cc6a1f43fbe34c7d92c041cdcafc"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "rodio"
 version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3455,6 +3483,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fe0f37c9e8f3c5a4a66ad655a93c74daac4ad00c441533bf5c6e7990bb42604e"
 dependencies = [
  "serde",
+]
+
+[[package]]
+name = "smartstring"
+version = "0.2.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1ada87540bf8ef4cf8a1789deb175626829bb59b1fefd816cf7f7f55efcdbae9"
+dependencies = [
+ "static_assertions",
 ]
 
 [[package]]

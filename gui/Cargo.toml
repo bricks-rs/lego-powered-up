@@ -11,3 +11,5 @@ edition = "2018"
 bevy = { version = "0.5", features = ["dynamic"] }
 bevy_egui = "0.4"
 lego-powered-up = { path = "../lego-powered-up" }
+rhai = { version = "0.20", features = ["serde", "f32_float", "sync", "no_closure"] }
+serde = { version = "1.0", features = ["derive"] }

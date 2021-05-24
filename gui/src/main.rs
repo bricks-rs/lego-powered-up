@@ -5,9 +5,11 @@ use hub_objects::HubAsset;
 use lego_powered_up::{BDAddr, DiscoveredHub, HubController, PoweredUp};
 use send_commands::send_commands;
 use std::collections::HashMap;
+use scripting::InputMappingScript;
 
 mod hub_objects;
 mod mouse;
+mod scripting;
 mod send_commands;
 
 fn main() {
@@ -15,6 +17,7 @@ fn main() {
         .insert_resource(ClearColor(Color::rgb(0.0, 0.0, 0.0)))
         .insert_resource(Msaa { samples: 4 })
         .init_resource::<UiState>()
+        .init_resource::<InputMappingScript>()
         .add_plugins(DefaultPlugins)
         //.add_plugin(bevy::diagnostic::FrameTimeDiagnosticsPlugin::default())
         .add_plugin(bevy::diagnostic::LogDiagnosticsPlugin::default())
@@ -27,6 +30,7 @@ fn main() {
         //.add_system(draw_hubs.system())
         .add_system(mouse::update.system())
         .add_system(send_commands.system())
+        .add_system(scripting::run_scripts.system())
         .run();
 }
 
