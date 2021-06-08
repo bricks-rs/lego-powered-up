@@ -49,7 +49,7 @@ pub fn print_adapter_info(idx: usize, adapter: &Adapter) -> Result<()> {
 #[cfg(any(target_os = "windows", target_os = "macos"))]
 pub fn print_adapter_info(idx: usize, _adapter: &Adapter) -> Result<()> {
     info!("adapter info can't be printed on Windows 10 or mac");
-    println!("  {}: Adapter {}");
+    println!("  {}: Adapter {}", idx, idx);
     Ok(())
 }
 

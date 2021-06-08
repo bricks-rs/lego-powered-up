@@ -3,9 +3,9 @@ use bevy::prelude::*;
 use bevy_egui::{egui, EguiContext, EguiPlugin, EguiSettings};
 use hub_objects::HubAsset;
 use lego_powered_up::{BDAddr, DiscoveredHub, HubController, PoweredUp};
+use scripting::InputMappingScript;
 use send_commands::send_commands;
 use std::collections::HashMap;
-use scripting::InputMappingScript;
 
 mod hub_objects;
 mod mouse;
@@ -120,7 +120,10 @@ fn startup_system(mut commands: Commands, mut ui_state: ResMut<UiState>) {
     // Populate the devices list
     PoweredUp::devices().unwrap().iter().for_each(|dev| {
         ui_state.devices.push(DeviceInfo {
+            #[cfg(not(target_os = "windows"))]
             name: dev.name().unwrap_or_else(|_| "unknown".to_string()),
+            #[cfg(target_os = "windows")]
+            name: "unknown".to_string(),
         });
     });
     info!("Found {} Bluetooth devices", ui_state.devices.len());
