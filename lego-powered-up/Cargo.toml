@@ -6,7 +6,7 @@ edition = "2018"
 license = "MPL-2.0"
 repository = "https://github.com/sciguy16/lego-powered-up"
 description = "Control Lego PoweredUp hubs and devices"
-readme = "README.md"
+readme = "../README.md"
 
 
 # See more keys and their definitions at
