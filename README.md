@@ -1,8 +1,14 @@
 # Rust communication library for Lego Powered Up
 
+![](https://img.shields.io/github/license/sciguy16/lego-powered-up?style=plastic)
+![](https://img.shields.io/github/workflow/status/sciguy16/lego-powered-up/build?style=plastic)
+![](https://img.shields.io/crates/v/lego-powered-up?style=plastic)
+![](https://img.shields.io/docsrs/lego-powered-up?style=plastic)
+
+
 ## Example
 
-See the [examples](examples) directory for more!
+See the [examples](https://github.com/sciguy16/lego-powered-up/tree/main/examples) directory for more!
 
 ```rust
 use lego_powered_up::notifications::Power;
