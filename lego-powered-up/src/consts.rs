@@ -5,7 +5,7 @@ use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 use std::fmt::{self, Display};
 
-/// ```
+/// ```ignore
 /// @typedef HubType
 /// @property {number} UNKNOWN 0
 /// @property {number} WEDO2_SMART_HUB 1
@@ -42,7 +42,7 @@ impl Display for HubType {
     }
 }
 
-/// ```
+/// ```ignore
 /// @typedef DeviceType
 /// @property {number} UNKNOWN 0
 /// @property {number} SIMPLE_MEDIUM_LINEAR_MOTOR 1
@@ -111,7 +111,7 @@ pub enum DeviceType {
     TechnicLargeAngularMotorGrey = 76,  // Technic Control+
 }
 
-/// ```
+/// ```ignore
 /// @typedef Color
 /// @property {number} BLACK 0
 /// @property {number} PINK 1
@@ -150,7 +150,7 @@ pub enum Color {
 // @property {number} DOWN 3
 // @property {number} STOP 4
 
-/// ```
+/// ```ignore
 /// @typedef BrakingStyle
 /// @property {number} HOLD 127
 /// @property {number} BRAKE 128
@@ -163,7 +163,7 @@ pub enum BrakingStyle {
     Brake = 127,
 }
 
-/// ```
+/// ```ignore
 /// @typedef DuploTrainBaseSound
 /// @property {number} BRAKE 3
 /// @property {number} STATION_DEPARTURE 5
@@ -236,7 +236,7 @@ pub mod blecharacteristic {
     }
 }
 
-/// ```
+/// ```ignore
 /// @typedef MessageType
 /// @property {number} HUB_PROPERTIES 0x01
 /// @property {number} HUB_ACTIONS 0x02
@@ -291,7 +291,7 @@ pub enum MessageType {
     PortOutputCommandFeedback = 0x82,
 }
 
-/// ```
+/// ```ignore
 /// @typedef HubPropertyReference
 /// @param {number} ADVERTISING_NAME 0x01
 /// @param {number} BUTTON 0x02
@@ -330,7 +330,7 @@ pub enum HubPropertyReference {
     HardwareNetworkFamily = 0x0F,
 }
 
-/// ```
+/// ```ignore
 /// @typedef HubPropertyOperation
 /// @param {number} SET_DOWNSTREAM 0x01
 /// @param {number} ENABLE_UPDATES_DOWNSTREAM 0x02
@@ -351,7 +351,7 @@ pub enum HubPropertyOperation {
     UpdateUpstream = 0x06,
 }
 
-/// ```
+/// ```ignore
 /// @typedef HubPropertyPayload
 /// @param {number} ADVERTISING_NAME 0x01
 /// @param {number} BUTTON_STATE 0x02
@@ -390,7 +390,7 @@ pub enum HubPropertyPayload {
     HwNetworkFamily = 0x0F,
 }
 
-/// ```
+/// ```ignore
 /// @typedef ActionType
 /// @param {number} SWITCH_OFF_HUB 0x01
 /// @param {number} DISCONNECT 0x02
@@ -419,7 +419,7 @@ pub enum ActionType {
     HubWillGoIntoBootMode = 0x32,
 }
 
-/// ```
+/// ```ignore
 /// @typedef AlertPayload
 /// @param {number} STATUS_OK 0x00
 /// @param {number} ALERT 0xFF
@@ -432,7 +432,7 @@ pub enum AlertPayload {
     Alert = 0xFF,
 }
 
-/// ```
+/// ```ignore
 /// @typedef Event
 /// @param {number} DETACHED_IO 0x00
 /// @param {number} ATTACHED_IO 0x01
@@ -447,7 +447,7 @@ pub enum Event {
     AttachedVirtualIo = 0x02,
 }
 
-/// ```
+/// ```ignore
 /// @typedef HWNetWorkCommandType
 /// @param {number} CONNECTION_REQUEST 0x02
 /// @param {number} FAMILY_REQUEST 0x03
@@ -482,7 +482,7 @@ pub enum HwNetworkCommandType {
     ResetLongPressTiming = 0x0E,
 }
 
-/// ```
+/// ```ignore
 /// @typedef PortInputFormatSetupSubCommand
 /// @param {number} SET_MODEANDDATASET_COMBINATIONS 0x01
 /// @param {number} LOCK_LPF2_DEVICE_FOR_SETUP 0x02
@@ -503,7 +503,7 @@ pub enum PortInputFormatSetupSubCommand {
     ResetSensor = 0x06,
 }
 
-/// ```
+/// ```ignore
 /// @typedef MarioPantsType
 /// @param {number} NONE 0x00
 /// @param {number} PROPELLER 0x06
@@ -523,7 +523,7 @@ pub enum MarioPantsType {
     Builder = 0x22,
 }
 
-/// ```
+/// ```ignore
 /// @typedef MarioColor
 /// @param {number} WHITE 0x1300
 /// @param {number} RED 0x1500
