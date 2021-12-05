@@ -17,6 +17,11 @@ jobs:
           override: true
           components: rustfmt, clippy
 
+      - name: Install dependencies
+        run: |
+            sudo apt-get install \
+              libdbus-1-dev
+
       - name: Run cargo check
         uses: actions-rs/cargo@v1
         with:
@@ -51,6 +56,12 @@ jobs:
         with:
           toolchain: stable
           override: true
+
+      - name: Install dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+            sudo apt-get install \
+              libdbus-1-dev
 
       - name: Run cargo test
         uses: actions-rs/cargo@v1
