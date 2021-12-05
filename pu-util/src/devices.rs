@@ -6,9 +6,9 @@ pub fn run(args: &DevicesArgs) -> Result<()> {
     let adapters = PoweredUp::devices()?;
 
     if let Some(idx) = args.index {
-        if let Some(adapter) = adapters.iter().nth(idx) {
+        if let Some(adapter) = adapters.get(idx) {
             println!("Showing 1 Bluetooth device:");
-            lego_powered_up::print_adapter_info(idx, &adapter)?;
+            lego_powered_up::print_adapter_info(idx, adapter)?;
         } else {
             println!("No Bluetooth device found");
         }
@@ -20,7 +20,7 @@ pub fn run(args: &DevicesArgs) -> Result<()> {
     } else {
         println!("Showing {} available Bluetooth devices:", adapters.len());
         for (idx, dev) in adapters.iter().enumerate() {
-            lego_powered_up::print_adapter_info(idx, &dev)?;
+            lego_powered_up::print_adapter_info(idx, dev)?;
         }
     }
     Ok(())

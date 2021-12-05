@@ -696,7 +696,7 @@ impl HubManager {
         let notif_tx = command_tx.clone();
 
         // Set notification handler
-        let hub_addr = hub.addr.clone();
+        let hub_addr = hub.addr;
         peripheral.on_notification(Box::new(move |msg| {
             if let Ok(msg) = NotificationMessage::parse(&msg.value) {
                 let notif = HubManagerMessage::Notification(hub_addr, msg);

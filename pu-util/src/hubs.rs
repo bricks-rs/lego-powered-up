@@ -57,7 +57,7 @@ pub fn run(args: &HubArgs) -> Result<()> {
             .take(10)
         {
             println!("Setting to: {:02x?}", colour);
-            hub_led.set_rgb(&colour)?;
+            hub_led.set_rgb(colour)?;
             sleep(Duration::from_secs(1));
         }
 
