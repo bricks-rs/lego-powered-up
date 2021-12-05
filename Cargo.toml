@@ -4,6 +4,8 @@ members = [
 	"pu-util",
 	"gui",
 	"lpu-macros",
+
+	"examples/*",
 ]
 default-members = ["gui", "lego-powered-up"]
 
