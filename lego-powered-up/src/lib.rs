@@ -1,3 +1,7 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 //! # lego-powered-up
 //! This is a crate for remotely controlling Lego PoweredUp hubs and devices
 //! over Bluetooth. It provides a simple synchronous interface, with the
