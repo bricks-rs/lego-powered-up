@@ -1,3 +1,5 @@
+//! Specific implementations for each of the supported hubs.
+
 use crate::notifications::NotificationMessage;
 use crate::Hub;
 use crate::{
@@ -8,25 +10,39 @@ use anyhow::{Context, Result};
 use btleplug::api::{Characteristic, Peripheral, WriteType};
 use std::collections::HashMap;
 
+/// Propeties of a hub
 #[derive(Debug, Default)]
 pub struct HubProperties {
+    /// Friendly name, set via the PoweredUp or Control+ apps
     pub name: String,
+    /// Firmware revision
     pub fw_version: String,
+    /// Hardware revision
     pub hw_version: String,
+    /// BLE MAC address
     pub mac_address: String,
+    /// Battery level
     pub battery_level: usize,
+    /// BLE signal strength
     pub rssi: i8,
+    /// Mapping from port type to port ID. Internally (to the hub) each
+    /// port has a hardcoded identifier
     pub port_map: PortMap,
 }
 
 pub type PortMap = HashMap<Port, u8>;
 
+/// Ports supported by any hub
 #[non_exhaustive]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Port {
+    /// Motor A
     A,
+    /// Motor B
     B,
+    /// Motor C
     C,
+    /// Motor D
     D,
     HubLed,
     CurrentSensor,
@@ -39,19 +55,26 @@ pub enum Port {
 }
 
 impl Port {
+    /// Returns the ID of the port
     pub fn id(&self) -> u8 {
         todo!()
     }
 }
 
+/// Struct representing a device connected to a port
 #[derive(Debug, Clone)]
 pub struct ConnectedIo {
+    /// Name/type of device
     pub port: Port,
+    /// Internal numeric ID of the device
     pub port_id: u8,
+    /// Device firmware revision
     pub fw_rev: VersionNumber,
+    /// Device hardware revision
     pub hw_rev: VersionNumber,
 }
 
+/// Definition for the TechnicMediumHub
 pub struct TechnicHub<P: Peripheral> {
     peripheral: P,
     lpf_characteristic: Characteristic,
@@ -83,7 +106,7 @@ impl<P: Peripheral> Hub for TechnicHub<P> {
         let write_type = WriteType::WithoutResponse;
         Ok(self
             .peripheral
-            .write(&self.lpf_characteristic, &msg, write_type)?)
+            .write(&self.lpf_characteristic, msg, write_type)?)
     }
 
     fn send(&self, msg: NotificationMessage) -> Result<()> {
@@ -130,6 +153,7 @@ impl<P: Peripheral> Hub for TechnicHub<P> {
 }
 
 impl<P: Peripheral> TechnicHub<P> {
+    /// Initialisation method
     pub fn init(peripheral: P, chars: Vec<Characteristic>) -> Result<Self> {
         // Peripheral is already connected before we get here
 

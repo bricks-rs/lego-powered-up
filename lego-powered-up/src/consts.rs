@@ -1,18 +1,21 @@
+//! Various constants defined by the specification, but translated into Rust
+//! types
+
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 use std::fmt::{self, Display};
 
-/**
- * @typedef HubType
- * @property {number} UNKNOWN 0
- * @property {number} WEDO2_SMART_HUB 1
- * @property {number} MOVE_HUB 2
- * @property {number} POWERED_UP_HUB 3
- * @property {number} POWERED_UP_REMOTE 4
- * @property {number} DUPLO_TRAIN_HUB 5
- * @property {number} CONTROL_PLUS_HUB 6
- * @property {number} MARIO 7
- */
+/// ```
+/// @typedef HubType
+/// @property {number} UNKNOWN 0
+/// @property {number} WEDO2_SMART_HUB 1
+/// @property {number} MOVE_HUB 2
+/// @property {number} POWERED_UP_HUB 3
+/// @property {number} POWERED_UP_REMOTE 4
+/// @property {number} DUPLO_TRAIN_HUB 5
+/// @property {number} CONTROL_PLUS_HUB 6
+/// @property {number} MARIO 7
+/// ```
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum HubType {
@@ -39,33 +42,33 @@ impl Display for HubType {
     }
 }
 
-/**
- * @typedef DeviceType
- * @property {number} UNKNOWN 0
- * @property {number} SIMPLE_MEDIUM_LINEAR_MOTOR 1
- * @property {number} TRAIN_MOTOR 2
- * @property {number} LED_LIGHTS 8
- * @property {number} VOLTAGE 20
- * @property {number} CURRENT 21
- * @property {number} PIEZO_TONE 22
- * @property {number} RGB_LIGHT 23
- * @property {number} WEDO2_TILT 34
- * @property {number} WEDO2_DISTANCE 35
- * @property {number} COLOR_DISTANCE_SENSOR 37
- * @property {number} MEDIUM_LINEAR_MOTOR 38
- * @property {number} MOVE_HUB_MEDIUM_LINEAR_MOTOR 39
- * @property {number} BOOST_TILT 40
- * @property {number} DUPLO_TRAIN_BASE_MOTOR 41
- * @property {number} DUPLO_TRAIN_BASE_SPEAKER 42
- * @property {number} DUPLO_TRAIN_BASE_COLOR 43
- * @property {number} DUPLO_TRAIN_BASE_SPEEDOMETER 44
- * @property {number} CONTROL_PLUS_LARGE_MOTOR 46
- * @property {number} CONTROL_PLUS_XLARGE_MOTOR 47
- * @property {number} POWERED_UP_REMOTE_BUTTON 55
- * @property {number} RSSI 56
- * @property {number} CONTROL_PLUS_ACCELEROMETER 58
- * @property {number} CONTROL_PLUS_TILT 59
- */
+/// ```
+/// @typedef DeviceType
+/// @property {number} UNKNOWN 0
+/// @property {number} SIMPLE_MEDIUM_LINEAR_MOTOR 1
+/// @property {number} TRAIN_MOTOR 2
+/// @property {number} LED_LIGHTS 8
+/// @property {number} VOLTAGE 20
+/// @property {number} CURRENT 21
+/// @property {number} PIEZO_TONE 22
+/// @property {number} RGB_LIGHT 23
+/// @property {number} WEDO2_TILT 34
+/// @property {number} WEDO2_DISTANCE 35
+/// @property {number} COLOR_DISTANCE_SENSOR 37
+/// @property {number} MEDIUM_LINEAR_MOTOR 38
+/// @property {number} MOVE_HUB_MEDIUM_LINEAR_MOTOR 39
+/// @property {number} BOOST_TILT 40
+/// @property {number} DUPLO_TRAIN_BASE_MOTOR 41
+/// @property {number} DUPLO_TRAIN_BASE_SPEAKER 42
+/// @property {number} DUPLO_TRAIN_BASE_COLOR 43
+/// @property {number} DUPLO_TRAIN_BASE_SPEEDOMETER 44
+/// @property {number} CONTROL_PLUS_LARGE_MOTOR 46
+/// @property {number} CONTROL_PLUS_XLARGE_MOTOR 47
+/// @property {number} POWERED_UP_REMOTE_BUTTON 55
+/// @property {number} RSSI 56
+/// @property {number} CONTROL_PLUS_ACCELEROMETER 58
+/// @property {number} CONTROL_PLUS_TILT 59
+/// ```
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum DeviceType {
@@ -108,21 +111,21 @@ pub enum DeviceType {
     TechnicLargeAngularMotorGrey = 76,  // Technic Control+
 }
 
-/**
- * @typedef Color
- * @property {number} BLACK 0
- * @property {number} PINK 1
- * @property {number} PURPLE 2
- * @property {number} BLUE 3
- * @property {number} LIGHT_BLUE 4
- * @property {number} CYAN 5
- * @property {number} GREEN 6
- * @property {number} YELLOW 7
- * @property {number} ORANGE 8
- * @property {number} RED 9
- * @property {number} WHITE 10
- * @property {number} NONE 255
- */
+/// ```
+/// @typedef Color
+/// @property {number} BLACK 0
+/// @property {number} PINK 1
+/// @property {number} PURPLE 2
+/// @property {number} BLUE 3
+/// @property {number} LIGHT_BLUE 4
+/// @property {number} CYAN 5
+/// @property {number} GREEN 6
+/// @property {number} YELLOW 7
+/// @property {number} ORANGE 8
+/// @property {number} RED 9
+/// @property {number} WHITE 10
+/// @property {number} NONE 255
+/// ```
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Color {
@@ -140,20 +143,18 @@ pub enum Color {
     None = 255,
 }
 
-/**
- * @typedef ButtonState
- * @property {number} PRESSED 0
- * @property {number} RELEASED 1
- * @property {number} UP 2
- * @property {number} DOWN 3
- * @property {number} STOP 4
- */
+// @typedef ButtonState
+// @property {number} PRESSED 0
+// @property {number} RELEASED 1
+// @property {number} UP 2
+// @property {number} DOWN 3
+// @property {number} STOP 4
 
-/**
- * @typedef BrakingStyle
- * @property {number} HOLD 127
- * @property {number} BRAKE 128
- */
+/// ```
+/// @typedef BrakingStyle
+/// @property {number} HOLD 127
+/// @property {number} BRAKE 128
+/// ```
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum BrakingStyle {
@@ -162,14 +163,14 @@ pub enum BrakingStyle {
     Brake = 127,
 }
 
-/**
- * @typedef DuploTrainBaseSound
- * @property {number} BRAKE 3
- * @property {number} STATION_DEPARTURE 5
- * @property {number} WATER_REFILL 7
- * @property {number} HORN 9
- * @property {number} STEAM 10
- */
+/// ```
+/// @typedef DuploTrainBaseSound
+/// @property {number} BRAKE 3
+/// @property {number} STATION_DEPARTURE 5
+/// @property {number} WATER_REFILL 7
+/// @property {number} HORN 9
+/// @property {number} STEAM 10
+/// ```
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum DuploTrainBaseSound {
@@ -235,33 +236,33 @@ pub mod blecharacteristic {
     }
 }
 
-/**
- * @typedef MessageType
- * @property {number} HUB_PROPERTIES 0x01
- * @property {number} HUB_ACTIONS 0x02
- * @property {number} HUB_ALERTS 0x03
- * @property {number} HUB_ATTACHED_IO 0x04
- * @property {number} GENERIC_ERROR_MESSAGES 0x05
- * @property {number} HW_NETWORK_COMMANDS 0x08
- * @property {number} FW_UPDATE_GO_INTO_BOOT_MODE 0x10
- * @property {number} FW_UPDATE_LOCK_MEMORY 0x11
- * @property {number} FW_UPDATE_LOCK_STATUS_REQUEST 0x12
- * @property {number} FW_LOCK_STATUS 0x13
- * @property {number} PORT_INFORMATION_REQUEST 0x21
- * @property {number} PORT_MODE_INFORMATION_REQUEST 0x22
- * @property {number} PORT_INPUT_FORMAT_SETUP_SINGLE 0x41
- * @property {number} PORT_INPUT_FORMAT_SETUP_COMBINEDMODE 0x42
- * @property {number} PORT_INFORMATION 0x43
- * @property {number} PORT_MODE_INFORMATION 0x44
- * @property {number} PORT_VALUE_SINGLE 0x45
- * @property {number} PORT_VALUE_COMBINEDMODE 0x46
- * @property {number} PORT_INPUT_FORMAT_SINGLE 0x47
- * @property {number} PORT_INPUT_FORMAT_COMBINEDMODE 0x48
- * @property {number} VIRTUAL_PORT_SETUP 0x61
- * @property {number} PORT_OUTPUT_COMMAND 0x81
- * @property {number} PORT_OUTPUT_COMMAND_FEEDBACK 0x82
- * @description https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#message-types
- */
+/// ```
+/// @typedef MessageType
+/// @property {number} HUB_PROPERTIES 0x01
+/// @property {number} HUB_ACTIONS 0x02
+/// @property {number} HUB_ALERTS 0x03
+/// @property {number} HUB_ATTACHED_IO 0x04
+/// @property {number} GENERIC_ERROR_MESSAGES 0x05
+/// @property {number} HW_NETWORK_COMMANDS 0x08
+/// @property {number} FW_UPDATE_GO_INTO_BOOT_MODE 0x10
+/// @property {number} FW_UPDATE_LOCK_MEMORY 0x11
+/// @property {number} FW_UPDATE_LOCK_STATUS_REQUEST 0x12
+/// @property {number} FW_LOCK_STATUS 0x13
+/// @property {number} PORT_INFORMATION_REQUEST 0x21
+/// @property {number} PORT_MODE_INFORMATION_REQUEST 0x22
+/// @property {number} PORT_INPUT_FORMAT_SETUP_SINGLE 0x41
+/// @property {number} PORT_INPUT_FORMAT_SETUP_COMBINEDMODE 0x42
+/// @property {number} PORT_INFORMATION 0x43
+/// @property {number} PORT_MODE_INFORMATION 0x44
+/// @property {number} PORT_VALUE_SINGLE 0x45
+/// @property {number} PORT_VALUE_COMBINEDMODE 0x46
+/// @property {number} PORT_INPUT_FORMAT_SINGLE 0x47
+/// @property {number} PORT_INPUT_FORMAT_COMBINEDMODE 0x48
+/// @property {number} VIRTUAL_PORT_SETUP 0x61
+/// @property {number} PORT_OUTPUT_COMMAND 0x81
+/// @property {number} PORT_OUTPUT_COMMAND_FEEDBACK 0x82
+/// @description <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#message-types>
+/// ```
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive)]
 pub enum MessageType {
@@ -290,25 +291,25 @@ pub enum MessageType {
     PortOutputCommandFeedback = 0x82,
 }
 
-/**
- * @typedef HubPropertyReference
- * @param {number} ADVERTISING_NAME 0x01
- * @param {number} BUTTON 0x02
- * @param {number} FW_VERSION 0x03
- * @param {number} HW_VERSION 0x04
- * @param {number} RSSI 0x05
- * @param {number} BATTERY_VOLTAGE 0x06
- * @param {number} BATTERY_TYPE 0x07
- * @param {number} MANUFACTURER_NAME 0x08
- * @param {number} RADIO_FIRMWARE_VERSION 0x09
- * @param {number} LEGO_WIRELESS_PROTOCOL_VERSION 0x0A
- * @param {number} SYSTEM_TYPE_ID 0x0B
- * @param {number} HW_NETWORK_ID 0x0C
- * @param {number} PRIMARY_MAC_ADDRESS 0x0D
- * @param {number} SECONDARY_MAC_ADDRESS 0x0E
- * @param {number} HARDWARE_NETWORK_FAMILY 0x0F
- * @description https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#hub-property-reference
- */
+/// ```
+/// @typedef HubPropertyReference
+/// @param {number} ADVERTISING_NAME 0x01
+/// @param {number} BUTTON 0x02
+/// @param {number} FW_VERSION 0x03
+/// @param {number} HW_VERSION 0x04
+/// @param {number} RSSI 0x05
+/// @param {number} BATTERY_VOLTAGE 0x06
+/// @param {number} BATTERY_TYPE 0x07
+/// @param {number} MANUFACTURER_NAME 0x08
+/// @param {number} RADIO_FIRMWARE_VERSION 0x09
+/// @param {number} LEGO_WIRELESS_PROTOCOL_VERSION 0x0A
+/// @param {number} SYSTEM_TYPE_ID 0x0B
+/// @param {number} HW_NETWORK_ID 0x0C
+/// @param {number} PRIMARY_MAC_ADDRESS 0x0D
+/// @param {number} SECONDARY_MAC_ADDRESS 0x0E
+/// @param {number} HARDWARE_NETWORK_FAMILY 0x0F
+/// @description <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#hub-property-reference>
+/// ```
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive)]
 pub enum HubPropertyReference {
@@ -329,16 +330,16 @@ pub enum HubPropertyReference {
     HardwareNetworkFamily = 0x0F,
 }
 
-/**
- * @typedef HubPropertyOperation
- * @param {number} SET_DOWNSTREAM 0x01
- * @param {number} ENABLE_UPDATES_DOWNSTREAM 0x02
- * @param {number} DISABLE_UPDATES_DOWNSTREAM 0x03
- * @param {number} RESET_DOWNSTREAM 0x04
- * @param {number} REQUEST_UPDATE_DOWNSTREAM 0x05
- * @param {number} UPDATE_UPSTREAM 0x06
- * @description https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#hub-property-reference
- */
+/// ```
+/// @typedef HubPropertyOperation
+/// @param {number} SET_DOWNSTREAM 0x01
+/// @param {number} ENABLE_UPDATES_DOWNSTREAM 0x02
+/// @param {number} DISABLE_UPDATES_DOWNSTREAM 0x03
+/// @param {number} RESET_DOWNSTREAM 0x04
+/// @param {number} REQUEST_UPDATE_DOWNSTREAM 0x05
+/// @param {number} UPDATE_UPSTREAM 0x06
+/// @description <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#hub-property-reference>
+/// ```
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive)]
 pub enum HubPropertyOperation {
@@ -350,25 +351,25 @@ pub enum HubPropertyOperation {
     UpdateUpstream = 0x06,
 }
 
-/**
- * @typedef HubPropertyPayload
- * @param {number} ADVERTISING_NAME 0x01
- * @param {number} BUTTON_STATE 0x02
- * @param {number} FW_VERSION 0x03
- * @param {number} HW_VERSION 0x04
- * @param {number} RSSI 0x05
- * @param {number} BATTERY_VOLTAGE 0x06
- * @param {number} BATTERY_TYPE 0x07
- * @param {number} MANUFACTURER_NAME 0x08
- * @param {number} RADIO_FIRMWARE_VERSION 0x09
- * @param {number} LWP_PROTOCOL_VERSION 0x0A
- * @param {number} SYSTEM_TYPE_ID 0x0B
- * @param {number} HW_NETWORK_ID 0x0C
- * @param {number} PRIMARY_MAC_ADDRESS 0x0D
- * @param {number} SECONDARY_MAC_ADDRESS 0x0E
- * @param {number} HW_NETWORK_FAMILY 0x0F
- * @description https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#hub-property-reference
- */
+/// ```
+/// @typedef HubPropertyPayload
+/// @param {number} ADVERTISING_NAME 0x01
+/// @param {number} BUTTON_STATE 0x02
+/// @param {number} FW_VERSION 0x03
+/// @param {number} HW_VERSION 0x04
+/// @param {number} RSSI 0x05
+/// @param {number} BATTERY_VOLTAGE 0x06
+/// @param {number} BATTERY_TYPE 0x07
+/// @param {number} MANUFACTURER_NAME 0x08
+/// @param {number} RADIO_FIRMWARE_VERSION 0x09
+/// @param {number} LWP_PROTOCOL_VERSION 0x0A
+/// @param {number} SYSTEM_TYPE_ID 0x0B
+/// @param {number} HW_NETWORK_ID 0x0C
+/// @param {number} PRIMARY_MAC_ADDRESS 0x0D
+/// @param {number} SECONDARY_MAC_ADDRESS 0x0E
+/// @param {number} HW_NETWORK_FAMILY 0x0F
+/// @description <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#hub-property-reference>
+/// ```
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive)]
 pub enum HubPropertyPayload {
@@ -389,20 +390,20 @@ pub enum HubPropertyPayload {
     HwNetworkFamily = 0x0F,
 }
 
-/**
- * @typedef ActionType
- * @param {number} SWITCH_OFF_HUB 0x01
- * @param {number} DISCONNECT 0x02
- * @param {number} VCC_PORT_CONTROL_ON 0x03
- * @param {number} VCC_PORT_CONTROL_OFF 0x04
- * @param {number} ACTIVATE_BUSY_INDICATION 0x05
- * @param {number} RESET_BUSY_INDICATION 0x06
- * @param {number} SHUTDOWN 0x2F
- * @param {number} HUB_WILL_SWITCH_OFF 0x30
- * @param {number} HUB_WILL_DISCONNECT 0x31
- * @param {number} HUB_WILL_GO_INTO_BOOT_MODE 0x32
- * @description https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#action-types
- */
+/// ```
+/// @typedef ActionType
+/// @param {number} SWITCH_OFF_HUB 0x01
+/// @param {number} DISCONNECT 0x02
+/// @param {number} VCC_PORT_CONTROL_ON 0x03
+/// @param {number} VCC_PORT_CONTROL_OFF 0x04
+/// @param {number} ACTIVATE_BUSY_INDICATION 0x05
+/// @param {number} RESET_BUSY_INDICATION 0x06
+/// @param {number} SHUTDOWN 0x2F
+/// @param {number} HUB_WILL_SWITCH_OFF 0x30
+/// @param {number} HUB_WILL_DISCONNECT 0x31
+/// @param {number} HUB_WILL_GO_INTO_BOOT_MODE 0x32
+/// @description <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#action-types>
+/// ```
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ActionType {
@@ -418,12 +419,12 @@ pub enum ActionType {
     HubWillGoIntoBootMode = 0x32,
 }
 
-/**
- * @typedef AlertPayload
- * @param {number} STATUS_OK 0x00
- * @param {number} ALERT 0xFF
- * @description https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#alert-payload
- */
+/// ```
+/// @typedef AlertPayload
+/// @param {number} STATUS_OK 0x00
+/// @param {number} ALERT 0xFF
+/// @description <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#alert-payload>
+/// ```
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum AlertPayload {
@@ -431,13 +432,13 @@ pub enum AlertPayload {
     Alert = 0xFF,
 }
 
-/**
- * @typedef Event
- * @param {number} DETACHED_IO 0x00
- * @param {number} ATTACHED_IO 0x01
- * @param {number} ATTACHED_VIRTUAL_IO 0x02
- * @description https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#event
- */
+/// ```
+/// @typedef Event
+/// @param {number} DETACHED_IO 0x00
+/// @param {number} ATTACHED_IO 0x01
+/// @param {number} ATTACHED_VIRTUAL_IO 0x02
+/// @description <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#event>
+/// ```
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive)]
 pub enum Event {
@@ -446,23 +447,23 @@ pub enum Event {
     AttachedVirtualIo = 0x02,
 }
 
-/**
- * @typedef HWNetWorkCommandType
- * @param {number} CONNECTION_REQUEST 0x02
- * @param {number} FAMILY_REQUEST 0x03
- * @param {number} FAMILY_SET 0x04
- * @param {number} JOIN_DENIED 0x05
- * @param {number} GET_FAMILY 0x06
- * @param {number} FAMILY 0x07
- * @param {number} GET_SUBFAMILY 0x08
- * @param {number} SUBFAMILY 0x09
- * @param {number} SUBFAMILY_SET 0x0A
- * @param {number} GET_EXTENDED_FAMILY 0x0B
- * @param {number} EXTENDED_FAMILY 0x0C
- * @param {number} EXTENDED_FAMILY_SET 0x0D
- * @param {number} RESET_LONG_PRESS_TIMING 0x0E
- * @description https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#h-w-network-command-type
- */
+/// ```
+/// @typedef HWNetWorkCommandType
+/// @param {number} CONNECTION_REQUEST 0x02
+/// @param {number} FAMILY_REQUEST 0x03
+/// @param {number} FAMILY_SET 0x04
+/// @param {number} JOIN_DENIED 0x05
+/// @param {number} GET_FAMILY 0x06
+/// @param {number} FAMILY 0x07
+/// @param {number} GET_SUBFAMILY 0x08
+/// @param {number} SUBFAMILY 0x09
+/// @param {number} SUBFAMILY_SET 0x0A
+/// @param {number} GET_EXTENDED_FAMILY 0x0B
+/// @param {number} EXTENDED_FAMILY 0x0C
+/// @param {number} EXTENDED_FAMILY_SET 0x0D
+/// @param {number} RESET_LONG_PRESS_TIMING 0x0E
+/// @description <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#h-w-network-command-type>
+/// ```
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive)]
 pub enum HwNetworkCommandType {
@@ -481,16 +482,16 @@ pub enum HwNetworkCommandType {
     ResetLongPressTiming = 0x0E,
 }
 
-/**
- * @typedef PortInputFormatSetupSubCommand
- * @param {number} SET_MODEANDDATASET_COMBINATIONS 0x01
- * @param {number} LOCK_LPF2_DEVICE_FOR_SETUP 0x02
- * @param {number} UNLOCKANDSTARTWITHMULTIUPDATEENABLED 0x03
- * @param {number} UNLOCKANDSTARTWITHMULTIUPDATEDISABLED 0x04
- * @param {number} NOT_USED 0x05
- * @param {number} RESET_SENSOR 0x06
- * @description https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-input-format-setup-sub-commands
- */
+/// ```
+/// @typedef PortInputFormatSetupSubCommand
+/// @param {number} SET_MODEANDDATASET_COMBINATIONS 0x01
+/// @param {number} LOCK_LPF2_DEVICE_FOR_SETUP 0x02
+/// @param {number} UNLOCKANDSTARTWITHMULTIUPDATEENABLED 0x03
+/// @param {number} UNLOCKANDSTARTWITHMULTIUPDATEDISABLED 0x04
+/// @param {number} NOT_USED 0x05
+/// @param {number} RESET_SENSOR 0x06
+/// @description <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-input-format-setup-sub-commands>
+/// ```
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive)]
 pub enum PortInputFormatSetupSubCommand {
@@ -502,15 +503,15 @@ pub enum PortInputFormatSetupSubCommand {
     ResetSensor = 0x06,
 }
 
-/**
- * @typedef MarioPantsType
- * @param {number} NONE 0x00
- * @param {number} PROPELLER 0x06
- * @param {number} CAT 0x11
- * @param {number} FIRE 0x12
- * @param {number} NORMAL 0x21
- * @param {number} BUILDER 0x22
- */
+/// ```
+/// @typedef MarioPantsType
+/// @param {number} NONE 0x00
+/// @param {number} PROPELLER 0x06
+/// @param {number} CAT 0x11
+/// @param {number} FIRE 0x12
+/// @param {number} NORMAL 0x21
+/// @param {number} BUILDER 0x22
+/// ```
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum MarioPantsType {
@@ -522,17 +523,17 @@ pub enum MarioPantsType {
     Builder = 0x22,
 }
 
-/**
- * @typedef MarioColor
- * @param {number} WHITE 0x1300
- * @param {number} RED 0x1500
- * @param {number} BLUE 0x1700
- * @param {number} YELLOW 0x1800
- * @param {number} BLACK 0x1a00
- * @param {number} GREEN 0x2500
- * @param {number} BROWN 0x6a00
- * @param {number} CYAN 0x4201
- */
+/// ```
+/// @typedef MarioColor
+/// @param {number} WHITE 0x1300
+/// @param {number} RED 0x1500
+/// @param {number} BLUE 0x1700
+/// @param {number} YELLOW 0x1800
+/// @param {number} BLACK 0x1a00
+/// @param {number} GREEN 0x2500
+/// @param {number} BROWN 0x6a00
+/// @param {number} CYAN 0x4201
+/// ```
 #[repr(u16)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum MarioColor {

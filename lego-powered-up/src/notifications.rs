@@ -1,3 +1,5 @@
+//! Parser and data structure for hub notification messages
+
 use crate::consts::*;
 use crate::devices::HubLedMode;
 use anyhow::{bail, Context, Result};
@@ -92,7 +94,7 @@ pub const MAX_NAME_SIZE: usize = 14;
 ///
 /// The conversion to/from u8 is a bit of a hack pending
 /// "Allow arbitrary enums to have explicit discriminants"
-/// https://github.com/rust-lang/rust/issues/60553
+/// <https://github.com/rust-lang/rust/issues/60553>
 ///
 /// As it stands we have a horrendous bodge involving consts::MessageType.
 #[non_exhaustive]
@@ -124,6 +126,7 @@ pub enum NotificationMessage {
 }
 
 impl NotificationMessage {
+    /// Parse a byte slice into a notification message
     pub fn parse(msg: &[u8]) -> Result<Self> {
         use NotificationMessage::*;
 
@@ -246,6 +249,7 @@ impl NotificationMessage {
         })
     }
 
+    /// Map from our enum members to MessageType values
     pub fn message_type(&self) -> u8 {
         // eww
         use NotificationMessage::*;
@@ -314,11 +318,13 @@ impl NotificationMessage {
         Ok(length)
     }
 
-    /// ChkSum = PayLoad[0] ^ … PayLoad[n] ^ 0xFF
+    /// ChkSum = PayLoad\[0\] ^ … PayLoad\[n\] ^ 0xFF
     pub fn checksum(buf: &[u8]) -> u8 {
         buf.iter().fold(0xff, |acc, x| acc ^ x)
     }
 
+    /// Serialise a notification message into a Vec<u8>
+    /// TODO no alloc
     pub fn serialise(&self) -> Vec<u8> {
         use NotificationMessage::*;
 
@@ -690,23 +696,21 @@ pub enum ErrorCode {
     InternalError = 0x08,
 }
 
-/**
- * @typedef HWNetWorkCommandType
- * @param {number} CONNECTION_REQUEST 0x02
- * @param {number} FAMILY_REQUEST 0x03
- * @param {number} FAMILY_SET 0x04
- * @param {number} JOIN_DENIED 0x05
- * @param {number} GET_FAMILY 0x06
- * @param {number} FAMILY 0x07
- * @param {number} GET_SUBFAMILY 0x08
- * @param {number} SUBFAMILY 0x09
- * @param {number} SUBFAMILY_SET 0x0A
- * @param {number} GET_EXTENDED_FAMILY 0x0B
- * @param {number} EXTENDED_FAMILY 0x0C
- * @param {number} EXTENDED_FAMILY_SET 0x0D
- * @param {number} RESET_LONG_PRESS_TIMING 0x0E
- * @description https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#h-w-network-command-type
- */
+/// @typedef HWNetWorkCommandType
+/// @param {number} CONNECTION_REQUEST 0x02
+/// @param {number} FAMILY_REQUEST 0x03
+/// @param {number} FAMILY_SET 0x04
+/// @param {number} JOIN_DENIED 0x05
+/// @param {number} GET_FAMILY 0x06
+/// @param {number} FAMILY 0x07
+/// @param {number} GET_SUBFAMILY 0x08
+/// @param {number} SUBFAMILY 0x09
+/// @param {number} SUBFAMILY_SET 0x0A
+/// @param {number} GET_EXTENDED_FAMILY 0x0B
+/// @param {number} EXTENDED_FAMILY 0x0C
+/// @param {number} EXTENDED_FAMILY_SET 0x0D
+/// @param {number} RESET_LONG_PRESS_TIMING 0x0E
+/// @description <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#h-w-network-command-type>
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum NetworkCommand {
@@ -1423,7 +1427,7 @@ pub enum PortOutputSubcommand {
     /// annotation so I have no idea where this really lives
     ///
     /// According to (*) it does live here
-    /// (*) https://github.com/LEGO/lego-ble-wireless-protocol-docs/issues/15
+    /// (*) <https://github.com/LEGO/lego-ble-wireless-protocol-docs/issues/15>
     StartPower2 {
         power1: Power,
         power2: Power,

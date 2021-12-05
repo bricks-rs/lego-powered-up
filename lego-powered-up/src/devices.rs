@@ -1,3 +1,5 @@
+//! Definitions for the various devices which can attach to hubs, e.g. motors
+
 use crate::notifications::Power;
 use crate::{hubs::Port, HubManagerMessage, NotificationMessage};
 use anyhow::{bail, Result};
@@ -5,6 +7,9 @@ use btleplug::api::BDAddr;
 use crossbeam_channel::{bounded, Sender};
 use std::fmt::Debug;
 
+/// Trait that any device may implement. Having a single trait covering
+/// every device is probably the wrong design, and we should have better
+/// abstractions for e.g. motors vs. sensors & LEDs.
 pub trait Device: Debug + Send + Sync {
     fn port(&self) -> Port;
     fn send(&mut self, _msg: NotificationMessage) -> Result<()>;
@@ -16,6 +21,7 @@ pub trait Device: Debug + Send + Sync {
     }
 }
 
+/// Create a device manager for the given port
 pub(crate) fn create_device(
     port_id: u8,
     port_type: Port,
@@ -35,19 +41,24 @@ pub(crate) fn create_device(
     }
 }
 
+/// Struct representing a Hub LED
 #[derive(Debug, Clone)]
 pub struct HubLED {
+    /// RGB colour value
     rgb: [u8; 3],
-    mode: HubLedMode,
+    _mode: HubLedMode,
     port_id: u8,
     hub_addr: BDAddr,
     hub_manager_tx: Sender<HubManagerMessage>,
 }
 
+/// The two modes by which Hub LED colours may be set
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum HubLedMode {
+    /// Colour may be set to one of a number of specific named colours
     Colour = 0x0,
+    /// Colour may be set to any 12-bit RGB value
     Rgb = 0x01,
 }
 
@@ -109,7 +120,7 @@ impl HubLED {
         //hub.subscribe(mode);
         Self {
             rgb: [0; 3],
-            mode,
+            _mode: mode,
             port_id,
             hub_addr,
             hub_manager_tx,
@@ -117,6 +128,7 @@ impl HubLED {
     }
 }
 
+/// Struct representing a motor
 #[derive(Debug, Clone)]
 pub struct Motor {
     port: Port,

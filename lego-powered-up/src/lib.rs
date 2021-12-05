@@ -1,3 +1,47 @@
+//! # lego-powered-up
+//! This is a crate for remotely controlling Lego PoweredUp hubs and devices
+//! over Bluetooth. It provides a simple synchronous interface, with the
+//! intention that arbitrarily complex programs may be written in Rust.
+//!
+//! ## Example
+//! ```no_run
+//! use lego_powered_up::notifications::Power;
+//! use lego_powered_up::PoweredUp;
+//! use std::{thread::sleep, time::Duration};
+//!
+//! fn main() -> anyhow::Result<()> {
+//!     println!("Listening for hubs...");
+//!     let pu = PoweredUp::init()?;
+//!     let hub = pu.wait_for_hub()?;
+//!
+//!     println!("Connecting to hub `{}`", hub.name);
+//!     let hub = pu.create_hub(&hub)?;
+//!
+//!     println!("Change the hub LED to green");
+//!     let mut hub_led = hub.port(lego_powered_up::hubs::Port::HubLed)?;
+//!     hub_led.set_rgb(&[0, 0xff, 0])?;
+//!
+//!     println!("Run motors");
+//!     let mut motor_c = hub.port(lego_powered_up::hubs::Port::C)?;
+//!     let mut motor_d = hub.port(lego_powered_up::hubs::Port::D)?;
+//!     motor_c.start_speed(50, Power::Cw(50))?;
+//!     motor_d.start_speed(50, Power::Cw(50))?;
+//!
+//!     sleep(Duration::from_secs(3));
+//!
+//!     println!("Stop motors");
+//!     motor_c.start_speed(0, Power::Float)?;
+//!     motor_d.start_speed(0, Power::Brake)?;
+//!
+//!     println!("Disconnect from hub `{}`", hub.get_name());
+//!     hub.disconnect()?;
+//!
+//!     println!("Done!");
+//!
+//!     Ok(())
+//! }
+//! ```
+
 use crate::devices::{create_device, Device};
 use crate::hubs::ConnectedIo;
 use anyhow::{anyhow, bail, Context, Result};
@@ -53,6 +97,8 @@ pub fn print_adapter_info(idx: usize, _adapter: &Adapter) -> Result<()> {
     Ok(())
 }
 
+/// This is the main interface for interacting with the background process
+/// which manages the state.
 pub struct PoweredUp {
     // _manager: Manager,
     adapter: Arc<RwLock<Adapter>>,
@@ -62,15 +108,22 @@ pub struct PoweredUp {
 }
 
 impl PoweredUp {
+    /// List the available BLE adapters
     pub fn devices() -> Result<Vec<Adapter>> {
         let manager = Manager::new()?;
         Ok(manager.adapters()?)
     }
 
+    /// Initialise a PoweredUp connection using the first available BLE
+    /// adapter
     pub fn init() -> Result<Self> {
         Self::with_device(0)
     }
 
+    /// Initialise a PoweredUp connectin using the `dev`th adapter. Adapter
+    /// indices may be obtained via the `PoweredUp::devices` function.
+    ///
+    /// Launches the background worker thread.
     pub fn with_device(dev: usize) -> Result<Self> {
         let manager = Manager::new()?;
         let adapters = manager.adapters()?;
@@ -89,6 +142,7 @@ impl PoweredUp {
         Ok(pu)
     }
 
+    /// Launch the background worker thread
     fn run(&mut self) -> Result<()> {
         let event_rx = self
             .adapter
@@ -118,6 +172,7 @@ impl PoweredUp {
         Ok(())
     }
 
+    /// Stop the background worker thread
     pub fn stop(&mut self) -> Result<()> {
         if let Some(tx) = &self.control_tx {
             tx.send(PoweredUpInternalControlMessage::Stop)?;
@@ -129,6 +184,8 @@ impl PoweredUp {
         self.adapter.write().unwrap().peripheral(dev)
     }
 
+    /// Connect to a discovered hub, returning a `HubController` instance to
+    /// communicate with it.
     pub fn create_hub(&self, hub: &DiscoveredHub) -> Result<HubController> {
         let retries: usize = 10;
         for idx in 1..=retries {
@@ -154,6 +211,7 @@ impl PoweredUp {
         ))
     }
 
+    /// Connect to a specific hub by BLE address
     pub fn connect_to_hub(&self, addr: &str) -> Result<HubController> {
         let dh = DiscoveredHub {
             hub_type: HubType::Unknown,
@@ -164,11 +222,15 @@ impl PoweredUp {
         self.create_hub(&dh)
     }
 
+    /// Listen for hub announcements and return a description of the first
+    /// discovered device (which may be passed to `create_hub`)
     pub fn wait_for_hub(&self) -> Result<DiscoveredHub> {
         let timeout = Duration::from_secs(9999);
         self.wait_for_hub_filter_timeout_internal(None, timeout)
     }
 
+    /// Listen for a hub matching the provided filter, returning a description
+    /// suitable for passing to `create_hub`
     pub fn wait_for_hub_filter(
         &self,
         filter: HubFilter,
@@ -177,6 +239,9 @@ impl PoweredUp {
         self.wait_for_hub_filter_timeout_internal(Some(filter), timeout)
     }
 
+    /// Listen for a hub matching the provided filter, waiting up to the
+    /// provided timeout, returning a description suitable for passing to
+    /// `create_hub`
     pub fn wait_for_hub_filter_timeout(
         &self,
         filter: HubFilter,
@@ -211,6 +276,8 @@ impl PoweredUp {
         }
     }
 
+    /// List all the hubs that this PoweredUp instance has seen announcing
+    /// their existence
     pub fn list_discovered_hubs(&self) -> Result<Vec<DiscoveredHub>> {
         let (tx, rx) = bounded(1);
         self.control_tx
@@ -223,17 +290,21 @@ impl PoweredUp {
 
 #[non_exhaustive]
 #[derive(Clone, Debug)]
-pub enum DeviceNotificationMessage {
+pub(crate) enum DeviceNotificationMessage {
     HubDiscovered(DiscoveredHub),
 }
 
+/// Properties by which to filter discovered hubs
 #[derive(Debug)]
 pub enum HubFilter {
+    /// Hub name must match the provided value
     Name(String),
+    /// Hub address must match the provided value
     Addr(String),
 }
 
 impl HubFilter {
+    /// Test whether the discovered hub matches the provided filter mode
     pub fn matches(&self, hub: &DiscoveredHub) -> bool {
         use HubFilter::*;
         match self {
@@ -243,10 +314,15 @@ impl HubFilter {
     }
 }
 
+/// Struct describing a discovered hub. This description may be passed
+/// to `PoweredUp::create_hub` to initialise a connection.
 #[derive(Clone, Debug)]
 pub struct DiscoveredHub {
+    /// Type of hub, e.g. TechnicMediumHub
     pub hub_type: HubType,
+    /// BLE address
     pub addr: BDAddr,
+    /// Friendly name of the hub, as set in the PoweredUp/Control+ apps
     pub name: String,
 }
 
@@ -401,6 +477,8 @@ impl PoweredUpInternal {
     }
 }
 
+/// Struct representing a hub. Provides methods to interact with the
+/// background worker thread managing the connection
 #[derive(Clone, Debug)]
 pub struct HubController {
     addr: BDAddr,
@@ -410,18 +488,23 @@ pub struct HubController {
 }
 
 impl HubController {
+    /// Returns the friendly name of the hub, as set via the PoweredUp or
+    /// Control+ apps
     pub fn get_name(&self) -> &str {
         &self.name
     }
 
+    /// Returns the type of the hub, e.g. TechnicMediumHub
     pub fn get_type(&self) -> HubType {
         self.hub_type
     }
 
+    /// Returns the BLE address of the hub
     pub fn get_addr(&self) -> &BDAddr {
         &self.addr
     }
 
+    /// Disconnect from the hub
     pub fn disconnect(&self) -> Result<()> {
         let (tx, rx) = bounded(1);
         self.hub_manager_tx
@@ -430,6 +513,7 @@ impl HubController {
         rx.recv()?
     }
 
+    /// Get a controller handle for the specified port
     pub fn port(&self, port: Port) -> Result<PortController> {
         let (tx, rx) = bounded::<Result<PortController>>(1);
         self.hub_manager_tx
@@ -437,6 +521,7 @@ impl HubController {
         rx.recv()?
     }
 
+    /// Enumerate the attached devices
     pub fn get_attached_io(&self) -> Result<Vec<ConnectedIo>> {
         let (tx, rx) = bounded(1);
         self.hub_manager_tx
@@ -445,6 +530,8 @@ impl HubController {
     }
 }
 
+/// Struct representing a port. Provides methods to interact with the
+/// background worker thread
 #[derive(Debug)]
 pub struct PortController {
     port_id: u8,
@@ -653,6 +740,7 @@ impl HubManager {
     }
 }
 
+/// Trait describing a generic hub.
 pub trait Hub {
     fn name(&self) -> String;
     fn disconnect(&self) -> Result<()>;
@@ -679,7 +767,7 @@ pub trait Hub {
     fn process_io_event(&mut self, _evt: AttachedIo);
 }
 
-pub trait IdentifyHub {
+pub(crate) trait IdentifyHub {
     fn identify(&self) -> Option<HubType>;
 }
 
