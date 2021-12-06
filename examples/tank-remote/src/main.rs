@@ -100,7 +100,7 @@ fn main() -> Result<()> {
         engine.clear_screen(); // reset the screen
 
         engine.line(0, 0, 19, 0, pixel::pxl('#')); // draw a line of '#' from [0,0] to [19,9]
-        engine.print(0, 4, format!("Robot: {robot}").as_str()); // prints some value at [0,4]
+        engine.print(0, 4, format!("Robot: {}", robot).as_str()); // prints some value at [0,4]
 
         engine.set_pxl(4, 0, pixel::pxl_fg('O', Color::Cyan)); // write a majestic cyan 'O' at [4,0]
 
