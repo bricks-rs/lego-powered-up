@@ -738,7 +738,6 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 name = "lego-powered-up"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "btleplug",
  "crossbeam-channel",
  "env_logger",
@@ -748,24 +747,7 @@ dependencies = [
  "num-derive",
  "num-traits",
  "rand",
- "uuid",
-]
-
-[[package]]
-name = "lego-powered-up"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc43ef656dd7135b2510b27b9042e9c8889940fe7f2b68ab594fa08e3bb619ef"
-dependencies = [
- "anyhow",
- "btleplug",
- "crossbeam-channel",
- "lazy_static",
- "log",
- "lpu-macros",
- "num-derive",
- "num-traits",
- "rand",
+ "thiserror",
  "uuid",
 ]
 
@@ -1019,7 +1001,7 @@ dependencies = [
  "anyhow",
  "clap 3.0.0-beta.5",
  "env_logger",
- "lego-powered-up 0.1.0",
+ "lego-powered-up",
  "log",
 ]
 
@@ -1103,7 +1085,7 @@ name = "run-motors"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "lego-powered-up 0.1.0",
+ "lego-powered-up",
 ]
 
 [[package]]
@@ -1205,7 +1187,7 @@ version = "0.1.0"
 dependencies = [
  "console_engine",
  "eyre",
- "lego-powered-up 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lego-powered-up",
 ]
 
 [[package]]

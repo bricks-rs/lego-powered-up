@@ -11,3 +11,4 @@ default-members = ["pu-util", "lego-powered-up"]
 
 [patch.crates-io]
 lpu-macros = { path = "lpu-macros" }
+lego-powered-up = { path = "lego-powered-up" }

@@ -48,7 +48,6 @@
 
 use crate::devices::{create_device, Device};
 use crate::hubs::ConnectedIo;
-use anyhow::{anyhow, bail, Context, Result};
 pub use btleplug::api::{BDAddr, Peripheral};
 use btleplug::api::{Central, CentralEvent, Characteristic};
 use crossbeam_channel::{bounded, select, unbounded, Receiver, Sender};
@@ -80,8 +79,11 @@ use notifications::{AttachedIo, NotificationMessage};
 pub mod consts;
 
 pub mod devices;
+pub mod error;
 pub mod hubs;
 pub mod notifications;
+
+pub use error::{Error, OptionContext, Result};
 
 #[cfg(target_os = "linux")]
 pub fn print_adapter_info(idx: usize, adapter: &Adapter) -> Result<()> {
@@ -208,11 +210,10 @@ impl PoweredUp {
             }
             sleep(Duration::from_secs(3));
         }
-        Err(anyhow!(
+        Err(Error::HubError(format!(
             "Unable to connect to {} after {} tries",
-            hub.addr,
-            retries
-        ))
+            hub.addr, retries
+        )))
     }
 
     /// Connect to a specific hub by BLE address
@@ -275,7 +276,7 @@ impl PoweredUp {
                Ok(msg?)
             }
             default(timeout) => {
-                bail!("Timeout reached")
+                return Err(Error::TimeoutError("Timeout reached".to_string()));
             }
         }
     }
@@ -624,17 +625,18 @@ impl HubManager {
                             response.send(Ok(controller)).unwrap();
                         } else {
                             // chosen port does not exist on this hub
-                            let m = Err(anyhow!(
+                            let m = Err(Error::HubError(format!(
                                 "Port {:?} does not exist on hub {}",
-                                port,
-                                addr
-                            ));
+                                port, addr
+                            )));
                             response.send(m).unwrap();
                         }
                     } else {
                         // address does not correspond to a hub
-                        let m =
-                            Err(anyhow!("No hub found for address {}", addr));
+                        let m = Err(Error::HubError(format!(
+                            "No hub found for address {}",
+                            addr
+                        )));
                         response.send(m).unwrap();
                     }
                 }
@@ -646,8 +648,10 @@ impl HubManager {
                         response.send(status).unwrap();
                     } else {
                         // address does not correspond to a hub
-                        let m =
-                            Err(anyhow!("No hub found for address {}", addr));
+                        let m = Err(Error::HubError(format!(
+                            "No hub found for address {}",
+                            addr
+                        )));
                         response.send(m).unwrap();
                     }
                 }
@@ -663,10 +667,10 @@ impl HubManager {
                         response.send(Ok(hub.attached_io())).unwrap();
                     } else {
                         response
-                            .send(Err(anyhow!(
+                            .send(Err(Error::HubError(format!(
                                 "No hub found for address {}",
                                 addr
-                            )))
+                            ))))
                             .unwrap();
                     }
                 }

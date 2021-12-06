@@ -4,9 +4,9 @@
 
 //! Definitions for the various devices which can attach to hubs, e.g. motors
 
+use crate::error::{Error, Result};
 use crate::notifications::Power;
 use crate::{hubs::Port, HubManagerMessage, NotificationMessage};
-use anyhow::{bail, Result};
 use btleplug::api::BDAddr;
 use crossbeam_channel::{bounded, Sender};
 use std::fmt::Debug;
@@ -18,10 +18,14 @@ pub trait Device: Debug + Send + Sync {
     fn port(&self) -> Port;
     fn send(&mut self, _msg: NotificationMessage) -> Result<()>;
     fn set_rgb(&mut self, _rgb: &[u8; 3]) -> Result<()> {
-        bail!("Not implemented for type")
+        Err(Error::NotImplementedError(
+            "Not implemented for type".to_string(),
+        ))
     }
     fn start_speed(&mut self, _speed: i8, _max_power: Power) -> Result<()> {
-        bail!("Not implemented for type")
+        Err(Error::NotImplementedError(
+            "Not implemented for type".to_string(),
+        ))
     }
 }
 

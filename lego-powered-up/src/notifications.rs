@@ -6,7 +6,7 @@
 
 use crate::consts::*;
 use crate::devices::HubLedMode;
-use anyhow::{bail, Context, Result};
+use crate::error::{Error, OptionContext, Result};
 use log::{debug, trace};
 use lpu_macros::Parse;
 use num_derive::FromPrimitive;
@@ -300,7 +300,10 @@ impl NotificationMessage {
     ) -> Result<()> {
         let calculated = Self::length(&mut msg)?;
         if calculated != supplied {
-            bail!("Length mismatch {} != {}", calculated, supplied);
+            Err(Error::ParseError(format!(
+                "Length mismatch {} != {}",
+                calculated, supplied
+            )))
         } else {
             Ok(())
         }
@@ -923,7 +926,12 @@ impl InputSetupSingle {
         let notification_enabled = match notif_byte {
             0x00 => false,
             0x01 => true,
-            b => bail!("Invalid notification enabled state {:x}", b),
+            b => {
+                return Err(Error::ParseError(format!(
+                    "Invalid notification enabled state {:x}",
+                    b
+                )))
+            }
         };
         Ok(Self {
             port_id,
@@ -1044,27 +1052,30 @@ impl PortInformationType {
         use PortInformationType::*;
 
         let mode = next!(msg);
-        Ok(match mode {
+        match mode {
             1 => {
                 // Mode info
                 let capabilities = PortCapabilities(next!(msg));
                 let mode_count = next!(msg);
                 let input_modes = next_u16!(msg);
                 let output_modes = next_u16!(msg);
-                ModeInfo {
+                Ok(ModeInfo {
                     capabilities,
                     mode_count,
                     input_modes,
                     output_modes,
-                }
+                })
             }
             2 => {
                 // possible mode combinations
                 let combinations = msg.cloned().collect();
-                PossibleModeCombinations(combinations)
+                Ok(PossibleModeCombinations(combinations))
             }
-            m => bail!("Invalid port information type {}", m),
-        })
+            m => Err(Error::ParseError(format!(
+                "Invalid port information type {}",
+                m
+            ))),
+        }
     }
 }
 
@@ -1191,7 +1202,12 @@ impl PortModeInformationType {
                     decimals,
                 })
             }
-            t => bail!("Invalid information type {}", t),
+            t => {
+                return Err(Error::ParseError(format!(
+                    "Invalid information type {}",
+                    t
+                )))
+            }
         })
     }
 }
@@ -1207,8 +1223,8 @@ pub struct ValueFormatType {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct MappingValue(u8);
 impl MappingValue {
-    pub const SUPPORTS_NULL: u8 = 0b1000_000;
-    pub const SUPPORTS_FUNCTIONAL2: u8 = 0b0100_000;
+    pub const SUPPORTS_NULL: u8 = 0b1000_0000;
+    pub const SUPPORTS_FUNCTIONAL2: u8 = 0b0100_0000;
     pub const ABS: u8 = 0b0001_0000;
     pub const REL: u8 = 0b0000_1000;
     pub const DIS: u8 = 0b0000_0100;
@@ -1283,10 +1299,13 @@ impl PortInputFormatSingleFormat {
         let mode = next!(msg);
         let delta = next_u32!(msg);
         let notification_enabled = match next!(msg) {
-            0 => false,
-            1 => true,
-            v => bail!("Invalid notification enabled status {}", v),
-        };
+            0 => Ok(false),
+            1 => Ok(true),
+            v => Err(Error::ParseError(format!(
+                "Invalid notification enabled status {}",
+                v
+            ))),
+        }?;
         Ok(Self {
             port_id,
             mode,
@@ -1332,20 +1351,23 @@ pub enum VirtualPortSetupFormat {
 impl VirtualPortSetupFormat {
     pub fn parse<'a>(mut msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
         use VirtualPortSetupFormat::*;
-        Ok(match next!(msg) {
+        match next!(msg) {
             0 => {
                 // Disconnected
                 let port_id = next!(msg);
-                Disconnect { port_id }
+                Ok(Disconnect { port_id })
             }
             1 => {
                 // Connected
                 let port_a = next!(msg);
                 let port_b = next!(msg);
-                Connect { port_a, port_b }
+                Ok(Connect { port_a, port_b })
             }
-            c => bail!("Invalid virtual port subcommand {}", c),
-        })
+            c => Err(Error::ParseError(format!(
+                "Invalid virtual port subcommand {}",
+                c
+            ))),
+        }
     }
 }
 
@@ -1718,7 +1740,12 @@ impl PortOutputSubcommand {
                 let data = WriteDirectModeDataPayload::parse(&mut msg)?;
                 WriteDirectModeData(data)
             }
-            c => bail!("Invalid port output subcommand {}", c),
+            c => {
+                return Err(Error::ParseError(format!(
+                    "Invalid port output subcommand {}",
+                    c
+                )))
+            }
         })
     }
 }
@@ -1750,13 +1777,16 @@ impl Power {
 
     pub fn from_i8(val: i8) -> Result<Self> {
         use Power::*;
-        Ok(match val {
-            0 => Float,
-            127 => Brake,
-            p if (1..=100).contains(&p) => Cw(p as u8),
-            p if (-100..=-1).contains(&p) => Ccw((-p) as u8),
-            p => bail!("Invalid value for power: {}", p),
-        })
+        match val {
+            0 => Ok(Float),
+            127 => Ok(Brake),
+            p if (1..=100).contains(&p) => Ok(Cw(p as u8)),
+            p if (-100..=-1).contains(&p) => Ok(Ccw((-p) as u8)),
+            p => Err(Error::ParseError(format!(
+                "Invalid value for power: {}",
+                p
+            ))),
+        }
     }
 }
 
@@ -1864,7 +1894,12 @@ impl WriteDirectModeDataPayload {
                 let blue = next!(msg);
                 SetRgbColors { red, green, blue }
             }
-            m => bail!("Invalid write direct mode {}", m),
+            m => {
+                return Err(Error::ParseError(format!(
+                    "Invalid write direct mode {}",
+                    m
+                )))
+            }
         })
     }
 

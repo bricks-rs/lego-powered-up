@@ -4,13 +4,13 @@
 
 //! Specific implementations for each of the supported hubs.
 
+use crate::error::{OptionContext, Result};
 use crate::notifications::NotificationMessage;
 use crate::Hub;
 use crate::{
     consts::blecharacteristic,
     notifications::{AttachedIo, IoAttachEvent, VersionNumber},
 };
-use anyhow::{Context, Result};
 use btleplug::api::{Characteristic, Peripheral, WriteType};
 use std::collections::HashMap;
 
