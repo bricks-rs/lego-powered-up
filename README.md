@@ -48,6 +48,21 @@ fn main() -> anyhow::Result<()> {
 }
 ```
 
+## Contributing
+Contributions are welcome, particularly in the following areas:
+* Bug reports and feature requests
+* Support for hubs other than the Technic Medium Hub (I don't have any other types to test with at the moment)
+* Support for peripherals other than the simple motors and hub LEDs
+* Good APIs to control e.g. motor position
+* More examples to demonstrate cool things we can do
+* Client implementation
+* `#![no_std]` support (controller & client)
+* Testing on/porting to non-linux operating systems, e.g. Windows & Mac
+
+## Future goals
+* Bluetooth/USB control of NXT bricks
+* Control RCX bricks via the IR tower
+
 ## Architecture
 
 Main components (tokio tasks):
