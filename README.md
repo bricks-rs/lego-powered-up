@@ -1,9 +1,9 @@
 # Rust communication library for Lego Powered Up
 
-![](https://img.shields.io/github/license/sciguy16/lego-powered-up?style=plastic)
+[![](https://img.shields.io/github/license/sciguy16/lego-powered-up?style=plastic)](https://choosealicense.com/licenses/mpl-2.0/)
 ![](https://img.shields.io/github/workflow/status/sciguy16/lego-powered-up/build?style=plastic)
-![](https://img.shields.io/crates/v/lego-powered-up?style=plastic)
-![](https://img.shields.io/docsrs/lego-powered-up?style=plastic)
+[![](https://img.shields.io/crates/v/lego-powered-up?style=plastic)](https://crates.io/crates/lego-powered-up)
+[![](https://img.shields.io/docsrs/lego-powered-up?style=plastic)](https://docs.rs/lego-powered-up)
 
 
 ## Example
@@ -62,3 +62,6 @@ Communication:
 * Internal RPC structure
   * HubManager listens on a control channel
   * Requests down the control channel may include the sending half of a response channel
+
+## License
+This library is available under the terms of the [Mozilla Public License 2.0](https://choosealicense.com/licenses/mpl-2.0/).
