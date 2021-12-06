@@ -1,11 +1,6 @@
-use crossterm::event::{self, Event, KeyCode};
-use crossterm::style::{self, Stylize};
-use crossterm::terminal::{self, EnterAlternateScreen, LeaveAlternateScreen};
-use crossterm::{cursor, execute, QueueableCommand};
+use console_engine::{pixel, Color, ConsoleEngine, KeyCode};
 use eyre::Result;
 use std::fmt::{self, Display, Formatter};
-use std::io::{stdout, Write};
-use std::time::Duration;
 
 #[derive(Default)]
 struct Robot {
@@ -15,7 +10,7 @@ struct Robot {
 
 impl Display for Robot {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
-        write!(fmt, "{} - {}", self.left_speed, self.right_speed)
+        write!(fmt, "{:3} ~ {:3}", self.left_speed, self.right_speed)
     }
 }
 
@@ -29,43 +24,49 @@ impl Robot {
         self.left_speed = 50;
         self.right_speed = 50;
     }
+
+    pub fn backward(&mut self) {
+        self.left_speed = -50;
+        self.right_speed = -50;
+    }
+}
+
+fn key(engine: &mut ConsoleEngine, key: KeyCode) -> bool {
+    engine.is_key_pressed(key) || engine.is_key_held(key)
 }
 
 fn main() -> Result<()> {
     println!("Searching for hubs...");
 
-    terminal::enable_raw_mode()?;
-    let mut stdout = stdout();
-    execute!(stdout, EnterAlternateScreen)?;
+    // initializes a screen of 20x10 characters with a target of 3 frames per second
+    // coordinates will range from [0,0] to [19,9]
+    let mut engine = console_engine::ConsoleEngine::init(20, 20, 5)?;
 
     let mut robot = Robot::default();
-    stdout.queue(cursor::MoveTo(5, 5))?;
+
     loop {
-        match event::poll(Duration::from_millis(500))? {
-            true => {
-                if let Event::Key(key) = event::read()? {
-                    use KeyCode::*;
-                    //println!("{:?}", key);
-                    match key.code {
-                        Char('q') => break,
-                        Up => robot.forward(),
-                        _ => (),
-                    }
-                }
+        engine.wait_frame(); // wait for next frame + capture inputs
+        engine.clear_screen(); // reset the screen
 
-                stdout.flush()?;
-            }
-            false => {
-                robot.stop();
-            }
+        engine.line(0, 0, 19, 0, pixel::pxl('#')); // draw a line of '#' from [0,0] to [19,9]
+        engine.print(0, 4, format!("Robot: {robot}").as_str()); // prints some value at [0,4]
+
+        engine.set_pxl(4, 0, pixel::pxl_fg('O', Color::Cyan)); // write a majestic cyan 'O' at [4,0]
+
+        if key(&mut engine, KeyCode::Up) {
+            robot.forward();
+        } else if key(&mut engine, KeyCode::Down) {
+            robot.backward();
+        } else {
+            robot.stop();
         }
-        stdout
-            .queue(cursor::MoveTo(5, 5))?
-            .queue(style::PrintStyledContent(format!("{robot}").magenta()))?;
-    }
+        if engine.is_key_pressed(KeyCode::Char('q')) {
+            // if the user presses 'q' :
+            break; // exits app
+        }
 
-    execute!(stdout, LeaveAlternateScreen)?;
-    terminal::disable_raw_mode()?;
+        engine.draw(); // draw the screen
+    }
 
     println!("Exit successful");
 

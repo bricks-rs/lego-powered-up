@@ -321,6 +321,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "console_engine"
+version = "2.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c7370400018b62d806bb0e1d390177b8517c55930e345e6d3d7db11781921d8b"
+dependencies = [
+ "crossterm",
+ "unicode-width",
+]
+
+[[package]]
 name = "const-sha1"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1193,7 +1203,7 @@ dependencies = [
 name = "tank-remote"
 version = "0.1.0"
 dependencies = [
- "crossterm",
+ "console_engine",
  "eyre",
  "lego-powered-up 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
