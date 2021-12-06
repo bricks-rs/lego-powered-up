@@ -26,6 +26,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: check
+          args: --all
 
       - name: Run cargo fmt
         uses: actions-rs/cargo@v1
@@ -67,5 +68,6 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
+          args: --all
         env:
           CLICOLOR_FORCE: 1
