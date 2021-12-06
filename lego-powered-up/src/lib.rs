@@ -13,7 +13,7 @@
 //! use lego_powered_up::PoweredUp;
 //! use std::{thread::sleep, time::Duration};
 //!
-//! fn main() -> anyhow::Result<()> {
+//! fn main() -> Result<(), Box<dyn std::error::Error>> {
 //!     println!("Listening for hubs...");
 //!     let pu = PoweredUp::init()?;
 //!     let hub = pu.wait_for_hub()?;
