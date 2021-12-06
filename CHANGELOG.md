@@ -6,10 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
-* Example for tank steering remote control
 
 ### Changed
-* Changed from anyhow to thiserror for compatibility
 
 ### Deprecated
 
@@ -18,6 +16,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 ### Security
+
+## [v0.2.0]
+### Added
+* Example for tank steering remote control
+
+### Changed
+* Changed from anyhow to thiserror for compatibility
 
 ## [v0.1.0]
 Initial release.
