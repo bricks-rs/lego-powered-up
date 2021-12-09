@@ -8,4 +8,4 @@ arrow keys! When you're done, press `q` to disconnect and quit.
 ## Usage
 ```bash
 cargo run --package tank-remote
-````
+```
