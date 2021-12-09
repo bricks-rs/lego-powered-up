@@ -80,3 +80,5 @@ Communication:
 
 ## License
 This library is available under the terms of the [Mozilla Public License 2.0](https://choosealicense.com/licenses/mpl-2.0/).
+
+The examples provided in the [examples](https://github.com/sciguy16/lego-powered-up/tree/main/examples) directory are dedicated to the [public domain](https://creativecommons.org/publicdomain/zero/1.0/)

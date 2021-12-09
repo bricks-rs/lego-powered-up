@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// https://creativecommons.org/publicdomain/zero/1.0/
+
 use gilrs::EventType::AxisChanged;
 use gilrs::{Button, Event, Gilrs};
 use lego_powered_up::notifications::Power;

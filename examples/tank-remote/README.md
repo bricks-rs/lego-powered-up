@@ -9,3 +9,6 @@ arrow keys! When you're done, press `q` to disconnect and quit.
 ```bash
 cargo run --package tank-remote
 ```
+
+## License
+The code in this example is public domain and may be used/modified without permission or attribution.

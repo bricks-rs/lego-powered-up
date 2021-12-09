@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// https://creativecommons.org/publicdomain/zero/1.0/
+
 use console_engine::{pixel, Color, ConsoleEngine, KeyCode};
 use eyre::Result;
 use lego_powered_up::notifications::Power;
