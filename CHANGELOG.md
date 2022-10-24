@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 ### Security
+* Update dependencies to clear RUSTSEC-2021-0119
 
 ## [v0.2.0]
 ### Added

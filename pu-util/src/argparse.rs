@@ -43,7 +43,7 @@ pub fn parse_args() -> Args {
                 .short('v')
                 .multiple(true)
                 .takes_value(false)
-                .about("Increase verbosity"),
+                .help("Increase verbosity"),
         )
         .subcommand(
             App::new("devices")
@@ -56,22 +56,22 @@ pub fn parse_args() -> Args {
                 .arg(
                     Arg::new("device")
                         .long("device")
-                        .about("Device index (from `devices`)")
+                        .help("Device index (from `devices`)")
                         .takes_value(true),
                 )
                 .arg(
                     Arg::new("name")
                         .long("name")
-                        .about("Search for hub with this name")
+                        .help("Search for hub with this name")
                         .takes_value(true),
                 )
                 .arg(
                     Arg::new("address")
                         .long("address")
-                        .about("Search for hub with this address")
+                        .help("Search for hub with this address")
                         .takes_value(true),
                 )
-                .arg(Arg::new("connect").long("connect").about(
+                .arg(Arg::new("connect").long("connect").help(
                     "Connect to the discovered hub(s) and display more info",
                 )),
         )
@@ -81,13 +81,13 @@ pub fn parse_args() -> Args {
                 .arg(
                     Arg::new("device")
                         .long("device")
-                        .about("Device index (from `devices`)")
+                        .help("Device index (from `devices`)")
                         .takes_value(true),
                 )
                 .arg(
                     Arg::new("address")
                         .long("address")
-                        .about("Address of hub")
+                        .help("Address of hub")
                         .required(true)
                         .takes_value(true),
                 ),
