@@ -11,7 +11,8 @@ mod devices;
 mod hubs;
 mod motor_test;
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     let args = argparse::parse_args();
     println!("verbosity: {}", args.verbosity);
     env_logger::Builder::from_env(Env::default().default_filter_or(
@@ -24,9 +25,9 @@ fn main() -> Result<()> {
     .init();
 
     match args.command {
-        Command::Devices(dev_args) => devices::run(&dev_args)?,
-        Command::Hubs(hub_args) => hubs::run(&hub_args)?,
-        Command::MotorTest(mot_args) => motor_test::run(&mot_args)?,
+        Command::Devices(dev_args) => devices::run(&dev_args).await?,
+        Command::Hubs(hub_args) => hubs::run(&hub_args).await?,
+        Command::MotorTest(mot_args) => motor_test::run(&mot_args).await?,
     }
 
     Ok(())

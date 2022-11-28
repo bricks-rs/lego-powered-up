@@ -12,11 +12,11 @@ use std::str::FromStr;
 use std::thread::sleep;
 use std::time::Duration;
 
-pub fn run(args: &MotorTestArgs) -> Result<()> {
+pub async fn run(args: &MotorTestArgs) -> Result<()> {
     let mut pu = if let Some(dev) = args.device_index {
-        PoweredUp::with_device(dev)?
+        PoweredUp::with_device_index(dev).await?
     } else {
-        PoweredUp::init()?
+        PoweredUp::init().await?
     };
     // let rx = pu.event_receiver().unwrap();
     // pu.run().unwrap();
@@ -64,7 +64,7 @@ pub fn run(args: &MotorTestArgs) -> Result<()> {
     hub.disconnect()?;
     println!("Done");
 
-    pu.stop()?;
+    pu.stop().await?;
 
     Ok(())
 }

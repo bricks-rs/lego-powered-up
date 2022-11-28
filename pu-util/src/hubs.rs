@@ -11,11 +11,11 @@ use std::str::FromStr;
 use std::thread::sleep;
 use std::time::Duration;
 
-pub fn run(args: &HubArgs) -> Result<()> {
+pub async fn run(args: &HubArgs) -> Result<()> {
     let mut pu = if let Some(dev) = args.device_index {
-        PoweredUp::with_device(dev)?
+        PoweredUp::with_device_index(dev).await?
     } else {
-        PoweredUp::init()?
+        PoweredUp::init().await?
     };
     // let rx = pu.event_receiver().unwrap();
     // pu.run().unwrap();
@@ -32,9 +32,10 @@ pub fn run(args: &HubArgs) -> Result<()> {
             name: "".to_string(),
         }
     } else if let Some(name) = &args.name {
-        pu.wait_for_hub_filter(HubFilter::Name(name.to_string()))?
+        pu.wait_for_hub_filter(HubFilter::Name(name.to_string()))
+            .await?
     } else {
-        pu.wait_for_hub()?
+        pu.wait_for_hub().await?
     };
 
     let verb = if args.connect {
@@ -49,7 +50,7 @@ pub fn run(args: &HubArgs) -> Result<()> {
 
     if args.connect {
         use lego_powered_up::notifications::Power;
-        let hub = pu.create_hub(&hub)?;
+        let hub = pu.create_hub(&hub).await?;
 
         println!("Setting hub LED");
 
@@ -80,7 +81,7 @@ pub fn run(args: &HubArgs) -> Result<()> {
         hub.disconnect()?;
         println!("Done");
     }
-    pu.stop()?;
+    pu.stop().await?;
 
     Ok(())
 }
