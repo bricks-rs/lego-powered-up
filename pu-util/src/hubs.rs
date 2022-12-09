@@ -4,10 +4,8 @@
 
 use crate::argparse::HubArgs;
 use anyhow::Result;
-use lego_powered_up::{
-    consts::HubType, hubs::Port, BDAddr, DiscoveredHub, HubFilter, PoweredUp,
-};
-use std::str::FromStr;
+use lego_powered_up::{hubs::Port, HubFilter, PoweredUp};
+
 use std::thread::sleep;
 use std::time::Duration;
 
@@ -26,11 +24,8 @@ pub async fn run(args: &HubArgs) -> Result<()> {
     // 90:84:2B:60:3A:6C
 
     let hub = if let Some(addr) = &args.address {
-        DiscoveredHub {
-            hub_type: HubType::Unknown,
-            addr: BDAddr::from_str(addr)?,
-            name: "".to_string(),
-        }
+        pu.wait_for_hub_filter(HubFilter::Addr(addr.to_string()))
+            .await?
     } else if let Some(name) = &args.name {
         pu.wait_for_hub_filter(HubFilter::Name(name.to_string()))
             .await?
@@ -55,7 +50,7 @@ pub async fn run(args: &HubArgs) -> Result<()> {
         println!("Setting hub LED");
 
         // Set the hub LED if available
-        let mut hub_led = hub.port(Port::HubLed)?;
+        let mut hub_led = hub.port(Port::HubLed).await?;
         for colour in [[0_u8, 0xff, 0], [0xff, 0, 0], [0, 0, 0xff]]
             .iter()
             .cycle()
@@ -68,7 +63,7 @@ pub async fn run(args: &HubArgs) -> Result<()> {
 
         println!("Setting Motor A");
 
-        let mut motor = hub.port(Port::A)?;
+        let mut motor = hub.port(Port::A).await?;
         motor.start_speed(50, Power::Cw(50))?;
         sleep(Duration::from_secs(4));
         motor.start_speed(0, Power::Float)?;

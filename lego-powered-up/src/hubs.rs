@@ -4,6 +4,7 @@
 
 //! Specific implementations for each of the supported hubs.
 
+use crate::devices::Device;
 use crate::error::{OptionContext, Result};
 use std::collections::BTreeSet;
 // use crate::notifications::NotificationMessage;
@@ -38,7 +39,7 @@ pub trait Hub {
 
     // fn process_io_event(&mut self, _evt: AttachedIo);
 
-    // async fn port(&self, port_id: Port) -> Result<PortController>;
+    async fn port(&self, port_id: Port) -> Result<Box<dyn Device>>;
 }
 
 pub type VersionNumber = u8;
@@ -192,9 +193,9 @@ impl<P: Peripheral> Hub for TechnicHub<P> {
     //     }
     // }
 
-    // async fn port(&self, port_id: Port) -> Result<PortController> {
-    //     todo!()
-    // }
+    async fn port(&self, port_id: Port) -> Result<Box<dyn Device>> {
+        todo!()
+    }
 }
 
 impl<P: Peripheral> TechnicHub<P> {

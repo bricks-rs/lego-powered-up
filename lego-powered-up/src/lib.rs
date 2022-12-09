@@ -11,7 +11,7 @@ use std::time::Duration;
 extern crate log;
 
 pub mod consts;
-// pub mod devices;
+pub mod devices;
 pub mod error;
 pub mod hubs;
 pub mod notifications;

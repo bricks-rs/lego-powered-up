@@ -2,7 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use clap::{crate_version, App, AppSettings, Arg};
+use clap::{crate_version, App, AppSettings, Arg, ArgAction};
 use std::cmp::min;
 
 pub struct Args {
@@ -41,8 +41,7 @@ pub fn parse_args() -> Args {
         .arg(
             Arg::new("verbose")
                 .short('v')
-                .multiple(true)
-                .takes_value(false)
+                .action(ArgAction::Count)
                 .help("Increase verbosity"),
         )
         .subcommand(
