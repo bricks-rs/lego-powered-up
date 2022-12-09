@@ -5,21 +5,16 @@
 //! Definitions for the various devices which can attach to hubs, e.g. motors
 
 use crate::error::{Error, Result};
-use crate::notifications::HubLedMode;
-use crate::notifications::NotificationMessage;
-use crate::notifications::Power;
-use btleplug::api::Peripheral;
-// use crate::notifications::Power;
-use crate::hubs::Port; //HubManagerMessage, NotificationMessage};
-use btleplug::api::BDAddr;
-use crossbeam_channel::{bounded, Sender};
+use crate::hubs::Port;
+use crate::notifications::{HubLedMode, Power};
+use btleplug::api::{BDAddr, Peripheral};
 use std::fmt::Debug;
-// use std::sync::Arc;
+use std::sync::Arc;
 
 /// Trait that any device may implement. Having a single trait covering
 /// every device is probably the wrong design, and we should have better
 /// abstractions for e.g. motors vs. sensors & LEDs.
-pub trait Device: Debug + Send + Sync {
+pub trait Device<'p>: Debug + Send + Sync {
     fn port(&self) -> Port;
     // fn send(&mut self, _msg: NotificationMessage) -> Result<()>;
     fn set_rgb(&mut self, _rgb: &[u8; 3]) -> Result<()> {
@@ -34,26 +29,26 @@ pub trait Device: Debug + Send + Sync {
     }
 }
 
-/// Create a device manager for the given port
-pub(crate) fn create_device<'p, P: Peripheral + 'p>(
-    peripheral: P,
-    port_id: u8,
-    port_type: Port,
-    hub_addr: BDAddr,
-    // hub_manager_tx: Sender<HubManagerMessage>,
-) -> Box<dyn Device + Send + Sync + 'p> {
-    match port_type {
-        Port::HubLed => {
-            let dev = HubLED::new(peripheral, hub_addr, port_id);
-            Box::new(dev)
-        }
-        Port::A | Port::B | Port::C | Port::D => {
-            let dev = Motor::new(peripheral, hub_addr, port_type, port_id);
-            Box::new(dev)
-        }
-        _ => todo!(),
-    }
-}
+// / Create a device manager for the given port
+// pub(crate) fn create_device<'p, P: Peripheral + 'p>(
+//     peripheral: Arc<P>,
+//     port_id: u8,
+//     port_type: Port,
+//     hub_addr: BDAddr,
+//     // hub_manager_tx: Sender<HubManagerMessage>,
+// ) -> Box<dyn Device<'p> + Send + Sync + 'p> {
+//     match port_type {
+//         Port::HubLed => {
+//             let dev = HubLED::new(peripheral, port_id);
+//             Box::new(dev)
+//         }
+//         Port::A | Port::B | Port::C | Port::D => {
+//             let dev = Motor::new(peripheral, hub_addr, port_type, port_id);
+//             Box::new(dev)
+//         }
+//         _ => todo!(),
+//     }
+// }
 
 /// Struct representing a Hub LED
 #[derive(Debug, Clone)]
@@ -61,13 +56,13 @@ pub struct HubLED<P: Peripheral> {
     /// RGB colour value
     rgb: [u8; 3],
     _mode: HubLedMode,
-    peripheral: P,
+    peripheral: Arc<P>,
     port_id: u8,
-    hub_addr: BDAddr,
+    // hub_addr: BDAddr,
     // hub_manager_tx: Sender<HubManagerMessage>,
 }
 
-impl<P: Peripheral> Device for HubLED<P> {
+impl<P: Peripheral> Device<'_> for HubLED<P> {
     fn port(&self) -> Port {
         Port::HubLed
     }
@@ -118,8 +113,8 @@ impl<P: Peripheral> Device for HubLED<P> {
 
 impl<P: Peripheral> HubLED<P> {
     pub(crate) fn new(
-        peripheral: P,
-        hub_addr: BDAddr,
+        peripheral: Arc<P>,
+        // hub_addr: BDAddr,
         // hub_manager_tx: Sender<HubManagerMessage>,
         port_id: u8,
     ) -> Self {
@@ -130,7 +125,7 @@ impl<P: Peripheral> HubLED<P> {
             _mode: mode,
             peripheral,
             port_id,
-            hub_addr,
+            // hub_addr,
             // hub_manager_tx,
         }
     }
@@ -139,14 +134,14 @@ impl<P: Peripheral> HubLED<P> {
 /// Struct representing a motor
 #[derive(Debug, Clone)]
 pub struct Motor<P: Peripheral> {
-    peripheral: P,
+    peripheral: Arc<P>,
     port: Port,
     port_id: u8,
-    hub_addr: BDAddr,
+    // hub_addr: BDAddr,
     // hub_manager_tx: Sender<HubManagerMessage>,
 }
 
-impl<P: Peripheral> Device for Motor<P> {
+impl<P: Peripheral> Device<'_> for Motor<P> {
     fn port(&self) -> Port {
         self.port
     }
@@ -184,8 +179,8 @@ impl<P: Peripheral> Device for Motor<P> {
 
 impl<P: Peripheral> Motor<P> {
     pub(crate) fn new(
-        peripheral: P,
-        hub_addr: BDAddr,
+        peripheral: Arc<P>,
+        // hub_addr: BDAddr,
         // hub_manager_tx: Sender<HubManagerMessage>,
         port: Port,
         port_id: u8,
@@ -194,7 +189,7 @@ impl<P: Peripheral> Motor<P> {
             peripheral,
             port,
             port_id,
-            hub_addr,
+            // hub_addr,
         }
     }
 }

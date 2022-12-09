@@ -1,11 +1,11 @@
 use btleplug::api::{
-    bleuuid::uuid_from_u16, Central, CentralEvent, Manager as _,
-    Peripheral as _, PeripheralProperties, ScanFilter, WriteType,
+    Central, CentralEvent, Manager as _, Peripheral as _, PeripheralProperties,
+    ScanFilter,
 };
 use btleplug::platform::{Adapter, Manager, Peripheral, PeripheralId};
 use futures::stream::StreamExt;
 use num_traits::FromPrimitive;
-use std::time::Duration;
+use std::sync::Arc;
 
 #[macro_use]
 extern crate log;
@@ -59,10 +59,6 @@ impl PoweredUp {
 
     pub async fn run(&mut self) -> Result<()> {
         self.adapter.start_scan(ScanFilter::default()).await?;
-        Ok(())
-    }
-
-    pub async fn stop(&mut self) -> Result<()> {
         Ok(())
     }
 
@@ -153,7 +149,7 @@ impl PoweredUp {
 
         Ok(Box::new(match hub.hub_type {
             HubType::TechnicMediumHub => {
-                hubs::TechnicHub::init(peripheral, chars).await?
+                hubs::TechnicHub::init(Arc::new(peripheral), chars).await?
             }
             _ => unimplemented!(),
         }))

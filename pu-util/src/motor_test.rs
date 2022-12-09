@@ -69,7 +69,5 @@ pub async fn run(args: &MotorTestArgs) -> Result<()> {
     hub.disconnect().await?;
     println!("Done");
 
-    pu.stop().await?;
-
     Ok(())
 }

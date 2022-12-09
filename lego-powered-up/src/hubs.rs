@@ -4,17 +4,18 @@
 
 //! Specific implementations for each of the supported hubs.
 
-use crate::devices::Device;
+use crate::devices::{self, Device};
 use crate::error::{OptionContext, Result};
 use std::collections::BTreeSet;
 // use crate::notifications::NotificationMessage;
 use crate::consts::blecharacteristic;
 use btleplug::api::{Characteristic, Peripheral, WriteType};
 use std::collections::HashMap;
+use std::sync::Arc;
 
 /// Trait describing a generic hub.
 #[async_trait::async_trait]
-pub trait Hub {
+pub trait Hub<'p> {
     async fn name(&self) -> Result<String>;
     async fn disconnect(&self) -> Result<()>;
     async fn is_connected(&self) -> Result<bool>;
@@ -39,7 +40,7 @@ pub trait Hub {
 
     // fn process_io_event(&mut self, _evt: AttachedIo);
 
-    async fn port(&self, port_id: Port) -> Result<Box<dyn Device>>;
+    async fn port(&'p self, port_id: Port) -> Result<Box<dyn Device + 'p>>;
 }
 
 pub type VersionNumber = u8;
@@ -110,14 +111,14 @@ pub struct ConnectedIo {
 
 /// Definition for the TechnicMediumHub
 pub struct TechnicHub<P: Peripheral> {
-    peripheral: P,
+    peripheral: Arc<P>,
     lpf_characteristic: Characteristic,
     properties: HubProperties,
     connected_io: HashMap<u8, ConnectedIo>,
 }
 
 #[async_trait::async_trait]
-impl<P: Peripheral> Hub for TechnicHub<P> {
+impl<'p, P: Peripheral + 'p> Hub<'p> for TechnicHub<P> {
     async fn name(&self) -> Result<String> {
         Ok(self
             .peripheral
@@ -193,15 +194,20 @@ impl<P: Peripheral> Hub for TechnicHub<P> {
     //     }
     // }
 
-    async fn port(&self, port_id: Port) -> Result<Box<dyn Device>> {
-        todo!()
+    async fn port(&'p self, port_id: Port) -> Result<Box<dyn Device + 'p>> {
+        Ok(match port_id {
+            Port::HubLed => {
+                Box::new(devices::HubLED::new(self.peripheral.clone(), 1))
+            }
+            _ => todo!(),
+        })
     }
 }
 
 impl<P: Peripheral> TechnicHub<P> {
     /// Initialisation method
     pub async fn init(
-        peripheral: P,
+        peripheral: Arc<P>,
         chars: BTreeSet<Characteristic>,
     ) -> Result<Self> {
         // Peripheral is already connected before we get here
@@ -246,12 +252,12 @@ impl<P: Peripheral> TechnicHub<P> {
         })
     }
 
-    async fn port_from_id(&self, port_id: u8) -> Option<Port> {
-        // for (k, v) in self.port_map().await.iter() {
-        //     if *v == port_id {
-        //         return Some(*k);
-        //     }
-        // }
-        None
-    }
+    // async fn port_from_id(&self, _port_id: u8) -> Option<Port> {
+    // for (k, v) in self.port_map().await.iter() {
+    //     if *v == port_id {
+    //         return Some(*k);
+    //     }
+    // }
+    // None
+    // }
 }

@@ -5,8 +5,6 @@
 use crate::argparse::HubArgs;
 use anyhow::Result;
 use lego_powered_up::{hubs::Port, HubFilter, PoweredUp};
-
-use std::thread::sleep;
 use std::time::Duration;
 
 pub async fn run(args: &HubArgs) -> Result<()> {
@@ -58,25 +56,24 @@ pub async fn run(args: &HubArgs) -> Result<()> {
         {
             println!("Setting to: {:02x?}", colour);
             hub_led.set_rgb(colour)?;
-            sleep(Duration::from_secs(1));
+            tokio::time::sleep(Duration::from_secs(1)).await;
         }
 
         println!("Setting Motor A");
 
         let mut motor = hub.port(Port::A).await?;
         motor.start_speed(50, Power::Cw(50))?;
-        sleep(Duration::from_secs(4));
+        tokio::time::sleep(Duration::from_secs(4)).await;
         motor.start_speed(0, Power::Float)?;
 
         println!("Done!");
 
-        sleep(Duration::from_secs(5));
+        tokio::time::sleep(Duration::from_secs(5)).await;
 
         println!("Disconnecting...");
         hub.disconnect().await?;
         println!("Done");
     }
-    pu.stop().await?;
 
     Ok(())
 }
