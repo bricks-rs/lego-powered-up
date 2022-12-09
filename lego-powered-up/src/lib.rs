@@ -91,13 +91,14 @@ impl PoweredUp {
 
     // todo use notifications event stream
     pub async fn wait_for_hub(&mut self) -> Result<DiscoveredHub> {
-        loop {
-            let hubs = self.list_discovered_hubs().await?;
-            if let Some(hub) = hubs.into_iter().next() {
-                return Ok(hub);
-            }
-            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-        }
+        self.wait_for_hub_filter(HubFilter::Null).await
+        // loop {
+        //     let hubs = self.list_discovered_hubs().await?;
+        //     if let Some(hub) = hubs.into_iter().next() {
+        //         return Ok(hub);
+        //     }
+        //     tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+        // }
     }
 
     pub async fn wait_for_hub_filter(
@@ -110,7 +111,7 @@ impl PoweredUp {
             let CentralEvent::DeviceDiscovered(id) = event else { continue };
             // get peripheral info
             let peripheral = self.adapter.peripheral(&id).await?;
-            println!("{:?}", peripheral.properties().await?);
+            // println!("{:?}", peripheral.properties().await?);
             let Some(props) = peripheral.properties().await? else { continue };
             if let Some(hub_type) = identify_hub(&props).await? {
                 let hub = DiscoveredHub {
@@ -136,8 +137,12 @@ impl PoweredUp {
         info!("Connecting to hub {}...", hub.addr,);
 
         let peripheral = self.adapter.peripheral(&hub.addr).await?;
+        peripheral.connect().await?;
         peripheral.discover_services().await?;
+        // tokio::time::sleep(Duration::from_secs(2)).await;
         let chars = peripheral.characteristics();
+
+        dbg!(&chars);
 
         let lpf_char = chars
             .iter()
@@ -162,6 +167,8 @@ pub enum HubFilter {
     Name(String),
     /// Hub address must match the provided value
     Addr(String),
+    /// Always matches
+    Null,
 }
 
 impl HubFilter {
@@ -171,6 +178,7 @@ impl HubFilter {
         match self {
             Name(n) => hub.name == *n,
             Addr(a) => format!("{:?}", hub.addr) == *a,
+            Null => true,
         }
     }
 }

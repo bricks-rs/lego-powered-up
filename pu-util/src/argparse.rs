@@ -29,7 +29,7 @@ pub struct HubArgs {
 
 pub struct MotorTestArgs {
     pub device_index: Option<usize>,
-    pub address: String,
+    pub address: Option<String>,
 }
 
 pub fn parse_args() -> Args {
@@ -87,7 +87,6 @@ pub fn parse_args() -> Args {
                     Arg::new("address")
                         .long("address")
                         .help("Address of hub")
-                        .required(true)
                         .takes_value(true),
                 ),
         )
@@ -117,7 +116,7 @@ pub fn parse_args() -> Args {
                 v.parse()
                     .expect("Device index must be a nonnegative integer")
             }),
-            address: matches.value_of("address").unwrap().to_string(),
+            address: matches.value_of("address").map(String::from),
         })
     } else {
         unreachable!();

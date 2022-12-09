@@ -5,9 +5,8 @@
 use crate::argparse::MotorTestArgs;
 use anyhow::Result;
 use lego_powered_up::notifications::Power;
-use lego_powered_up::{consts::HubType, hubs::Port, DiscoveredHub, PoweredUp};
+use lego_powered_up::{hubs::Port, HubFilter, PoweredUp};
 
-use std::thread::sleep;
 use std::time::Duration;
 
 pub async fn run(args: &MotorTestArgs) -> Result<()> {
@@ -29,7 +28,14 @@ pub async fn run(args: &MotorTestArgs) -> Result<()> {
     //     addr: BDAddr::from_str(&args.address)?,
     //     name: "".to_string(),
     // };
-    let hub = pu.wait_for_hub().await?;
+
+    let hub = pu
+        .wait_for_hub_filter(if let Some(addr) = &args.address {
+            HubFilter::Addr(addr.to_string())
+        } else {
+            HubFilter::Null
+        })
+        .await?;
 
     println!(
         "Connecting to `{}` `{}` with address `{}`",
@@ -45,19 +51,19 @@ pub async fn run(args: &MotorTestArgs) -> Result<()> {
     let colour = [0x00, 0xff, 0x00];
     println!("Setting to: {:02x?}", colour);
     hub_led.set_rgb(&colour)?;
-    sleep(Duration::from_secs(1));
+    tokio::time::sleep(Duration::from_secs(1)).await;
 
     for port in &[Port::A, Port::B, Port::C, Port::D] {
         let mut motor = hub.port(*port).await?;
         motor.start_speed(50, Power::Cw(100))?;
-        sleep(Duration::from_secs(2));
+        tokio::time::sleep(Duration::from_secs(2)).await;
         motor.start_speed(0, Power::Float)?;
-        sleep(Duration::from_secs(1));
+        tokio::time::sleep(Duration::from_secs(1)).await;
     }
 
     println!("Done!");
 
-    sleep(Duration::from_secs(5));
+    tokio::time::sleep(Duration::from_secs(5)).await;
 
     println!("Disconnecting...");
     hub.disconnect().await?;
