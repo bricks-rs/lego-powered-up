@@ -5,6 +5,7 @@
 //! Specific implementations for each of the supported hubs.
 
 use crate::error::{OptionContext, Result};
+use std::collections::BTreeSet;
 // use crate::notifications::NotificationMessage;
 use crate::consts::blecharacteristic;
 use btleplug::api::{Characteristic, Peripheral, WriteType};
@@ -20,9 +21,9 @@ pub trait Hub {
     //fn init(peripheral: P);
     async fn properties(&self) -> &HubProperties;
 
-    async fn port_map(&self) -> &PortMap {
-        &self.properties().await.port_map
-    }
+    // async fn port_map(&self) -> &PortMap {
+    //     &self.properties().await.port_map
+    // }
 
     // cannot provide a default implementation without access to the
     // Peripheral trait from here
@@ -37,7 +38,7 @@ pub trait Hub {
 
     // fn process_io_event(&mut self, _evt: AttachedIo);
 
-    async fn port(&self, port_id: Port) -> Result<PortController>;
+    // async fn port(&self, port_id: Port) -> Result<PortController>;
 }
 
 pub type VersionNumber = u8;
@@ -191,16 +192,16 @@ impl<P: Peripheral> Hub for TechnicHub<P> {
     //     }
     // }
 
-    async fn port(&self, port_id: Port) -> Result<PortController> {
-        todo!()
-    }
+    // async fn port(&self, port_id: Port) -> Result<PortController> {
+    //     todo!()
+    // }
 }
 
 impl<P: Peripheral> TechnicHub<P> {
     /// Initialisation method
     pub async fn init(
         peripheral: P,
-        chars: Vec<Characteristic>,
+        chars: BTreeSet<Characteristic>,
     ) -> Result<Self> {
         // Peripheral is already connected before we get here
 
@@ -245,11 +246,11 @@ impl<P: Peripheral> TechnicHub<P> {
     }
 
     async fn port_from_id(&self, port_id: u8) -> Option<Port> {
-        for (k, v) in self.port_map().await.iter() {
-            if *v == port_id {
-                return Some(*k);
-            }
-        }
+        // for (k, v) in self.port_map().await.iter() {
+        //     if *v == port_id {
+        //         return Some(*k);
+        //     }
+        // }
         None
     }
 }

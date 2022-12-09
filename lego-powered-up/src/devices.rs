@@ -60,16 +60,6 @@ pub struct HubLED {
     hub_manager_tx: Sender<HubManagerMessage>,
 }
 
-/// The two modes by which Hub LED colours may be set
-#[repr(u8)]
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum HubLedMode {
-    /// Colour may be set to one of a number of specific named colours
-    Colour = 0x0,
-    /// Colour may be set to any 12-bit RGB value
-    Rgb = 0x01,
-}
-
 impl Device for HubLED {
     fn port(&self) -> Port {
         Port::HubLed

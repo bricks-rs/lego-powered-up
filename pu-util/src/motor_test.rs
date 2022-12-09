@@ -37,7 +37,7 @@ pub async fn run(args: &MotorTestArgs) -> Result<()> {
         hub.hub_type, hub.name, hub.addr
     );
 
-    let hub = pu.create_hub(&hub)?;
+    let hub = pu.create_hub(&hub).await?;
 
     println!("Setting hub LED");
 

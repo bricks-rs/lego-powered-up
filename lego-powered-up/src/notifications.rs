@@ -5,7 +5,6 @@
 //! Parser and data structure for hub notification messages
 
 use crate::consts::*;
-use crate::devices::HubLedMode;
 use crate::error::{Error, OptionContext, Result};
 use log::{debug, trace};
 use lpu_macros::Parse;
@@ -372,6 +371,16 @@ impl NotificationMessage {
         debug!("Serialised to: {:02x?}", ser);
         ser
     }
+}
+
+/// The two modes by which Hub LED colours may be set
+#[repr(u8)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum HubLedMode {
+    /// Colour may be set to one of a number of specific named colours
+    Colour = 0x0,
+    /// Colour may be set to any 12-bit RGB value
+    Rgb = 0x01,
 }
 
 #[derive(Clone, Debug, PartialEq)]

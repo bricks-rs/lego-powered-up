@@ -78,7 +78,7 @@ pub async fn run(args: &HubArgs) -> Result<()> {
         sleep(Duration::from_secs(5));
 
         println!("Disconnecting...");
-        hub.disconnect()?;
+        hub.disconnect().await?;
         println!("Done");
     }
     pu.stop().await?;

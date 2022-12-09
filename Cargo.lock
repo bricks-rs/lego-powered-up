@@ -689,6 +689,7 @@ dependencies = [
  "btleplug",
  "crossbeam-channel",
  "env_logger",
+ "futures",
  "lazy_static",
  "log",
  "lpu-macros",

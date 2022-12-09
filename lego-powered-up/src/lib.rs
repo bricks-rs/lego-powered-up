@@ -1,12 +1,17 @@
 use btleplug::api::{
-    bleuuid::uuid_from_u16, Central, Manager as _, Peripheral as _,
-    PeripheralProperties, ScanFilter, WriteType,
+    bleuuid::uuid_from_u16, Central, CentralEvent, Manager as _,
+    Peripheral as _, PeripheralProperties, ScanFilter, WriteType,
 };
 use btleplug::platform::{Adapter, Manager, Peripheral, PeripheralId};
+use futures::stream::StreamExt;
 use num_traits::FromPrimitive;
+use std::time::Duration;
+
+#[macro_use]
+extern crate log;
 
 pub mod consts;
-pub mod devices;
+// pub mod devices;
 pub mod error;
 pub mod hubs;
 pub mod notifications;
@@ -94,26 +99,59 @@ impl PoweredUp {
             tokio::time::sleep(std::time::Duration::from_millis(500)).await;
         }
     }
-    // todo use notifications event stream
+
     pub async fn wait_for_hub_filter(
         &mut self,
         filter: HubFilter,
     ) -> Result<DiscoveredHub> {
-        loop {
-            let hubs = self.list_discovered_hubs().await?;
-            if let Some(hub) = hubs.into_iter().find(|hub| filter.matches(hub))
-            {
-                return Ok(hub);
+        let mut events = self.adapter.events().await?;
+        self.adapter.start_scan(ScanFilter::default()).await?;
+        while let Some(event) = events.next().await {
+            let CentralEvent::DeviceDiscovered(id) = event else { continue };
+            // get peripheral info
+            let peripheral = self.adapter.peripheral(&id).await?;
+            println!("{:?}", peripheral.properties().await?);
+            let Some(props) = peripheral.properties().await? else { continue };
+            if let Some(hub_type) = identify_hub(&props).await? {
+                let hub = DiscoveredHub {
+                    hub_type,
+                    addr: id,
+                    name: props
+                        .local_name
+                        .unwrap_or_else(|| "unknown".to_string()),
+                };
+                if filter.matches(&hub) {
+                    self.adapter.stop_scan().await?;
+                    return Ok(hub);
+                }
             }
-            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
         }
+        panic!()
     }
 
     pub async fn create_hub(
         &mut self,
         hub: &DiscoveredHub,
     ) -> Result<Box<dyn Hub>> {
-        todo!()
+        info!("Connecting to hub {}...", hub.addr,);
+
+        let peripheral = self.adapter.peripheral(&hub.addr).await?;
+        peripheral.discover_services().await?;
+        let chars = peripheral.characteristics();
+
+        let lpf_char = chars
+            .iter()
+            .find(|c| c.uuid == *consts::blecharacteristic::LPF2_ALL)
+            .context("Device does not advertise LPF2_ALL characteristic")?
+            .clone();
+        peripheral.subscribe(&lpf_char).await?;
+
+        Ok(Box::new(match hub.hub_type {
+            HubType::TechnicMediumHub => {
+                hubs::TechnicHub::init(peripheral, chars).await?
+            }
+            _ => unimplemented!(),
+        }))
     }
 }
 
