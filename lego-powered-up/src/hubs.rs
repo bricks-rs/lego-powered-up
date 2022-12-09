@@ -11,7 +11,6 @@ use std::collections::BTreeSet;
 use crate::consts::blecharacteristic;
 use btleplug::api::{Characteristic, Peripheral, WriteType};
 use std::collections::HashMap;
-use std::sync::Arc;
 
 /// Trait describing a generic hub.
 #[async_trait::async_trait]
@@ -111,7 +110,7 @@ pub struct ConnectedIo {
 
 /// Definition for the TechnicMediumHub
 pub struct TechnicHub<P: Peripheral> {
-    peripheral: Arc<P>,
+    peripheral: P,
     lpf_characteristic: Characteristic,
     properties: HubProperties,
     connected_io: HashMap<u8, ConnectedIo>,
@@ -196,9 +195,7 @@ impl<'p, P: Peripheral + 'p> Hub<'p> for TechnicHub<P> {
 
     async fn port(&'p self, port_id: Port) -> Result<Box<dyn Device + 'p>> {
         Ok(match port_id {
-            Port::HubLed => {
-                Box::new(devices::HubLED::new(self.peripheral.clone(), 1))
-            }
+            Port::HubLed => Box::new(devices::HubLED::new(&self.peripheral, 1)),
             _ => todo!(),
         })
     }
@@ -207,7 +204,7 @@ impl<'p, P: Peripheral + 'p> Hub<'p> for TechnicHub<P> {
 impl<P: Peripheral> TechnicHub<P> {
     /// Initialisation method
     pub async fn init(
-        peripheral: Arc<P>,
+        peripheral: P,
         chars: BTreeSet<Characteristic>,
     ) -> Result<Self> {
         // Peripheral is already connected before we get here

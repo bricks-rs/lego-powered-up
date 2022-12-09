@@ -5,7 +5,6 @@ use btleplug::api::{
 use btleplug::platform::{Adapter, Manager, Peripheral, PeripheralId};
 use futures::stream::StreamExt;
 use num_traits::FromPrimitive;
-use std::sync::Arc;
 
 #[macro_use]
 extern crate log;
@@ -149,7 +148,7 @@ impl PoweredUp {
 
         Ok(Box::new(match hub.hub_type {
             HubType::TechnicMediumHub => {
-                hubs::TechnicHub::init(Arc::new(peripheral), chars).await?
+                hubs::TechnicHub::init(peripheral, chars).await?
             }
             _ => unimplemented!(),
         }))

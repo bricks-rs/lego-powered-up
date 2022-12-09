@@ -7,14 +7,13 @@
 use crate::error::{Error, Result};
 use crate::hubs::Port;
 use crate::notifications::{HubLedMode, Power};
-use btleplug::api::{BDAddr, Peripheral};
+use btleplug::api::Peripheral;
 use std::fmt::Debug;
-use std::sync::Arc;
 
 /// Trait that any device may implement. Having a single trait covering
 /// every device is probably the wrong design, and we should have better
 /// abstractions for e.g. motors vs. sensors & LEDs.
-pub trait Device<'p>: Debug + Send + Sync {
+pub trait Device: Debug + Send + Sync {
     fn port(&self) -> Port;
     // fn send(&mut self, _msg: NotificationMessage) -> Result<()>;
     fn set_rgb(&mut self, _rgb: &[u8; 3]) -> Result<()> {
@@ -52,17 +51,17 @@ pub trait Device<'p>: Debug + Send + Sync {
 
 /// Struct representing a Hub LED
 #[derive(Debug, Clone)]
-pub struct HubLED<P: Peripheral> {
+pub struct HubLED<'p, P: Peripheral> {
     /// RGB colour value
     rgb: [u8; 3],
     _mode: HubLedMode,
-    peripheral: Arc<P>,
+    peripheral: &'p P,
     port_id: u8,
     // hub_addr: BDAddr,
     // hub_manager_tx: Sender<HubManagerMessage>,
 }
 
-impl<P: Peripheral> Device<'_> for HubLED<P> {
+impl<P: Peripheral> Device for HubLED<'_, P> {
     fn port(&self) -> Port {
         Port::HubLed
     }
@@ -111,13 +110,8 @@ impl<P: Peripheral> Device<'_> for HubLED<P> {
     }
 }
 
-impl<P: Peripheral> HubLED<P> {
-    pub(crate) fn new(
-        peripheral: Arc<P>,
-        // hub_addr: BDAddr,
-        // hub_manager_tx: Sender<HubManagerMessage>,
-        port_id: u8,
-    ) -> Self {
+impl<'p, P: Peripheral> HubLED<'p, P> {
+    pub(crate) fn new(peripheral: &'p P, port_id: u8) -> Self {
         let mode = HubLedMode::Rgb;
         //hub.subscribe(mode);
         Self {
@@ -125,23 +119,21 @@ impl<P: Peripheral> HubLED<P> {
             _mode: mode,
             peripheral,
             port_id,
-            // hub_addr,
-            // hub_manager_tx,
         }
     }
 }
 
 /// Struct representing a motor
 #[derive(Debug, Clone)]
-pub struct Motor<P: Peripheral> {
-    peripheral: Arc<P>,
+pub struct Motor<'p, P: Peripheral> {
+    peripheral: &'p P,
     port: Port,
     port_id: u8,
     // hub_addr: BDAddr,
     // hub_manager_tx: Sender<HubManagerMessage>,
 }
 
-impl<P: Peripheral> Device<'_> for Motor<P> {
+impl<P: Peripheral> Device for Motor<'_, P> {
     fn port(&self) -> Port {
         self.port
     }
@@ -177,9 +169,9 @@ impl<P: Peripheral> Device<'_> for Motor<P> {
     }
 }
 
-impl<P: Peripheral> Motor<P> {
+impl<'p, P: Peripheral> Motor<'p, P> {
     pub(crate) fn new(
-        peripheral: Arc<P>,
+        peripheral: &'p P,
         // hub_addr: BDAddr,
         // hub_manager_tx: Sender<HubManagerMessage>,
         port: Port,
