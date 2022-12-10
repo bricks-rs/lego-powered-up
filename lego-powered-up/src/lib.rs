@@ -2,7 +2,7 @@ use btleplug::api::{
     Central, CentralEvent, Manager as _, Peripheral as _, PeripheralProperties,
     ScanFilter,
 };
-use btleplug::platform::{Adapter, Manager, Peripheral, PeripheralId};
+use btleplug::platform::{Adapter, Manager, PeripheralId};
 use futures::stream::StreamExt;
 use num_traits::FromPrimitive;
 
@@ -129,7 +129,7 @@ impl PoweredUp {
     pub async fn create_hub(
         &mut self,
         hub: &DiscoveredHub,
-    ) -> Result<Box<dyn Hub<P = Peripheral>>> {
+    ) -> Result<Box<dyn Hub>> {
         info!("Connecting to hub {}...", hub.addr,);
 
         let peripheral = self.adapter.peripheral(&hub.addr).await?;

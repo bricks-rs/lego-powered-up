@@ -6,13 +6,13 @@
 
 use crate::devices::{self, Device};
 use crate::error::{OptionContext, Result};
-use btleplug::api::{Characteristic, Peripheral, WriteType};
+use btleplug::api::{Characteristic, Peripheral as _, WriteType};
+use btleplug::platform::Peripheral;
 use std::collections::HashMap;
 
 /// Trait describing a generic hub.
 #[async_trait::async_trait]
 pub trait Hub {
-    type P: Peripheral;
     async fn name(&self) -> Result<String>;
     async fn disconnect(&self) -> Result<()>;
     async fn is_connected(&self) -> Result<bool>;
@@ -37,8 +37,7 @@ pub trait Hub {
 
     // fn process_io_event(&mut self, _evt: AttachedIo);
 
-    async fn port(&self, port_id: Port)
-        -> Result<Box<dyn Device<P = Self::P>>>;
+    async fn port(&self, port_id: Port) -> Result<Box<dyn Device>>;
 }
 
 pub type VersionNumber = u8;
@@ -108,17 +107,15 @@ pub struct ConnectedIo {
 }
 
 /// Definition for the TechnicMediumHub
-pub struct TechnicHub<P: Peripheral> {
-    peripheral: P,
+pub struct TechnicHub {
+    peripheral: Peripheral,
     lpf_characteristic: Characteristic,
     properties: HubProperties,
     connected_io: HashMap<u8, ConnectedIo>,
 }
 
 #[async_trait::async_trait]
-impl<P: Peripheral + 'static> Hub for TechnicHub<P> {
-    type P = P;
-
+impl Hub for TechnicHub {
     async fn name(&self) -> Result<String> {
         Ok(self
             .peripheral
@@ -194,7 +191,7 @@ impl<P: Peripheral + 'static> Hub for TechnicHub<P> {
     //     }
     // }
 
-    async fn port(&self, port_id: Port) -> Result<Box<dyn Device<P = P>>> {
+    async fn port(&self, port_id: Port) -> Result<Box<dyn Device>> {
         let port =
             *self.properties.port_map.get(&port_id).ok_or_else(|| {
                 crate::Error::NoneError(format!(
@@ -220,10 +217,10 @@ impl<P: Peripheral + 'static> Hub for TechnicHub<P> {
     }
 }
 
-impl<P: Peripheral> TechnicHub<P> {
+impl TechnicHub {
     /// Initialisation method
     pub async fn init(
-        peripheral: P,
+        peripheral: Peripheral,
         lpf_characteristic: Characteristic,
     ) -> Result<Self> {
         // Peripheral is already connected before we get here
