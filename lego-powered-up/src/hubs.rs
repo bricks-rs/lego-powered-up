@@ -6,9 +6,6 @@
 
 use crate::devices::{self, Device};
 use crate::error::{OptionContext, Result};
-use std::collections::BTreeSet;
-// use crate::notifications::NotificationMessage;
-use crate::consts::blecharacteristic;
 use btleplug::api::{Characteristic, Peripheral, WriteType};
 use std::collections::HashMap;
 

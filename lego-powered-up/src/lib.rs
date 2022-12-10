@@ -15,6 +15,7 @@ pub mod error;
 pub mod hubs;
 pub mod notifications;
 
+pub use btleplug;
 pub use error::{Error, OptionContext, Result};
 
 use consts::{BLEManufacturerData, HubType};

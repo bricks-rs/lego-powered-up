@@ -6,11 +6,9 @@
 
 use crate::error::{Error, Result};
 use crate::hubs::Port;
-use crate::notifications::NotificationMessage;
-use crate::notifications::{HubLedMode, Power};
+use crate::notifications::{HubLedMode, NotificationMessage, Power};
 use async_trait::async_trait;
-use btleplug::api::Characteristic;
-use btleplug::api::{Peripheral, WriteType};
+use btleplug::api::{Characteristic, Peripheral, WriteType};
 use std::fmt::Debug;
 
 /// Trait that any device may implement. Having a single trait covering

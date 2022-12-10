@@ -4,8 +4,7 @@
 
 use crate::argparse::MotorTestArgs;
 use anyhow::Result;
-use lego_powered_up::notifications::Power;
-use lego_powered_up::{hubs::Port, HubFilter, PoweredUp};
+use lego_powered_up::{hubs::Port, notifications::Power, HubFilter, PoweredUp};
 
 use std::time::Duration;
 

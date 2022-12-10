@@ -4,7 +4,7 @@
 
 use crate::argparse::DevicesArgs;
 use anyhow::Result;
-use lego_powered_up::PoweredUp;
+use lego_powered_up::{btleplug::api::Central, PoweredUp};
 
 pub async fn run(args: &DevicesArgs) -> Result<()> {
     let adapters = PoweredUp::devices().await?;
@@ -12,7 +12,7 @@ pub async fn run(args: &DevicesArgs) -> Result<()> {
     if let Some(idx) = args.index {
         if let Some(adapter) = adapters.get(idx) {
             println!("Showing 1 Bluetooth device:");
-            //lego_powered_up::print_adapter_info(idx, adapter)?;
+            println!("  {}: {}", idx, adapter.adapter_info().await?);
         } else {
             println!("No Bluetooth device found");
         }
@@ -24,7 +24,7 @@ pub async fn run(args: &DevicesArgs) -> Result<()> {
     } else {
         println!("Showing {} available Bluetooth devices:", adapters.len());
         for (idx, dev) in adapters.iter().enumerate() {
-            //lego_powered_up::print_adapter_info(idx, dev)?;
+            println!("  {}: {}", idx, dev.adapter_info().await?);
         }
     }
     Ok(())
