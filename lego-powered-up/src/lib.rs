@@ -148,7 +148,7 @@ impl PoweredUp {
 
         Ok(Box::new(match hub.hub_type {
             HubType::TechnicMediumHub => {
-                hubs::TechnicHub::init(peripheral, chars).await?
+                hubs::TechnicHub::init(peripheral, lpf_char).await?
             }
             _ => unimplemented!(),
         }))

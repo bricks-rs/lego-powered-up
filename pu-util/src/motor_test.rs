@@ -50,7 +50,7 @@ pub async fn run(args: &MotorTestArgs) -> Result<()> {
     let mut hub_led = hub.port(Port::HubLed).await?;
     let colour = [0x00, 0xff, 0x00];
     println!("Setting to: {:02x?}", colour);
-    hub_led.set_rgb(&colour)?;
+    hub_led.set_rgb(&colour).await?;
     tokio::time::sleep(Duration::from_secs(1)).await;
 
     for port in &[Port::A, Port::B, Port::C, Port::D] {

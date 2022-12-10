@@ -199,9 +199,11 @@ impl<P: Peripheral + 'static> Hub for TechnicHub<P> {
 
     async fn port(&self, port_id: Port) -> Result<Box<dyn Device<P = P>>> {
         Ok(match port_id {
-            Port::HubLed => {
-                Box::new(devices::HubLED::new(self.peripheral.clone(), 1))
-            }
+            Port::HubLed => Box::new(devices::HubLED::new(
+                self.peripheral.clone(),
+                self.lpf_characteristic.clone(),
+                1,
+            )),
             _ => todo!(),
         })
     }
@@ -211,16 +213,9 @@ impl<P: Peripheral> TechnicHub<P> {
     /// Initialisation method
     pub async fn init(
         peripheral: P,
-        chars: BTreeSet<Characteristic>,
+        lpf_characteristic: Characteristic,
     ) -> Result<Self> {
         // Peripheral is already connected before we get here
-
-        println!("\n\nCHARACTERISTICS:\n\n{:?}\n\n", chars);
-        let lpf_characteristic = chars
-            .iter()
-            .find(|c| c.uuid == *blecharacteristic::LPF2_ALL)
-            .context("Device does not advertise LPF2_ALL characteristic")?
-            .clone();
 
         let props = peripheral
             .properties()

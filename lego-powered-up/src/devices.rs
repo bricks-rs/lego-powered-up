@@ -6,19 +6,30 @@
 
 use crate::error::{Error, Result};
 use crate::hubs::Port;
+use crate::notifications::NotificationMessage;
 use crate::notifications::{HubLedMode, Power};
-use btleplug::api::Peripheral;
+use async_trait::async_trait;
+use btleplug::api::Characteristic;
+use btleplug::api::{Peripheral, WriteType};
 use std::fmt::Debug;
 
 /// Trait that any device may implement. Having a single trait covering
 /// every device is probably the wrong design, and we should have better
 /// abstractions for e.g. motors vs. sensors & LEDs.
+#[async_trait]
 pub trait Device: Debug + Send + Sync {
     type P: Peripheral;
     fn port(&self) -> Port;
     fn peripheral(&self) -> &Self::P;
-    // fn send(&mut self, _msg: NotificationMessage) -> Result<()>;
-    fn set_rgb(&mut self, _rgb: &[u8; 3]) -> Result<()> {
+    fn characteristic(&self) -> &Characteristic;
+    async fn send(&mut self, msg: NotificationMessage) -> Result<()> {
+        let buf = msg.serialise();
+        self.peripheral()
+            .write(self.characteristic(), &buf, WriteType::WithoutResponse)
+            .await?;
+        Ok(())
+    }
+    async fn set_rgb(&mut self, _rgb: &[u8; 3]) -> Result<()> {
         Err(Error::NotImplementedError(
             "Not implemented for type".to_string(),
         ))
@@ -58,11 +69,13 @@ pub struct HubLED<P: Peripheral> {
     rgb: [u8; 3],
     _mode: HubLedMode,
     peripheral: P,
+    characteristic: Characteristic,
     port_id: u8,
     // hub_addr: BDAddr,
     // hub_manager_tx: Sender<HubManagerMessage>,
 }
 
+#[async_trait]
 impl<P: Peripheral> Device for HubLED<P> {
     type P = P;
     fn port(&self) -> Port {
@@ -71,6 +84,10 @@ impl<P: Peripheral> Device for HubLED<P> {
 
     fn peripheral(&self) -> &Self::P {
         &self.peripheral
+    }
+
+    fn characteristic(&self) -> &Characteristic {
+        &self.characteristic
     }
 
     // fn send(&mut self, msg: NotificationMessage) -> Result<()> {
@@ -83,47 +100,51 @@ impl<P: Peripheral> Device for HubLED<P> {
     //     rx.recv()?
     // }
 
-    fn set_rgb(&mut self, rgb: &[u8; 3]) -> Result<()> {
-        // use crate::notifications::*;
+    async fn set_rgb(&mut self, rgb: &[u8; 3]) -> Result<()> {
+        use crate::notifications::*;
 
         self.rgb = *rgb;
 
-        // let mode_set_msg =
-        //     NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
-        //         port_id: 50,
-        //         mode: 0x01,
-        //         delta: 0x00000001,
-        //         notification_enabled: false,
-        //     });
-        // self.send(mode_set_msg)?;
+        let mode_set_msg =
+            NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
+                port_id: 50,
+                mode: 0x01,
+                delta: 0x00000001,
+                notification_enabled: false,
+            });
+        self.send(mode_set_msg).await?;
 
-        // let subcommand = PortOutputSubcommand::WriteDirectModeData(
-        //     WriteDirectModeDataPayload::SetRgbColors {
-        //         red: rgb[0],
-        //         green: rgb[1],
-        //         blue: rgb[2],
-        //     },
-        // );
+        let subcommand = PortOutputSubcommand::WriteDirectModeData(
+            WriteDirectModeDataPayload::SetRgbColors {
+                red: rgb[0],
+                green: rgb[1],
+                blue: rgb[2],
+            },
+        );
 
-        // let msg =
-        //     NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
-        //         port_id: self.port_id,
-        //         startup_info: StartupInfo::ExecuteImmediately,
-        //         completion_info: CompletionInfo::NoAction,
-        //         subcommand,
-        //     });
-        // self.send(msg)
-        Ok(())
+        let msg =
+            NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
+                port_id: self.port_id,
+                startup_info: StartupInfo::ExecuteImmediately,
+                completion_info: CompletionInfo::NoAction,
+                subcommand,
+            });
+        self.send(msg).await
     }
 }
 
 impl<P: Peripheral> HubLED<P> {
-    pub(crate) fn new(peripheral: P, port_id: u8) -> Self {
+    pub(crate) fn new(
+        peripheral: P,
+        characteristic: Characteristic,
+        port_id: u8,
+    ) -> Self {
         let mode = HubLedMode::Rgb;
         //hub.subscribe(mode);
         Self {
             rgb: [0; 3],
             _mode: mode,
+            characteristic,
             peripheral,
             port_id,
         }
@@ -134,12 +155,14 @@ impl<P: Peripheral> HubLED<P> {
 #[derive(Debug, Clone)]
 pub struct Motor<P: Peripheral> {
     peripheral: P,
+    characteristic: Characteristic,
     port: Port,
     port_id: u8,
     // hub_addr: BDAddr,
     // hub_manager_tx: Sender<HubManagerMessage>,
 }
 
+#[async_trait]
 impl<P: Peripheral> Device for Motor<P> {
     type P = P;
     fn port(&self) -> Port {
@@ -148,6 +171,10 @@ impl<P: Peripheral> Device for Motor<P> {
 
     fn peripheral(&self) -> &Self::P {
         &self.peripheral
+    }
+
+    fn characteristic(&self) -> &Characteristic {
+        &self.characteristic
     }
 
     // fn send(&mut self, msg: NotificationMessage) -> Result<()> {
@@ -184,6 +211,7 @@ impl<P: Peripheral> Device for Motor<P> {
 impl<'p, P: Peripheral> Motor<P> {
     pub(crate) fn new(
         peripheral: P,
+        characteristic: Characteristic,
         // hub_addr: BDAddr,
         // hub_manager_tx: Sender<HubManagerMessage>,
         port: Port,
@@ -191,6 +219,7 @@ impl<'p, P: Peripheral> Motor<P> {
     ) -> Self {
         Self {
             peripheral,
+            characteristic,
             port,
             port_id,
             // hub_addr,
