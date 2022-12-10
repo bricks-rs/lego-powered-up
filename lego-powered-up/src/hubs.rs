@@ -198,11 +198,17 @@ impl<P: Peripheral + 'static> Hub for TechnicHub<P> {
     // }
 
     async fn port(&self, port_id: Port) -> Result<Box<dyn Device<P = P>>> {
+        let port =
+            *self.properties.port_map.get(&port_id).ok_or_else(|| {
+                crate::Error::NoneError(format!(
+                    "Port type `{port_id:?}` not supported"
+                ))
+            })?;
         Ok(match port_id {
             Port::HubLed => Box::new(devices::HubLED::new(
                 self.peripheral.clone(),
                 self.lpf_characteristic.clone(),
-                1,
+                port,
             )),
             _ => todo!(),
         })
