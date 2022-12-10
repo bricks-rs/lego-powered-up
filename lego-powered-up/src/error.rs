@@ -11,8 +11,6 @@ pub enum Error {
     BluetoothError(#[from] btleplug::Error),
     #[error("NoneError: {0}")]
     NoneError(String),
-    #[error("Channel error")]
-    ChannelError(CrossbeamError),
     #[error("Parse error")]
     ParseErrorBLE(#[from] ParseBDAddrError),
     #[error("Timeout error: {0}")]
@@ -23,30 +21,6 @@ pub enum Error {
     NotImplementedError(String),
     #[error("Hub error: {0}")]
     HubError(String),
-}
-
-impl<E> From<E> for Error
-where
-    E: Into<CrossbeamError>,
-{
-    fn from(e: E) -> Error {
-        Error::ChannelError(e.into())
-    }
-}
-
-#[derive(Debug)]
-pub struct CrossbeamError(String);
-
-impl From<crossbeam_channel::RecvError> for CrossbeamError {
-    fn from(e: crossbeam_channel::RecvError) -> Self {
-        Self(e.to_string())
-    }
-}
-
-impl<T> From<crossbeam_channel::SendError<T>> for CrossbeamError {
-    fn from(e: crossbeam_channel::SendError<T>) -> Self {
-        Self(e.to_string())
-    }
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
