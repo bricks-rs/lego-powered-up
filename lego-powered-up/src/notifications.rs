@@ -383,7 +383,7 @@ pub enum HubLedMode {
     Rgb = 0x01,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HubProperty {
     property: HubPropertyValue,
     operation: HubPropertyOperation,
@@ -402,7 +402,7 @@ impl HubProperty {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum HubPropertyValue {
     AdvertisingName(Vec<u8>),
     Button(u8),
@@ -1028,7 +1028,7 @@ impl InputSetupCombinedSubcommand {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PortInformationValue {
     port_id: u8,
     information_type: PortInformationType,
@@ -1430,7 +1430,7 @@ impl PortOutputCommandFormat {
                     profile,
                 ]
             }
-            WriteDirectModeData(data) => data.serialise(&self),
+            WriteDirectModeData(data) => data.serialise(self),
             _ => todo!(),
         }
     }
