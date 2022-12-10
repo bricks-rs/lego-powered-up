@@ -11,41 +11,40 @@
 See the [examples](https://github.com/sciguy16/lego-powered-up/tree/main/examples) directory for more!
 
 ```rust
-use lego_powered_up::notifications::Power;
-use lego_powered_up::PoweredUp;
-use std::{thread::sleep, time::Duration};
+use lego_powered_up::{notifications::Power, PoweredUp};
+use std::time::Duration;
 
-fn main() -> anyhow::Result<()> {
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
     println!("Listening for hubs...");
-    let pu = PoweredUp::init()?;
-    let hub = pu.wait_for_hub()?;
+    let mut pu = PoweredUp::init().await?;
+    let hub = pu.wait_for_hub().await?;
 
     println!("Connecting to hub `{}`", hub.name);
-    let hub = pu.create_hub(&hub)?;
+    let hub = pu.create_hub(&hub).await?;
 
     println!("Change the hub LED to green");
-    let mut hub_led = hub.port(lego_powered_up::hubs::Port::HubLed)?;
-    hub_led.set_rgb(&[0, 0xff, 0])?;
+    let mut hub_led = hub.port(lego_powered_up::hubs::Port::HubLed).await?;
+    hub_led.set_rgb(&[0, 0xff, 0]).await?;
 
     println!("Run motors");
-    let mut motor_c = hub.port(lego_powered_up::hubs::Port::C)?;
-    let mut motor_d = hub.port(lego_powered_up::hubs::Port::D)?;
-    motor_c.start_speed(50, Power::Cw(50))?;
-    motor_d.start_speed(50, Power::Cw(50))?;
+    let mut motor_c = hub.port(lego_powered_up::hubs::Port::C).await?;
+    let mut motor_d = hub.port(lego_powered_up::hubs::Port::D).await?;
+    motor_c.start_speed(50, Power::Cw(50)).await?;
+    motor_d.start_speed(50, Power::Cw(50)).await?;
 
-    sleep(Duration::from_secs(3));
+    tokio::time::sleep(Duration::from_secs(3)).await;
 
     println!("Stop motors");
-    motor_c.start_speed(0, Power::Float)?;
-    motor_d.start_speed(0, Power::Brake)?;
+    motor_c.start_speed(0, Power::Float).await?;
+    motor_d.start_speed(0, Power::Brake).await?;
 
-    println!("Disconnect from hub `{}`", hub.get_name());
-    hub.disconnect()?;
+    println!("Disconnect from hub `{}`", hub.name().await?);
+    hub.disconnect().await?;
 
     println!("Done!");
 
     Ok(())
-}
 ```
 
 ## Contributing
@@ -58,25 +57,6 @@ Contributions are welcome, particularly in the following areas:
 * Client implementation
 * `#![no_std]` support (controller & client)
 * Testing on/porting to non-linux operating systems, e.g. Windows & Mac
-
-## Future goals
-* Bluetooth/USB control of NXT bricks
-* Control RCX bricks via the IR tower
-
-## Architecture
-
-Main components (tokio tasks):
-
-* PoweredUp
-  * Listener for Bluetooth device discovery notifications from btleplug
-* HubManager
-  * Owns the Peripherals corresponding to each hub
-  * Listens for subscription messages and updates the stored hub & device states
-
-Communication:
-* Internal RPC structure
-  * HubManager listens on a control channel
-  * Requests down the control channel may include the sending half of a response channel
 
 ## License
 This library is available under the terms of the [Mozilla Public License 2.0](https://choosealicense.com/licenses/mpl-2.0/).

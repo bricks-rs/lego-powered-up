@@ -2,10 +2,9 @@
 // https://creativecommons.org/publicdomain/zero/1.0/
 
 use gilrs::{Button, Event, EventType::AxisChanged, Gilrs};
-use lego_powered_up::devices::Device;
-use lego_powered_up::hubs::Hub;
-use lego_powered_up::notifications::Power;
-use lego_powered_up::PoweredUp;
+use lego_powered_up::{
+    devices::Device, hubs::Hub, notifications::Power, PoweredUp,
+};
 use std::fmt::{self, Display, Formatter};
 use std::time::{Duration, Instant};
 

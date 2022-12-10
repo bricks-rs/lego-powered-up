@@ -2,7 +2,7 @@
 // https://creativecommons.org/publicdomain/zero/1.0/
 
 use lego_powered_up::{notifications::Power, PoweredUp};
-use std::{thread::sleep, time::Duration};
+use std::time::Duration;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -23,7 +23,7 @@ async fn main() -> anyhow::Result<()> {
     motor_c.start_speed(50, Power::Cw(50)).await?;
     motor_d.start_speed(50, Power::Cw(50)).await?;
 
-    sleep(Duration::from_secs(3));
+    tokio::time::sleep(Duration::from_secs(3)).await;
 
     println!("Stop motors");
     motor_c.start_speed(0, Power::Float).await?;
