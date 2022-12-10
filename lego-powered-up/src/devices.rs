@@ -14,7 +14,9 @@ use std::fmt::Debug;
 /// every device is probably the wrong design, and we should have better
 /// abstractions for e.g. motors vs. sensors & LEDs.
 pub trait Device: Debug + Send + Sync {
+    type P: Peripheral;
     fn port(&self) -> Port;
+    fn peripheral(&self) -> &Self::P;
     // fn send(&mut self, _msg: NotificationMessage) -> Result<()>;
     fn set_rgb(&mut self, _rgb: &[u8; 3]) -> Result<()> {
         Err(Error::NotImplementedError(
@@ -51,19 +53,24 @@ pub trait Device: Debug + Send + Sync {
 
 /// Struct representing a Hub LED
 #[derive(Debug, Clone)]
-pub struct HubLED<'p, P: Peripheral> {
+pub struct HubLED<P: Peripheral> {
     /// RGB colour value
     rgb: [u8; 3],
     _mode: HubLedMode,
-    peripheral: &'p P,
+    peripheral: P,
     port_id: u8,
     // hub_addr: BDAddr,
     // hub_manager_tx: Sender<HubManagerMessage>,
 }
 
-impl<P: Peripheral> Device for HubLED<'_, P> {
+impl<P: Peripheral> Device for HubLED<P> {
+    type P = P;
     fn port(&self) -> Port {
         Port::HubLed
+    }
+
+    fn peripheral(&self) -> &Self::P {
+        &self.peripheral
     }
 
     // fn send(&mut self, msg: NotificationMessage) -> Result<()> {
@@ -110,8 +117,8 @@ impl<P: Peripheral> Device for HubLED<'_, P> {
     }
 }
 
-impl<'p, P: Peripheral> HubLED<'p, P> {
-    pub(crate) fn new(peripheral: &'p P, port_id: u8) -> Self {
+impl<P: Peripheral> HubLED<P> {
+    pub(crate) fn new(peripheral: P, port_id: u8) -> Self {
         let mode = HubLedMode::Rgb;
         //hub.subscribe(mode);
         Self {
@@ -125,17 +132,22 @@ impl<'p, P: Peripheral> HubLED<'p, P> {
 
 /// Struct representing a motor
 #[derive(Debug, Clone)]
-pub struct Motor<'p, P: Peripheral> {
-    peripheral: &'p P,
+pub struct Motor<P: Peripheral> {
+    peripheral: P,
     port: Port,
     port_id: u8,
     // hub_addr: BDAddr,
     // hub_manager_tx: Sender<HubManagerMessage>,
 }
 
-impl<P: Peripheral> Device for Motor<'_, P> {
+impl<P: Peripheral> Device for Motor<P> {
+    type P = P;
     fn port(&self) -> Port {
         self.port
+    }
+
+    fn peripheral(&self) -> &Self::P {
+        &self.peripheral
     }
 
     // fn send(&mut self, msg: NotificationMessage) -> Result<()> {
@@ -169,9 +181,9 @@ impl<P: Peripheral> Device for Motor<'_, P> {
     }
 }
 
-impl<'p, P: Peripheral> Motor<'p, P> {
+impl<'p, P: Peripheral> Motor<P> {
     pub(crate) fn new(
-        peripheral: &'p P,
+        peripheral: P,
         // hub_addr: BDAddr,
         // hub_manager_tx: Sender<HubManagerMessage>,
         port: Port,

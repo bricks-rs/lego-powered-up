@@ -128,7 +128,7 @@ impl PoweredUp {
     pub async fn create_hub(
         &mut self,
         hub: &DiscoveredHub,
-    ) -> Result<Box<dyn Hub>> {
+    ) -> Result<Box<dyn Hub<P = Peripheral>>> {
         info!("Connecting to hub {}...", hub.addr,);
 
         let peripheral = self.adapter.peripheral(&hub.addr).await?;

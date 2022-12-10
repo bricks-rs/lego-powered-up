@@ -14,7 +14,8 @@ use std::collections::HashMap;
 
 /// Trait describing a generic hub.
 #[async_trait::async_trait]
-pub trait Hub<'p> {
+pub trait Hub {
+    type P: Peripheral;
     async fn name(&self) -> Result<String>;
     async fn disconnect(&self) -> Result<()>;
     async fn is_connected(&self) -> Result<bool>;
@@ -39,7 +40,8 @@ pub trait Hub<'p> {
 
     // fn process_io_event(&mut self, _evt: AttachedIo);
 
-    async fn port(&'p self, port_id: Port) -> Result<Box<dyn Device + 'p>>;
+    async fn port(&self, port_id: Port)
+        -> Result<Box<dyn Device<P = Self::P>>>;
 }
 
 pub type VersionNumber = u8;
@@ -117,7 +119,9 @@ pub struct TechnicHub<P: Peripheral> {
 }
 
 #[async_trait::async_trait]
-impl<'p, P: Peripheral + 'p> Hub<'p> for TechnicHub<P> {
+impl<P: Peripheral + 'static> Hub for TechnicHub<P> {
+    type P = P;
+
     async fn name(&self) -> Result<String> {
         Ok(self
             .peripheral
@@ -193,9 +197,11 @@ impl<'p, P: Peripheral + 'p> Hub<'p> for TechnicHub<P> {
     //     }
     // }
 
-    async fn port(&'p self, port_id: Port) -> Result<Box<dyn Device + 'p>> {
+    async fn port(&self, port_id: Port) -> Result<Box<dyn Device<P = P>>> {
         Ok(match port_id {
-            Port::HubLed => Box::new(devices::HubLED::new(&self.peripheral, 1)),
+            Port::HubLed => {
+                Box::new(devices::HubLED::new(self.peripheral.clone(), 1))
+            }
             _ => todo!(),
         })
     }
