@@ -1,10 +1,10 @@
 [package]
 name = "lego-powered-up"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["David Young <david@thedavidyoung.co.uk>"]
 edition = "2021"
 license = "MPL-2.0"
-repository = "https://github.com/sciguy16/lego-powered-up"
+repository = "https://github.com/bricks-rs/lego-powered-up"
 description = "Control Lego PoweredUp hubs and devices"
 readme = "../README.md"
 
