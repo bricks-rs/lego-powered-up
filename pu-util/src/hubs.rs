@@ -4,18 +4,14 @@
 
 use crate::argparse::HubArgs;
 use anyhow::Result;
-use lego_powered_up::{
-    consts::HubType, hubs::Port, BDAddr, DiscoveredHub, HubFilter, PoweredUp,
-};
-use std::str::FromStr;
-use std::thread::sleep;
+use lego_powered_up::{hubs::Port, HubFilter, PoweredUp};
 use std::time::Duration;
 
-pub fn run(args: &HubArgs) -> Result<()> {
+pub async fn run(args: &HubArgs) -> Result<()> {
     let mut pu = if let Some(dev) = args.device_index {
-        PoweredUp::with_device(dev)?
+        PoweredUp::with_device_index(dev).await?
     } else {
-        PoweredUp::init()?
+        PoweredUp::init().await?
     };
     // let rx = pu.event_receiver().unwrap();
     // pu.run().unwrap();
@@ -26,15 +22,13 @@ pub fn run(args: &HubArgs) -> Result<()> {
     // 90:84:2B:60:3A:6C
 
     let hub = if let Some(addr) = &args.address {
-        DiscoveredHub {
-            hub_type: HubType::Unknown,
-            addr: BDAddr::from_str(addr)?,
-            name: "".to_string(),
-        }
+        pu.wait_for_hub_filter(HubFilter::Addr(addr.to_string()))
+            .await?
     } else if let Some(name) = &args.name {
-        pu.wait_for_hub_filter(HubFilter::Name(name.to_string()))?
+        pu.wait_for_hub_filter(HubFilter::Name(name.to_string()))
+            .await?
     } else {
-        pu.wait_for_hub()?
+        pu.wait_for_hub().await?
     };
 
     let verb = if args.connect {
@@ -49,38 +43,37 @@ pub fn run(args: &HubArgs) -> Result<()> {
 
     if args.connect {
         use lego_powered_up::notifications::Power;
-        let hub = pu.create_hub(&hub)?;
+        let hub = pu.create_hub(&hub).await?;
 
         println!("Setting hub LED");
 
         // Set the hub LED if available
-        let mut hub_led = hub.port(Port::HubLed)?;
+        let mut hub_led = hub.port(Port::HubLed).await?;
         for colour in [[0_u8, 0xff, 0], [0xff, 0, 0], [0, 0, 0xff]]
             .iter()
             .cycle()
             .take(10)
         {
             println!("Setting to: {:02x?}", colour);
-            hub_led.set_rgb(colour)?;
-            sleep(Duration::from_secs(1));
+            hub_led.set_rgb(colour).await?;
+            tokio::time::sleep(Duration::from_millis(400)).await;
         }
 
         println!("Setting Motor A");
 
-        let mut motor = hub.port(Port::A)?;
-        motor.start_speed(50, Power::Cw(50))?;
-        sleep(Duration::from_secs(4));
-        motor.start_speed(0, Power::Float)?;
+        let mut motor = hub.port(Port::A).await?;
+        motor.start_speed(50, Power::Cw(50)).await?;
+        tokio::time::sleep(Duration::from_secs(4)).await;
+        motor.start_speed(0, Power::Float).await?;
 
         println!("Done!");
 
-        sleep(Duration::from_secs(5));
+        tokio::time::sleep(Duration::from_secs(2)).await;
 
         println!("Disconnecting...");
-        hub.disconnect()?;
+        hub.disconnect().await?;
         println!("Done");
     }
-    pu.stop()?;
 
     Ok(())
 }

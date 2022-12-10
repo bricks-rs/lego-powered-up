@@ -2,7 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use clap::{crate_version, App, AppSettings, Arg};
+use clap::{crate_version, App, AppSettings, Arg, ArgAction};
 use std::cmp::min;
 
 pub struct Args {
@@ -29,7 +29,7 @@ pub struct HubArgs {
 
 pub struct MotorTestArgs {
     pub device_index: Option<usize>,
-    pub address: String,
+    pub address: Option<String>,
 }
 
 pub fn parse_args() -> Args {
@@ -41,8 +41,7 @@ pub fn parse_args() -> Args {
         .arg(
             Arg::new("verbose")
                 .short('v')
-                .multiple(true)
-                .takes_value(false)
+                .action(ArgAction::Count)
                 .help("Increase verbosity"),
         )
         .subcommand(
@@ -88,7 +87,6 @@ pub fn parse_args() -> Args {
                     Arg::new("address")
                         .long("address")
                         .help("Address of hub")
-                        .required(true)
                         .takes_value(true),
                 ),
         )
@@ -118,7 +116,7 @@ pub fn parse_args() -> Args {
                 v.parse()
                     .expect("Device index must be a nonnegative integer")
             }),
-            address: matches.value_of("address").unwrap().to_string(),
+            address: matches.value_of("address").map(String::from),
         })
     } else {
         unreachable!();

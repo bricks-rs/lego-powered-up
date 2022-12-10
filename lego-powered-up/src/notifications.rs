@@ -5,7 +5,6 @@
 //! Parser and data structure for hub notification messages
 
 use crate::consts::*;
-use crate::devices::HubLedMode;
 use crate::error::{Error, OptionContext, Result};
 use log::{debug, trace};
 use lpu_macros::Parse;
@@ -374,7 +373,17 @@ impl NotificationMessage {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+/// The two modes by which Hub LED colours may be set
+#[repr(u8)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum HubLedMode {
+    /// Colour may be set to one of a number of specific named colours
+    Colour = 0x0,
+    /// Colour may be set to any 12-bit RGB value
+    Rgb = 0x01,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HubProperty {
     property: HubPropertyValue,
     operation: HubPropertyOperation,
@@ -393,7 +402,7 @@ impl HubProperty {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum HubPropertyValue {
     AdvertisingName(Vec<u8>),
     Button(u8),
@@ -1019,7 +1028,7 @@ impl InputSetupCombinedSubcommand {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PortInformationValue {
     port_id: u8,
     information_type: PortInformationType,
@@ -1421,7 +1430,7 @@ impl PortOutputCommandFormat {
                     profile,
                 ]
             }
-            WriteDirectModeData(data) => data.serialise(&self),
+            WriteDirectModeData(data) => data.serialise(self),
             _ => todo!(),
         }
     }

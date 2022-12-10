@@ -5,47 +5,41 @@
 //! Definitions for the various devices which can attach to hubs, e.g. motors
 
 use crate::error::{Error, Result};
-use crate::notifications::Power;
-use crate::{hubs::Port, HubManagerMessage, NotificationMessage};
-use btleplug::api::BDAddr;
-use crossbeam_channel::{bounded, Sender};
+use crate::hubs::Port;
+use crate::notifications::{HubLedMode, NotificationMessage, Power};
+use async_trait::async_trait;
+use btleplug::api::{Characteristic, Peripheral as _, WriteType};
+use btleplug::platform::Peripheral;
 use std::fmt::Debug;
 
 /// Trait that any device may implement. Having a single trait covering
 /// every device is probably the wrong design, and we should have better
 /// abstractions for e.g. motors vs. sensors & LEDs.
+#[async_trait]
 pub trait Device: Debug + Send + Sync {
     fn port(&self) -> Port;
-    fn send(&mut self, _msg: NotificationMessage) -> Result<()>;
-    fn set_rgb(&mut self, _rgb: &[u8; 3]) -> Result<()> {
+    fn peripheral(&self) -> &Peripheral;
+    fn characteristic(&self) -> &Characteristic;
+    async fn send(&mut self, msg: NotificationMessage) -> Result<()> {
+        let buf = msg.serialise();
+        self.peripheral()
+            .write(self.characteristic(), &buf, WriteType::WithoutResponse)
+            .await?;
+        Ok(())
+    }
+    async fn set_rgb(&mut self, _rgb: &[u8; 3]) -> Result<()> {
         Err(Error::NotImplementedError(
             "Not implemented for type".to_string(),
         ))
     }
-    fn start_speed(&mut self, _speed: i8, _max_power: Power) -> Result<()> {
+    async fn start_speed(
+        &mut self,
+        _speed: i8,
+        _max_power: Power,
+    ) -> Result<()> {
         Err(Error::NotImplementedError(
             "Not implemented for type".to_string(),
         ))
-    }
-}
-
-/// Create a device manager for the given port
-pub(crate) fn create_device(
-    port_id: u8,
-    port_type: Port,
-    hub_addr: BDAddr,
-    hub_manager_tx: Sender<HubManagerMessage>,
-) -> Box<dyn Device + Send + Sync> {
-    match port_type {
-        Port::HubLed => {
-            let dev = HubLED::new(hub_addr, hub_manager_tx, port_id);
-            Box::new(dev)
-        }
-        Port::A | Port::B | Port::C | Port::D => {
-            let dev = Motor::new(hub_addr, hub_manager_tx, port_type, port_id);
-            Box::new(dev)
-        }
-        _ => todo!(),
     }
 }
 
@@ -55,37 +49,26 @@ pub struct HubLED {
     /// RGB colour value
     rgb: [u8; 3],
     _mode: HubLedMode,
+    peripheral: Peripheral,
+    characteristic: Characteristic,
     port_id: u8,
-    hub_addr: BDAddr,
-    hub_manager_tx: Sender<HubManagerMessage>,
 }
 
-/// The two modes by which Hub LED colours may be set
-#[repr(u8)]
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum HubLedMode {
-    /// Colour may be set to one of a number of specific named colours
-    Colour = 0x0,
-    /// Colour may be set to any 12-bit RGB value
-    Rgb = 0x01,
-}
-
+#[async_trait]
 impl Device for HubLED {
     fn port(&self) -> Port {
         Port::HubLed
     }
 
-    fn send(&mut self, msg: NotificationMessage) -> Result<()> {
-        let (tx, rx) = bounded::<Result<()>>(1);
-        self.hub_manager_tx.send(HubManagerMessage::SendToHub(
-            self.hub_addr,
-            msg,
-            tx,
-        ))?;
-        rx.recv()?
+    fn peripheral(&self) -> &Peripheral {
+        &self.peripheral
     }
 
-    fn set_rgb(&mut self, rgb: &[u8; 3]) -> Result<()> {
+    fn characteristic(&self) -> &Characteristic {
+        &self.characteristic
+    }
+
+    async fn set_rgb(&mut self, rgb: &[u8; 3]) -> Result<()> {
         use crate::notifications::*;
 
         self.rgb = *rgb;
@@ -97,7 +80,7 @@ impl Device for HubLED {
                 delta: 0x00000001,
                 notification_enabled: false,
             });
-        self.send(mode_set_msg)?;
+        self.send(mode_set_msg).await?;
 
         let subcommand = PortOutputSubcommand::WriteDirectModeData(
             WriteDirectModeDataPayload::SetRgbColors {
@@ -114,24 +97,23 @@ impl Device for HubLED {
                 completion_info: CompletionInfo::NoAction,
                 subcommand,
             });
-        self.send(msg)
+        self.send(msg).await
     }
 }
 
 impl HubLED {
     pub(crate) fn new(
-        hub_addr: BDAddr,
-        hub_manager_tx: Sender<HubManagerMessage>,
+        peripheral: Peripheral,
+        characteristic: Characteristic,
         port_id: u8,
     ) -> Self {
         let mode = HubLedMode::Rgb;
-        //hub.subscribe(mode);
         Self {
             rgb: [0; 3],
             _mode: mode,
+            characteristic,
+            peripheral,
             port_id,
-            hub_addr,
-            hub_manager_tx,
         }
     }
 }
@@ -139,28 +121,27 @@ impl HubLED {
 /// Struct representing a motor
 #[derive(Debug, Clone)]
 pub struct Motor {
+    peripheral: Peripheral,
+    characteristic: Characteristic,
     port: Port,
     port_id: u8,
-    hub_addr: BDAddr,
-    hub_manager_tx: Sender<HubManagerMessage>,
 }
 
+#[async_trait]
 impl Device for Motor {
     fn port(&self) -> Port {
         self.port
     }
 
-    fn send(&mut self, msg: NotificationMessage) -> Result<()> {
-        let (tx, rx) = bounded::<Result<()>>(1);
-        self.hub_manager_tx.send(HubManagerMessage::SendToHub(
-            self.hub_addr,
-            msg,
-            tx,
-        ))?;
-        rx.recv()?
+    fn peripheral(&self) -> &Peripheral {
+        &self.peripheral
     }
 
-    fn start_speed(&mut self, speed: i8, max_power: Power) -> Result<()> {
+    fn characteristic(&self) -> &Characteristic {
+        &self.characteristic
+    }
+
+    async fn start_speed(&mut self, speed: i8, max_power: Power) -> Result<()> {
         use crate::notifications::*;
 
         let subcommand = PortOutputSubcommand::StartSpeed {
@@ -176,22 +157,22 @@ impl Device for Motor {
                 completion_info: CompletionInfo::NoAction,
                 subcommand,
             });
-        self.send(msg)
+        self.send(msg).await
     }
 }
 
 impl Motor {
     pub(crate) fn new(
-        hub_addr: BDAddr,
-        hub_manager_tx: Sender<HubManagerMessage>,
+        peripheral: Peripheral,
+        characteristic: Characteristic,
         port: Port,
         port_id: u8,
     ) -> Self {
         Self {
+            peripheral,
+            characteristic,
             port,
             port_id,
-            hub_addr,
-            hub_manager_tx,
         }
     }
 }
