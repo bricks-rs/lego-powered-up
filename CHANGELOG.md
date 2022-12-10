@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 * Update btleplug to 0.10
+* Full rewrite to simplified async architecture with only minor changes to
+public API (i.e. most things still work just by adding an `.await` to the end)
 
 ### Deprecated
 

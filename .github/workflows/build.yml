@@ -1,6 +1,7 @@
 name: build
 
-on: [push, pull_request]
+on:
+  - pull_request
 
 jobs:
   check:
@@ -36,12 +37,12 @@ jobs:
           toolchain: stable
           args: --all -- --check
 
-      # - name: Run cargo clippy
-      #   uses: actions-rs/cargo@v1
-      #   with:
-      #     command: clippy
-      #     toolchain: nightly
-      #     args: -- -D warnings
+      - name: Run cargo clippy
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          toolchain: stable
+          args: -- -D warnings
 
   test:
     name: Run tests on ${{ matrix.os }}
