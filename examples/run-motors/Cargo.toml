@@ -11,3 +11,4 @@ repository= "https://github.com/sciguy16/lego-powered-up"
 [dependencies]
 anyhow = "1.0"
 lego-powered-up = { path = "../../lego-powered-up" }
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros"] }

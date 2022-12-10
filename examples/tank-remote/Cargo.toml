@@ -12,3 +12,4 @@ repository= "https://github.com/sciguy16/lego-powered-up"
 console_engine = "2.2"
 eyre = "0.6"
 lego-powered-up = { path = "../../lego-powered-up" }
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros"] }

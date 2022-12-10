@@ -1,36 +1,36 @@
 // Any copyright is dedicated to the Public Domain.
 // https://creativecommons.org/publicdomain/zero/1.0/
 
-use lego_powered_up::notifications::Power;
-use lego_powered_up::PoweredUp;
+use lego_powered_up::{notifications::Power, PoweredUp};
 use std::{thread::sleep, time::Duration};
 
-fn main() -> anyhow::Result<()> {
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
     println!("Listening for hubs...");
-    let pu = PoweredUp::init()?;
-    let hub = pu.wait_for_hub()?;
+    let mut pu = PoweredUp::init().await?;
+    let hub = pu.wait_for_hub().await?;
 
     println!("Connecting to hub `{}`", hub.name);
-    let hub = pu.create_hub(&hub)?;
+    let hub = pu.create_hub(&hub).await?;
 
     println!("Change the hub LED to green");
-    let mut hub_led = hub.port(lego_powered_up::hubs::Port::HubLed)?;
-    hub_led.set_rgb(&[0, 0xff, 0])?;
+    let mut hub_led = hub.port(lego_powered_up::hubs::Port::HubLed).await?;
+    hub_led.set_rgb(&[0, 0xff, 0]).await?;
 
     println!("Run motors");
-    let mut motor_c = hub.port(lego_powered_up::hubs::Port::C)?;
-    let mut motor_d = hub.port(lego_powered_up::hubs::Port::D)?;
-    motor_c.start_speed(50, Power::Cw(50))?;
-    motor_d.start_speed(50, Power::Cw(50))?;
+    let mut motor_c = hub.port(lego_powered_up::hubs::Port::C).await?;
+    let mut motor_d = hub.port(lego_powered_up::hubs::Port::D).await?;
+    motor_c.start_speed(50, Power::Cw(50)).await?;
+    motor_d.start_speed(50, Power::Cw(50)).await?;
 
     sleep(Duration::from_secs(3));
 
     println!("Stop motors");
-    motor_c.start_speed(0, Power::Float)?;
-    motor_d.start_speed(0, Power::Brake)?;
+    motor_c.start_speed(0, Power::Float).await?;
+    motor_d.start_speed(0, Power::Brake).await?;
 
-    println!("Disconnect from hub `{}`", hub.get_name());
-    hub.disconnect()?;
+    println!("Disconnect from hub `{}`", hub.name().await?);
+    hub.disconnect().await?;
 
     println!("Done!");
 

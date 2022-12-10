@@ -509,6 +509,7 @@ dependencies = [
  "eyre",
  "gilrs",
  "lego-powered-up",
+ "tokio",
 ]
 
 [[package]]
@@ -961,6 +962,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "lego-powered-up",
+ "tokio",
 ]
 
 [[package]]
@@ -1109,6 +1111,7 @@ dependencies = [
  "console_engine",
  "eyre",
  "lego-powered-up",
+ "tokio",
 ]
 
 [[package]]
