@@ -210,12 +210,14 @@ impl<P: Peripheral + 'static> Hub for TechnicHub<P> {
                 self.lpf_characteristic.clone(),
                 port,
             )),
-            Port::A => Box::new(devices::Motor::new(
-                self.peripheral.clone(),
-                self.lpf_characteristic.clone(),
-                port_id,
-                port,
-            )),
+            Port::A | Port::B | Port::C | Port::D => {
+                Box::new(devices::Motor::new(
+                    self.peripheral.clone(),
+                    self.lpf_characteristic.clone(),
+                    port_id,
+                    port,
+                ))
+            }
             _ => todo!(),
         })
     }
