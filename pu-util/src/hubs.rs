@@ -56,19 +56,19 @@ pub async fn run(args: &HubArgs) -> Result<()> {
         {
             println!("Setting to: {:02x?}", colour);
             hub_led.set_rgb(colour).await?;
-            tokio::time::sleep(Duration::from_secs(1)).await;
+            tokio::time::sleep(Duration::from_millis(400)).await;
         }
 
         println!("Setting Motor A");
 
         let mut motor = hub.port(Port::A).await?;
-        motor.start_speed(50, Power::Cw(50))?;
+        motor.start_speed(50, Power::Cw(50)).await?;
         tokio::time::sleep(Duration::from_secs(4)).await;
-        motor.start_speed(0, Power::Float)?;
+        motor.start_speed(0, Power::Float).await?;
 
         println!("Done!");
 
-        tokio::time::sleep(Duration::from_secs(5)).await;
+        tokio::time::sleep(Duration::from_secs(2)).await;
 
         println!("Disconnecting...");
         hub.disconnect().await?;

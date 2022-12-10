@@ -34,7 +34,11 @@ pub trait Device: Debug + Send + Sync {
             "Not implemented for type".to_string(),
         ))
     }
-    fn start_speed(&mut self, _speed: i8, _max_power: Power) -> Result<()> {
+    async fn start_speed(
+        &mut self,
+        _speed: i8,
+        _max_power: Power,
+    ) -> Result<()> {
         Err(Error::NotImplementedError(
             "Not implemented for type".to_string(),
         ))
@@ -187,24 +191,23 @@ impl<P: Peripheral> Device for Motor<P> {
     //     rx.recv()?
     // }
 
-    fn start_speed(&mut self, speed: i8, max_power: Power) -> Result<()> {
-        // use crate::notifications::*;
+    async fn start_speed(&mut self, speed: i8, max_power: Power) -> Result<()> {
+        use crate::notifications::*;
 
-        // let subcommand = PortOutputSubcommand::StartSpeed {
-        //     speed,
-        //     max_power,
-        //     use_acc_profile: true,
-        //     use_dec_profile: true,
-        // };
-        // let msg =
-        //     NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
-        //         port_id: self.port_id,
-        //         startup_info: StartupInfo::ExecuteImmediately,
-        //         completion_info: CompletionInfo::NoAction,
-        //         subcommand,
-        //     });
-        // self.send(msg)
-        Ok(())
+        let subcommand = PortOutputSubcommand::StartSpeed {
+            speed,
+            max_power,
+            use_acc_profile: true,
+            use_dec_profile: true,
+        };
+        let msg =
+            NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
+                port_id: self.port_id,
+                startup_info: StartupInfo::ExecuteImmediately,
+                completion_info: CompletionInfo::NoAction,
+                subcommand,
+            });
+        self.send(msg).await
     }
 }
 

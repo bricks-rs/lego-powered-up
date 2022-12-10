@@ -55,9 +55,9 @@ pub async fn run(args: &MotorTestArgs) -> Result<()> {
 
     for port in &[Port::A, Port::B, Port::C, Port::D] {
         let mut motor = hub.port(*port).await?;
-        motor.start_speed(50, Power::Cw(100))?;
+        motor.start_speed(50, Power::Cw(100)).await?;
         tokio::time::sleep(Duration::from_secs(2)).await;
-        motor.start_speed(0, Power::Float)?;
+        motor.start_speed(0, Power::Float).await?;
         tokio::time::sleep(Duration::from_secs(1)).await;
     }
 
