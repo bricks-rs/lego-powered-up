@@ -3,7 +3,7 @@ use btleplug::api::{
     ScanFilter,
 };
 use btleplug::platform::{Adapter, Manager, PeripheralId};
-use futures::stream::StreamExt;
+use futures::{stream::StreamExt, Stream};
 use num_traits::FromPrimitive;
 
 #[macro_use]
@@ -85,16 +85,32 @@ impl PoweredUp {
         Ok(hubs)
     }
 
-    // todo use notifications event stream
+    pub async fn scan(
+        &mut self,
+    ) -> Result<impl Stream<Item = DiscoveredHub> + '_> {
+        let events = self.adapter.events().await?;
+        self.adapter.start_scan(ScanFilter::default()).await?;
+        Ok(events.filter_map(|event| async {
+            let CentralEvent::DeviceDiscovered(id) = event else { None? };
+            // get peripheral info
+            let peripheral = self.adapter.peripheral(&id).await.ok()?;
+            // println!("{:?}", peripheral.properties().await?);
+            let Some(props) = peripheral.properties().await.ok()? else { None? };
+            if let Some(hub_type) = identify_hub(&props).await.ok()? {
+                let hub = DiscoveredHub {
+                    hub_type,
+                    addr: id,
+                    name: props
+                        .local_name
+                        .unwrap_or_else(|| "unknown".to_string()),
+                };
+                Some(hub)
+            } else { None }
+        }))
+    }
+
     pub async fn wait_for_hub(&mut self) -> Result<DiscoveredHub> {
         self.wait_for_hub_filter(HubFilter::Null).await
-        // loop {
-        //     let hubs = self.list_discovered_hubs().await?;
-        //     if let Some(hub) = hubs.into_iter().next() {
-        //         return Ok(hub);
-        //     }
-        //     tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-        // }
     }
 
     pub async fn wait_for_hub_filter(

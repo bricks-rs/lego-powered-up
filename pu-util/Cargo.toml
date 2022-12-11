@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["David Young <david@thedavidyoung.co.uk>"]
 edition = "2021"
 license = "MPL-2"
-repository = "https://github.com/sciguy16/lego-powered-up"
+repository = "https://github.com/bricks-rs/lego-powered-up"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
