@@ -139,7 +139,6 @@ impl PoweredUp {
 
     pub async fn wait_for_hubs_filter(&mut self, filter: HubFilter, count: u8) -> Result<Vec<DiscoveredHub>> {
         let mut events = self.adapter.events().await?;
-        let mut found_count: u8 = 0;
         let mut hubs = Vec::new();
         self.adapter.start_scan(ScanFilter::default()).await?;
         while let Some(event) = events.next().await {
@@ -158,9 +157,8 @@ impl PoweredUp {
                 };
                 if filter.matches(&hub) {
                     hubs.push(hub);
-                    found_count += 1;
                 }
-                if found_count == count {
+                if hubs.len() == count as usize {
                     self.adapter.stop_scan().await?;
                     return Ok(hubs);    
                 }
@@ -192,12 +190,31 @@ impl PoweredUp {
             .clone();
         peripheral.subscribe(&lpf_char).await?;
 
-        Ok(Box::new(match hub.hub_type {
-            HubType::TechnicMediumHub => {
-                hubs::TechnicHub::init(peripheral, lpf_char).await?
-            }
-            _ => unimplemented!(),
-        }))
+        if hub.hub_type == HubType::TechnicMediumHub {
+            return Ok(Box::new(hubs::technic_hub::TechnicHub::init(peripheral, lpf_char).await?))
+        }
+        else if hub.hub_type == HubType::RemoteControl {
+            return Ok(Box::new(hubs::remote::RemoteControl::init(peripheral, lpf_char).await?))
+        } 
+        else if hub.hub_type == HubType::MoveHub {
+            return Ok(Box::new(hubs::move_hub::MoveHub::init(peripheral, lpf_char).await?))
+        } 
+        else  {
+            unimplemented!("Hub type not implemented.");
+        }
+
+        // Note: 'match' arms have incompatible types
+        // Ok(Box::new(match hub.hub_type {
+        //     HubType::TechnicMediumHub => {
+        //         hubs::technic_hub::TechnicHub::init(peripheral, lpf_char).await?
+        //     }
+        //     HubType::RemoteControl => {
+        //         hubs::remote::RemoteControl::init(peripheral, lpf_char).await?
+        //     }
+
+        //     _ => unimplemented!(),
+        // }))
+
     }
 }
 
