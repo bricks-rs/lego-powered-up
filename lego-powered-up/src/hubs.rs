@@ -76,6 +76,7 @@ pub enum Port {
     C,
     /// Motor D
     D,
+    AB, // Move Hub
     HubLed,
     CurrentSensor,
     VoltageSensor,
@@ -83,6 +84,10 @@ pub enum Port {
     GyroSensor,
     TiltSensor,
     GestureSensor,
+    TemperatureSensor1,
+    TemperatureSensor2,
+    InternalMotor,
+    Rssi,
     Virtual(u8),
 }
 
@@ -108,4 +113,5 @@ pub struct ConnectedIo {
 
 pub mod technic_hub;
 pub mod remote;
+pub mod move_hub;
 
