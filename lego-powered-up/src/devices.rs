@@ -30,11 +30,16 @@ pub trait Device: Debug + Send + Sync {
             .await?;
         Ok(())
     }
+
+
+
+
     async fn set_rgb(&mut self, _rgb: &[u8; 3]) -> Result<()> {
         Err(Error::NotImplementedError(
             "Not implemented for type".to_string(),
         ))
     }
+
     async fn start_speed(
         &mut self,
         _speed: i8,
@@ -78,7 +83,7 @@ impl Device for HubLED {
 
         let mode_set_msg =
             NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
-                port_id: 50,
+                port_id: self.port_id,
                 mode: 0x01,
                 delta: 0x00000001,
                 notification_enabled: false,
@@ -253,6 +258,38 @@ impl Motor {
             });
         self.send(msg).await
     }
+
+    async fn set_acc_time(&mut self, time: i16, profile_number: i8) -> Result<()> {
+        use crate::notifications::*;
+
+        let subcommand = PortOutputSubcommand::SetAccTime { time, profile_number, };
+
+        let msg =
+            NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
+                port_id: self.port_id,
+                startup_info: StartupInfo::ExecuteImmediately,
+                completion_info: CompletionInfo::NoAction,
+                subcommand,
+            });
+        self.send(msg).await
+    }
+
+    async fn set_dec_time(&mut self, time: i16, profile_number: i8) -> Result<()> {
+        use crate::notifications::*;
+
+        let subcommand = PortOutputSubcommand::SetDecTime { time, profile_number, };
+
+        let msg =
+            NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
+                port_id: self.port_id,
+                startup_info: StartupInfo::ExecuteImmediately,
+                completion_info: CompletionInfo::NoAction,
+                subcommand,
+            });
+        self.send(msg).await
+    }
+
+
 }
 
 
