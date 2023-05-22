@@ -26,7 +26,7 @@ pub struct PoweredUp {
 }
 
 impl PoweredUp {
-    pub async fn devices() -> Result<Vec<Adapter>> {
+    pub async fn adapters() -> Result<Vec<Adapter>> {
         let manager = Manager::new().await?;
         Ok(manager.adapters().await?)
     }
@@ -85,16 +85,14 @@ impl PoweredUp {
         Ok(hubs)
     }
 
-    pub async fn scan(
-        &mut self,
-    ) -> Result<impl Stream<Item = DiscoveredHub> + '_> {
+    pub async fn scan(&mut self) -> Result<impl Stream<Item = DiscoveredHub> + '_> {
         let events = self.adapter.events().await?;
         self.adapter.start_scan(ScanFilter::default()).await?;
         Ok(events.filter_map(|event| async {
             let CentralEvent::DeviceDiscovered(id) = event else { None? };
             // get peripheral info
             let peripheral = self.adapter.peripheral(&id).await.ok()?;
-            // println!("{:?}", peripheral.properties().await?);
+            println!("{:?}", peripheral.properties().await.unwrap());
             let Some(props) = peripheral.properties().await.ok()? else { None? };
             if let Some(hub_type) = identify_hub(&props).await.ok()? {
                 let hub = DiscoveredHub {
@@ -113,17 +111,14 @@ impl PoweredUp {
         self.wait_for_hub_filter(HubFilter::Null).await
     }
 
-    pub async fn wait_for_hub_filter(
-        &mut self,
-        filter: HubFilter,
-    ) -> Result<DiscoveredHub> {
+    pub async fn wait_for_hub_filter(&mut self, filter: HubFilter) -> Result<DiscoveredHub> {
         let mut events = self.adapter.events().await?;
         self.adapter.start_scan(ScanFilter::default()).await?;
         while let Some(event) = events.next().await {
             let CentralEvent::DeviceDiscovered(id) = event else { continue };
             // get peripheral info
             let peripheral = self.adapter.peripheral(&id).await?;
-            // println!("{:?}", peripheral.properties().await?);
+            println!("{:?}", peripheral.properties().await?);
             let Some(props) = peripheral.properties().await? else { continue };
             if let Some(hub_type) = identify_hub(&props).await? {
                 let hub = DiscoveredHub {
@@ -142,6 +137,40 @@ impl PoweredUp {
         panic!()
     }
 
+    pub async fn wait_for_hubs_filter(&mut self, filter: HubFilter, count: u8) -> Result<Vec<DiscoveredHub>> {
+        let mut events = self.adapter.events().await?;
+        let mut found_count: u8 = 0;
+        let mut hubs = Vec::new();
+        self.adapter.start_scan(ScanFilter::default()).await?;
+        while let Some(event) = events.next().await {
+            let CentralEvent::DeviceDiscovered(id) = event else { continue };
+            // get peripheral info
+            let peripheral = self.adapter.peripheral(&id).await?;
+            println!("{:?}", peripheral.properties().await?);
+            let Some(props) = peripheral.properties().await? else { continue };
+            if let Some(hub_type) = identify_hub(&props).await? {
+                let hub = DiscoveredHub {
+                    hub_type,
+                    addr: id,
+                    name: props
+                        .local_name
+                        .unwrap_or_else(|| "unknown".to_string()),
+                };
+                if filter.matches(&hub) {
+                    hubs.push(hub);
+                    found_count += 1;
+                }
+                if found_count == count {
+                    self.adapter.stop_scan().await?;
+                    return Ok(hubs);    
+                }
+            }
+        }
+        panic!()
+    }
+
+
+   
     pub async fn create_hub(
         &mut self,
         hub: &DiscoveredHub,
