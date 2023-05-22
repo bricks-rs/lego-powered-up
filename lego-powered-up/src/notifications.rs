@@ -684,6 +684,11 @@ pub enum IoTypeId {
     ExternalMotor = 0x0026,
     InternalMotor = 0x0027,
     InternalTilt = 0x0028,
+    TechnicHubGestSensor = 0x0036,
+    TechnicHubAccelerometer = 0x0039,
+    TechnicHubGyroSensor = 0x003a,
+    TechnicHubTiltSensor = 0x003b,
+    TechnicHubTemperatureSensor = 0x003c
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
