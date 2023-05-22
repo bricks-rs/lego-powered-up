@@ -549,3 +549,18 @@ pub enum MarioColor {
     Brown = 0x6a00,
     Cyan = 0x4201,
 }
+
+pub enum PortOutputSubCommandValue {
+    StartPower2 = 0x02,
+    SetAccTime = 0x05,
+    SetDecTime = 0x06,
+    StartSpeed = 0x07,
+    StartSpeed2 = 0x08,
+    StartSpeedForTime = 0x09,
+    StartSpeedForTime2 = 0x0a,
+    StartSpeedForDegrees = 0x0b,
+    StartSpeedForDegrees2 = 0x0c,
+    GotoAbsolutePosition = 0x0d,
+    GotoAbsolutePosition2 = 0x0e,
+    PresetEncoder2 = 0x14,
+}

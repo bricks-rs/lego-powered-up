@@ -1418,6 +1418,7 @@ impl PortOutputCommandFormat {
 
     pub fn serialise(&self) -> Vec<u8> {
         use PortOutputSubcommand::*;
+        // use crate::consts::PortOutputSubCommandValue;
         match &self.subcommand {
             StartSpeed {
                 speed,
@@ -1429,16 +1430,51 @@ impl PortOutputCommandFormat {
                     ((*use_acc_profile as u8) << 1) | (*use_dec_profile as u8);
                 let speed = speed.to_le_bytes()[0];
                 vec![
+                    // Header
                     0, // len
-                    0, // hub id
+                    0, // hub id - always set to 0
                     MessageType::PortOutputCommand as u8,
+                    // Command
                     self.port_id,
-                    0x11,
-                    0x01,
+                    0x11, // 0001 Execute immediately, 0001 Command feedback
+                    PortOutputSubCommandValue::StartSpeed as u8,
+                    // Subcommand payload                   
                     speed,
                     max_power.to_u8(),
                     profile,
                 ]
+            }
+            StartSpeedForDegrees {
+                degrees,
+                speed,
+                max_power,
+                end_state,
+                use_acc_profile,
+                use_dec_profile,
+            } => {
+                let profile =
+                    ((*use_acc_profile as u8) << 1) | (*use_dec_profile as u8);
+                let speed = speed.to_le_bytes()[0];
+                let degrees = degrees.to_le_bytes();
+                // let end_state = end_state.
+                let mut bytes = vec![
+                    // Header
+                    0, // len
+                    0, // hub id - always set to 0
+                    MessageType::PortOutputCommand as u8,
+                    // Command
+                    self.port_id,
+                    0x11, // 0001 Execute immediately, 0001 Command feedback
+                    PortOutputSubCommandValue::StartSpeedForDegrees as u8,
+                    // Subcommand payload
+                ];  
+                    bytes.extend_from_slice(&degrees);
+                    bytes.push(speed);
+                    bytes.push(max_power.to_u8());
+                    bytes.push(end_state.to_u8());
+                    bytes.push(profile);
+                
+                bytes
             }
             WriteDirectModeData(data) => data.serialise(self),
             _ => todo!(),
@@ -1749,12 +1785,12 @@ impl PortOutputSubcommand {
                     right_position,
                 }
             }
-            50 => {
+            0x50 => {
                 // WriteDirect(Byte[0],Byte[0 + n])
                 let data = WriteDirectPayload::parse(&mut msg)?;
                 WriteDirect(data)
             }
-            51 => {
+            0x51 => {
                 // WriteDirectModeData(Mode, PayLoad[0] PayLoad [0 + n]
                 let data = WriteDirectModeDataPayload::parse(&mut msg)?;
                 WriteDirectModeData(data)
@@ -1843,6 +1879,17 @@ pub enum EndState {
     Float = 0,
     Hold = 126,
     Brake = 127,
+}
+impl EndState {
+    pub fn to_u8(&self) -> u8 {
+        use EndState::*;
+        let integer: u8 = match self {
+            Float => 0,
+            Hold => 126,
+            Brake => 127,
+        };
+        integer.to_le_bytes()[0]
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

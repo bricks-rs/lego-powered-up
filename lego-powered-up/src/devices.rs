@@ -31,24 +31,49 @@ pub trait Device: Debug + Send + Sync {
         Ok(())
     }
 
-
-
-
     async fn set_rgb(&mut self, _rgb: &[u8; 3]) -> Result<()> {
         Err(Error::NotImplementedError(
             "Not implemented for type".to_string(),
         ))
     }
 
-    async fn start_speed(
-        &mut self,
-        _speed: i8,
-        _max_power: Power,
-    ) -> Result<()> {
+    async fn start_speed(&mut self, _speed: i8, _max_power: Power,) -> Result<()> {
         Err(Error::NotImplementedError(
             "Not implemented for type".to_string(),
         ))
     }
+
+    async fn start_speed_for_degrees(&mut self, _degrees: i32, _speed: i8, _max_power: Power, _end_state: EndState ) -> Result<()> {
+        Err(Error::NotImplementedError(
+            "Not implemented for type".to_string(),
+        ))
+    }
+
+    async fn goto_absolute_position(&mut self, _abspos: i32, _speed: i8, _max_power: Power, _end_state: EndState) -> Result<()> {
+        Err(Error::NotImplementedError(
+            "Not implemented for type".to_string(),
+        ))
+    }
+
+    async fn preset_encoder(&mut self, _position: i32, ) -> Result<()> {
+        Err(Error::NotImplementedError(
+            "Not implemented for type".to_string(),
+        ))
+    }
+
+    async fn set_acc_time(&mut self, _time: i16, _profile_number: i8) -> Result<()> {
+        Err(Error::NotImplementedError(
+            "Not implemented for type".to_string(),
+        ))
+    }
+    
+    async fn set_dec_time(&mut self, _time: i16, _profile_number: i8) -> Result<()> {
+        Err(Error::NotImplementedError(
+            "Not implemented for type".to_string(),
+        ))
+    }
+
+
 }
 
 /// Struct representing a Hub LED
@@ -168,27 +193,6 @@ impl Device for Motor {
         self.send(msg).await
     }
 
-
-
-    
-}
-
-impl Motor {
-    pub(crate) fn new(
-        peripheral: Peripheral,
-        characteristic: Characteristic,
-        port: Port,
-        port_id: u8,
-    ) -> Self {
-        Self {
-            peripheral,
-            characteristic,
-            port,
-            port_id,
-        }
-    }
-
-    
     async fn start_speed_for_degrees(&mut self, degrees: i32, speed: i8, max_power: Power, end_state: EndState ) -> Result<()> {
         use crate::notifications::*;
 
@@ -288,6 +292,27 @@ impl Motor {
             });
         self.send(msg).await
     }
+
+    
+}
+
+impl Motor {
+    pub(crate) fn new(
+        peripheral: Peripheral,
+        characteristic: Characteristic,
+        port: Port,
+        port_id: u8,
+    ) -> Self {
+        Self {
+            peripheral,
+            characteristic,
+            port,
+            port_id,
+        }
+    }
+
+    
+    
 
 
 }
