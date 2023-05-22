@@ -1,3 +1,4 @@
+#![allow(unused)]
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -6,13 +7,14 @@
 
 use crate::error::{Error, Result};
 use crate::hubs::Port;
-use crate::notifications::{HubLedMode, NotificationMessage, Power};
+use crate::notifications::{HubLedMode, NotificationMessage, Power, EndState};
 use async_trait::async_trait;
 use btleplug::api::{Characteristic, Peripheral as _, WriteType};
 use btleplug::platform::Peripheral;
 use std::fmt::Debug;
 
-/// Trait that any device may implement. Having a single trait covering
+/// Trait that any d
+/// evice may implement. Having a single trait covering
 /// every device is probably the wrong design, and we should have better
 /// abstractions for e.g. motors vs. sensors & LEDs.
 #[async_trait]
@@ -20,6 +22,7 @@ pub trait Device: Debug + Send + Sync {
     fn port(&self) -> Port;
     fn peripheral(&self) -> &Peripheral;
     fn characteristic(&self) -> &Characteristic;
+
     async fn send(&mut self, msg: NotificationMessage) -> Result<()> {
         let buf = msg.serialise();
         self.peripheral()
@@ -159,6 +162,10 @@ impl Device for Motor {
             });
         self.send(msg).await
     }
+
+
+
+    
 }
 
 impl Motor {
@@ -175,4 +182,77 @@ impl Motor {
             port_id,
         }
     }
+
+    
+    async fn start_speed_for_degrees(&mut self, degrees: i32, speed: i8, max_power: Power, end_state: EndState ) -> Result<()> {
+        use crate::notifications::*;
+
+        let subcommand = PortOutputSubcommand::StartSpeedForDegrees {
+            degrees,
+            speed,
+            max_power,
+            end_state,
+            use_acc_profile: true,
+            use_dec_profile: true,
+        };
+        let msg =
+            NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
+                port_id: self.port_id,
+                startup_info: StartupInfo::ExecuteImmediately,
+                completion_info: CompletionInfo::NoAction,
+                subcommand,
+            });
+        self.send(msg).await
+    
+    }
+
+    async fn goto_absolute_position(&mut self, abspos: i32, speed: i8, max_power: Power, end_state: EndState ) -> Result<()> {
+        use crate::notifications::*;
+
+        let subcommand = PortOutputSubcommand::GotoAbsolutePosition { 
+            abs_pos: abspos,
+            speed,
+            max_power,
+            end_state,
+            use_acc_profile: true,
+            use_dec_profile: true, 
+        };     
+   
+        let msg =
+            NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
+                port_id: self.port_id,
+                startup_info: StartupInfo::ExecuteImmediately,
+                completion_info: CompletionInfo::NoAction,
+                subcommand,
+            });
+        self.send(msg).await
+    
+    }
+    
+    async fn preset_encoder(&mut self, position: i32) -> Result<()> {
+        use crate::notifications::*;
+
+        let mode_set_msg =
+            NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
+                port_id: 0x01, // Port B
+                mode: 0x01,
+                delta: 0x00000001,
+                notification_enabled: false,
+            });
+        self.send(mode_set_msg).await?;
+
+        let subcommand = PortOutputSubcommand::WriteDirectModeData(
+            WriteDirectModeDataPayload::PresetEncoder(position),);
+
+        let msg =
+            NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
+                port_id: self.port_id,
+                startup_info: StartupInfo::ExecuteImmediately,
+                completion_info: CompletionInfo::NoAction,
+                subcommand,
+            });
+        self.send(msg).await
+    }
 }
+
+

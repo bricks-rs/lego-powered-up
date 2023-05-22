@@ -336,6 +336,7 @@ impl NotificationMessage {
 
         let mut ser = match self {
             HubProperties(_) => todo!(),
+            // HubProperties(msg) => msg.serialise(),
             HubActions(_) => todo!(),
             HubAlerts(_) => todo!(),
             HubAttachedIo(_) => todo!(),
@@ -400,6 +401,10 @@ impl HubProperty {
             property,
         })
     }
+}
+
+pub struct HubPropertiesRequest {
+
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -1484,14 +1489,14 @@ pub enum PortOutputSubcommand {
     StartSpeed2 {
         speed1: i8,
         speed2: i8,
-        max_power: i8,
+        max_power: Power,
         use_acc_profile: bool,
         use_dec_profile: bool,
     },
     StartSpeedForTime {
         time: i16,
         speed: i8,
-        max_power: i8,
+        max_power: Power,
         end_state: EndState,
         use_acc_profile: bool,
         use_dec_profile: bool,
@@ -1500,7 +1505,7 @@ pub enum PortOutputSubcommand {
         time: i16,
         speed_l: i8,
         speed_r: i8,
-        max_power: i8,
+        max_power: Power,
         end_state: EndState,
         use_acc_profile: bool,
         use_dec_profile: bool,
@@ -1508,7 +1513,7 @@ pub enum PortOutputSubcommand {
     StartSpeedForDegrees {
         degrees: i32,
         speed: i8,
-        max_power: i8,
+        max_power: Power,
         end_state: EndState,
         use_acc_profile: bool,
         use_dec_profile: bool,
@@ -1517,7 +1522,7 @@ pub enum PortOutputSubcommand {
         degrees: i32,
         speed_l: i8,
         speed_r: i8,
-        max_power: i8,
+        max_power: Power,
         end_state: EndState,
         use_acc_profile: bool,
         use_dec_profile: bool,
@@ -1525,7 +1530,7 @@ pub enum PortOutputSubcommand {
     GotoAbsolutePosition {
         abs_pos: i32,
         speed: i8,
-        max_power: i8,
+        max_power: Power,
         end_state: EndState,
         use_acc_profile: bool,
         use_dec_profile: bool,
@@ -1534,7 +1539,7 @@ pub enum PortOutputSubcommand {
         abs_pos1: i32,
         abs_pos2: i32,
         speed: i8,
-        max_power: i8,
+        max_power: Power,
         end_state: EndState,
         use_acc_profile: bool,
         use_dec_profile: bool,
@@ -1599,7 +1604,7 @@ impl PortOutputSubcommand {
                 // StartSpeed(Speed1, Speed2, MaxPower, UseProfile)
                 let speed1 = next_i8!(msg);
                 let speed2 = next_i8!(msg);
-                let max_power = next_i8!(msg);
+                let max_power = Power::parse(&mut msg)?;
                 let use_prof = next!(msg);
                 let use_acc_profile = (use_prof & 0x01) != 0;
                 let use_dec_profile = (use_prof & 0x02) != 0;
@@ -1615,7 +1620,7 @@ impl PortOutputSubcommand {
                 // StartSpeedForTime (Time, Speed, MaxPower, EndState, UseProfile)
                 let time = next_i16!(msg);
                 let speed = next_i8!(msg);
-                let max_power = next_i8!(msg);
+                let max_power = Power::parse(&mut msg)?;
                 let end_state = EndState::parse(&mut msg)?;
                 let use_prof = next!(msg);
                 let use_acc_profile = (use_prof & 0x01) != 0;
@@ -1635,7 +1640,7 @@ impl PortOutputSubcommand {
                 let time = next_i16!(msg);
                 let speed_l = next_i8!(msg);
                 let speed_r = next_i8!(msg);
-                let max_power = next_i8!(msg);
+                let max_power = Power::parse(&mut msg)?;
                 let end_state = EndState::parse(&mut msg)?;
                 let use_prof = next!(msg);
                 let use_acc_profile = (use_prof & 0x01) != 0;
@@ -1655,7 +1660,7 @@ impl PortOutputSubcommand {
                 // UseProfile)
                 let degrees = next_i32!(msg);
                 let speed = next_i8!(msg);
-                let max_power = next_i8!(msg);
+                let max_power = Power::parse(&mut msg)?;
                 let end_state = EndState::parse(&mut msg)?;
                 let use_prof = next!(msg);
                 let use_acc_profile = (use_prof & 0x01) != 0;
@@ -1675,7 +1680,7 @@ impl PortOutputSubcommand {
                 let degrees = next_i32!(msg);
                 let speed_l = next_i8!(msg);
                 let speed_r = next_i8!(msg);
-                let max_power = next_i8!(msg);
+                let max_power = Power::parse(&mut msg)?;
                 let end_state = EndState::parse(&mut msg)?;
                 let use_prof = next!(msg);
                 let use_acc_profile = (use_prof & 0x01) != 0;
@@ -1695,7 +1700,7 @@ impl PortOutputSubcommand {
                 // UseProfile)
                 let abs_pos = next_i32!(msg);
                 let speed = next_i8!(msg);
-                let max_power = next_i8!(msg);
+                let max_power = Power::parse(&mut msg)?;
                 let end_state = EndState::parse(&mut msg)?;
                 let use_prof = next!(msg);
                 let use_acc_profile = (use_prof & 0x01) != 0;
@@ -1715,7 +1720,7 @@ impl PortOutputSubcommand {
                 let abs_pos1 = next_i32!(msg);
                 let abs_pos2 = next_i32!(msg);
                 let speed = next_i8!(msg);
-                let max_power = next_i8!(msg);
+                let max_power = Power::parse(&mut msg)?;
                 let end_state = EndState::parse(&mut msg)?;
                 let use_prof = next!(msg);
                 let use_acc_profile = (use_prof & 0x01) != 0;
