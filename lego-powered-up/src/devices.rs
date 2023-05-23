@@ -12,6 +12,7 @@ use async_trait::async_trait;
 use btleplug::api::{Characteristic, Peripheral as _, WriteType};
 use btleplug::platform::Peripheral;
 use std::fmt::Debug;
+use std::process::ExitStatus;
 
 /// Trait that any d
 /// evice may implement. Having a single trait covering
@@ -158,6 +159,20 @@ pub struct Motor {
     characteristic: Characteristic,
     port: Port,
     port_id: u8,
+    status: MotorStatus,
+}
+#[derive(Debug, Clone)]
+pub struct MotorStatus {
+    speed: i8,
+    position: i16,
+}
+impl MotorStatus {
+    fn new() -> Self {
+        Self {
+            speed: 0,
+            position: 0,
+        }
+    }
 }
 
 #[async_trait]
@@ -308,6 +323,7 @@ impl Motor {
             characteristic,
             port,
             port_id,
+            status: MotorStatus::new(),
         }
     }
 

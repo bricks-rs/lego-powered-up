@@ -1,6 +1,6 @@
 use btleplug::api::{
     Central, CentralEvent, Manager as _, Peripheral as _, PeripheralProperties,
-    ScanFilter,
+    ScanFilter, ValueNotification
 };
 use btleplug::platform::{Adapter, Manager, PeripheralId};
 use futures::{stream::StreamExt, Stream};
@@ -169,10 +169,7 @@ impl PoweredUp {
 
 
    
-    pub async fn create_hub(
-        &mut self,
-        hub: &DiscoveredHub,
-    ) -> Result<Box<dyn Hub>> {
+    pub async fn create_hub(&mut self, hub: &DiscoveredHub,) -> Result<Box<dyn Hub>> {
         info!("Connecting to hub {}...", hub.addr,);
 
         let peripheral = self.adapter.peripheral(&hub.addr).await?;
@@ -189,6 +186,7 @@ impl PoweredUp {
             .context("Device does not advertise LPF2_ALL characteristic")?
             .clone();
         peripheral.subscribe(&lpf_char).await?;
+        // let notifications: std::pin::Pin<Box<dyn Stream<Item = ValueNotification> + Send>> = peripheral.notifications().await?;
 
         if hub.hub_type == HubType::TechnicMediumHub {
             return Ok(Box::new(hubs::technic_hub::TechnicHub::init(peripheral, lpf_char).await?))
