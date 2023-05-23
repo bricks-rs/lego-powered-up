@@ -17,6 +17,7 @@ pub mod notifications;
 
 pub use btleplug;
 pub use error::{Error, OptionContext, Result};
+pub use futures;
 
 use consts::{BLEManufacturerData, HubType};
 use hubs::Hub;
@@ -145,7 +146,7 @@ impl PoweredUp {
             let CentralEvent::DeviceDiscovered(id) = event else { continue };
             // get peripheral info
             let peripheral = self.adapter.peripheral(&id).await?;
-            println!("{:?}", peripheral.properties().await?);
+            // println!("{:?}", peripheral.properties().await?);
             let Some(props) = peripheral.properties().await? else { continue };
             if let Some(hub_type) = identify_hub(&props).await? {
                 let hub = DiscoveredHub {
@@ -178,15 +179,16 @@ impl PoweredUp {
         // tokio::time::sleep(Duration::from_secs(2)).await;
         let chars = peripheral.characteristics();
 
-        dbg!(&chars);
+        // dbg!(&chars);
 
         let lpf_char = chars
             .iter()
             .find(|c| c.uuid == *consts::blecharacteristic::LPF2_ALL)
             .context("Device does not advertise LPF2_ALL characteristic")?
             .clone();
+    
+        println!("Subscribing to {:?}", &lpf_char);
         peripheral.subscribe(&lpf_char).await?;
-        // let notifications: std::pin::Pin<Box<dyn Stream<Item = ValueNotification> + Send>> = peripheral.notifications().await?;
 
         if hub.hub_type == HubType::TechnicMediumHub {
             return Ok(Box::new(hubs::technic_hub::TechnicHub::init(peripheral, lpf_char).await?))
