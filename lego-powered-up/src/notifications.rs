@@ -1456,7 +1456,6 @@ impl PortOutputCommandFormat {
                     ((*use_acc_profile as u8) << 1) | (*use_dec_profile as u8);
                 let speed = speed.to_le_bytes()[0];
                 let degrees = degrees.to_le_bytes();
-                // let end_state = end_state.
                 let mut bytes = vec![
                     // Header
                     0, // len
@@ -1466,8 +1465,8 @@ impl PortOutputCommandFormat {
                     self.port_id,
                     0x11, // 0001 Execute immediately, 0001 Command feedback
                     PortOutputSubCommandValue::StartSpeedForDegrees as u8,
-                    // Subcommand payload
                 ];  
+                    // Subcommand payload
                     bytes.extend_from_slice(&degrees);
                     bytes.push(speed);
                     bytes.push(max_power.to_u8());
@@ -1475,6 +1474,37 @@ impl PortOutputCommandFormat {
                     bytes.push(profile);
                 
                 bytes
+            }
+            GotoAbsolutePosition {
+                abs_pos,
+                speed,
+                max_power,
+                end_state,
+                use_acc_profile,
+                use_dec_profile,
+            } => {
+                let profile =
+                ((*use_acc_profile as u8) << 1) | (*use_dec_profile as u8);
+                let speed = speed.to_le_bytes()[0];
+                let abs_pos = abs_pos.to_le_bytes();
+                let mut bytes = vec![
+                // Header
+                0, // len
+                0, // hub id - always set to 0
+                MessageType::PortOutputCommand as u8,
+                // Command
+                self.port_id,
+                0x11, // 0001 Execute immediately, 0001 Command feedback
+                PortOutputSubCommandValue::StartSpeedForDegrees as u8,
+            ];  
+                // Subcommand payload
+                bytes.extend_from_slice(&abs_pos);
+                bytes.push(speed);
+                bytes.push(max_power.to_u8());
+                bytes.push(end_state.to_u8());
+                bytes.push(profile);
+            
+            bytes
             }
             WriteDirectModeData(data) => data.serialise(self),
             _ => todo!(),
@@ -1603,7 +1633,7 @@ impl PortOutputSubcommand {
         let subcomm = next!(msg);
         trace!("Port output subcommand: {:x}", subcomm);
         Ok(match subcomm {
-            0x02 => {
+                0x02 => {
                 // StartPower(Power1, Power2)
                 let power1 = Power::parse(&mut msg)?;
                 let power2 = Power::parse(&mut msg)?;
