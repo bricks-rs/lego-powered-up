@@ -346,10 +346,8 @@ impl NotificationMessage {
             FwUpdateLockMemory(_) => todo!(),
             FwUpdateLockStatusRequest => todo!(),
             FwLockStatus(_) => todo!(),
-            PortInformationRequest(_) => todo!(),
-            PortModeInformationRequest(_) => {
-                todo!()
-            }
+            PortInformationRequest(msg) => msg.serialise(),
+            PortModeInformationRequest(msg) => msg.serialise(),
             PortInputFormatSetupSingle(msg) => msg.serialise(),
             PortInputFormatSetupCombinedmode(_) => {
                 todo!()
@@ -870,8 +868,8 @@ pub enum LockStatus {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct InformationRequest {
-    port_id: u8,
-    information_type: InformationType,
+    pub(crate) port_id: u8,
+    pub(crate) information_type: InformationType,
 }
 
 impl InformationRequest {
@@ -882,6 +880,17 @@ impl InformationRequest {
             port_id,
             information_type,
         })
+    }
+    pub fn serialise(&self) -> Vec<u8> {
+        let mut msg = Vec::with_capacity(10);
+        msg.extend_from_slice(&[
+            0,
+            0,
+            MessageType::PortInformationRequest as u8,
+            self.port_id,
+            self.information_type as u8,
+        ]);
+        msg
     }
 }
 
@@ -895,9 +904,9 @@ pub enum InformationType {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct ModeInformationRequest {
-    port_id: u8,
-    mode: u8,
-    information_type: ModeInformationType,
+    pub(crate) port_id: u8,
+    pub(crate) mode: u8,
+    pub(crate) information_type: ModeInformationType,
 }
 
 impl ModeInformationRequest {
@@ -911,7 +920,20 @@ impl ModeInformationRequest {
             information_type,
         })
     }
+    pub fn serialise(&self) -> Vec<u8> {
+        let mut msg = Vec::with_capacity(10);
+        msg.extend_from_slice(&[
+            0,
+            0,
+            MessageType::PortModeInformationRequest as u8,
+            self.port_id,
+            self.mode,
+            self.information_type as u8,
+        ]);
+        msg
+    }
 }
+
 
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive, Parse)]

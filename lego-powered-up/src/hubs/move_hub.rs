@@ -39,9 +39,16 @@ impl Hub for MoveHub {
         Ok(self.peripheral.is_connected().await?)
     }
 
-    async fn properties(&self) -> &HubProperties {
+    fn properties(&self) -> &HubProperties {
         &self.properties
     }
+    fn characteristic(&self) -> &Characteristic {
+        &self.lpf_characteristic
+    }
+    fn peripheral(&self) -> &Peripheral {
+        &self.peripheral
+    }
+
 
     async fn send_raw(&self, msg: &[u8]) -> Result<()> {
         let write_type = WriteType::WithoutResponse;

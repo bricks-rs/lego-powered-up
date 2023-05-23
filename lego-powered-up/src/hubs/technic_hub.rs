@@ -27,22 +27,24 @@ impl Hub for TechnicHub {
             .local_name
             .unwrap_or_default())
     }
-
+    fn properties(&self) -> &HubProperties {
+        &self.properties
+    }
+    fn characteristic(&self) -> &Characteristic {
+        &self.lpf_characteristic
+    }
+    fn peripheral(&self) -> &Peripheral {
+        &self.peripheral
+    }
     async fn disconnect(&self) -> Result<()> {
         if self.is_connected().await? {
             self.peripheral.disconnect().await?;
         }
         Ok(())
     }
-
     async fn is_connected(&self) -> Result<bool> {
         Ok(self.peripheral.is_connected().await?)
     }
-
-    async fn properties(&self) -> &HubProperties {
-        &self.properties
-    }
-
     async fn send_raw(&self, msg: &[u8]) -> Result<()> {
         let write_type = WriteType::WithoutResponse;
         Ok(self

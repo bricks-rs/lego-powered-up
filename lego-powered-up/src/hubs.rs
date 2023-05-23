@@ -18,7 +18,9 @@ pub trait Hub {
     async fn is_connected(&self) -> Result<bool>;
     // The init function cannot be a trait method until we have GAT :(
     //fn init(peripheral: P);
-    async fn properties(&self) -> &HubProperties;
+    fn properties(&self) -> &HubProperties;
+    fn peripheral(&self) -> &Peripheral;
+    fn characteristic(&self) -> &Characteristic;
 
     // async fn port_map(&self) -> &PortMap {
     //     &self.properties().await.port_map
@@ -88,6 +90,8 @@ pub enum Port {
     TemperatureSensor2,
     InternalMotor,
     Rssi,
+    RemoteA,
+    RemoteB,
     Virtual(u8),
 }
 

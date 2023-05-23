@@ -19,6 +19,16 @@ impl Hub for RemoteControl {
             .unwrap_or_default())
     }
 
+    fn properties(&self) -> &HubProperties {
+        &self.properties
+    }
+    fn characteristic(&self) -> &Characteristic {
+        &self.lpf_characteristic
+    }
+    fn peripheral(&self) -> &Peripheral {
+        &self.peripheral
+    }
+
     async fn disconnect(&self) -> Result<()> {
         if self.is_connected().await? {
             self.peripheral.disconnect().await?;
@@ -28,10 +38,6 @@ impl Hub for RemoteControl {
 
     async fn is_connected(&self) -> Result<bool> {
         Ok(self.peripheral.is_connected().await?)
-    }
-
-    async fn properties(&self) -> &HubProperties {
-        &self.properties
     }
 
     async fn send_raw(&self, msg: &[u8]) -> Result<()> {
@@ -97,8 +103,8 @@ impl Hub for RemoteControl {
                 self.lpf_characteristic.clone(),
                 port,
             )),
-            Port::A | Port::B | Port::C | Port::D => {
-                Box::new(devices::Motor::new(
+            Port::A | Port::B  => {
+                Box::new(devices::RemoteButtons::new(
                     self.peripheral.clone(),
                     self.lpf_characteristic.clone(),
                     port_id,
