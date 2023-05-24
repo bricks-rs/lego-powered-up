@@ -1,6 +1,5 @@
 /// Definition for the Remote Control
 use super::*;
-use crate::notifications::{NotificationMessage,};
 
 #[derive(Debug, )]
 pub struct RemoteControl {
@@ -118,11 +117,11 @@ impl Hub for RemoteControl {
 
 
 // # PORTS
-// PORT_A = 0x00
-// PORT_B = 0x01
-// PORT_LED = 0x34
-// PORT_VOLTAGE = 0x3B
-// PORT_RSSI = 0x3C
+// PORT_A = 0x00        0
+// PORT_B = 0x01        1
+// PORT_LED = 0x34      52
+// PORT_VOLTAGE = 0x3B  59
+// PORT_RSSI = 0x3C     60
 
 
 impl RemoteControl {
