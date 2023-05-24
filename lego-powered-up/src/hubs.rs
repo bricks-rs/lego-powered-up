@@ -11,7 +11,6 @@ use btleplug::platform::Peripheral;
 use std::collections::HashMap;
 use std::fmt::Debug;
 
-use crate::Error;
 use crate::notifications::{ModeInformationRequest, ModeInformationType,
      InformationRequest, InformationType, NotificationMessage, 
      HubAction, HubActionRequest};
