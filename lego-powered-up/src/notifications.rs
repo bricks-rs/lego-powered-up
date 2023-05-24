@@ -13,8 +13,6 @@ use num_traits::FromPrimitive;
 use std::collections::HashMap;
 use std::fmt::{self, Debug, Display};
 
-// mod macros;
-// pub use crate::notifications::macros;
 
 macro_rules! ok {
     ($thing:expr) => {
@@ -103,6 +101,9 @@ pub const MAX_NAME_SIZE: usize = 14;
 /// <https://github.com/rust-lang/rust/issues/60553>
 ///
 /// As it stands we have a horrendous bodge involving consts::MessageType.
+/// 
+/// Note: "Allow arbitrary enums to have explicit discriminants" is available as of v1.66.
+/// Possible to clean up the "horrendous bodge"?
 #[non_exhaustive]
 #[derive(Clone, Debug, PartialEq)]
 pub enum NotificationMessage {
