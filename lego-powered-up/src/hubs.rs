@@ -12,7 +12,9 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 
 use crate::Error;
-use crate::notifications::{ModeInformationRequest, ModeInformationType, InformationRequest, InformationType, NotificationMessage};
+use crate::notifications::{ModeInformationRequest, ModeInformationType,
+     InformationRequest, InformationType, NotificationMessage, 
+     HubAction, HubActionRequest};
 
 /// Trait describing a generic hub.
 #[async_trait::async_trait]
@@ -41,6 +43,14 @@ pub trait Hub: Debug + Send + Sync {
             port_id,
             mode,
             information_type: infotype,
+        });
+        self.send(msg).await
+    }
+
+    async fn hub_action(&self, action_type: HubAction) -> Result<()> {
+        let msg =
+        NotificationMessage::HubActions(HubActionRequest {
+            action_type,
         });
         self.send(msg).await
     }

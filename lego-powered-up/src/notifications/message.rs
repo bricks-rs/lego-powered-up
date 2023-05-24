@@ -8,7 +8,7 @@ use crate::next;
 #[derive(Clone, Debug, PartialEq)]
 pub enum NotificationMessage {
     HubProperties(HubProperty),
-    HubActions(HubAction),
+    HubActions(HubActionRequest),
     HubAlerts(AlertType),
     HubAttachedIo(AttachedIo),
     GenericErrorMessages(ErrorMessageFormat),
@@ -62,7 +62,7 @@ impl NotificationMessage {
                 HubProperties(props)
             }
             MessageType::HubActions => {
-                let action = HubAction::parse(&mut msg_iter)?;
+                let action = HubActionRequest::parse(&mut msg_iter)?;
                 HubActions(action)
             }
             MessageType::HubAlerts => {
@@ -241,7 +241,7 @@ impl NotificationMessage {
         let mut ser = match self {
             HubProperties(_) => todo!(),
             // HubProperties(msg) => msg.serialise(),
-            HubActions(_) => todo!(),
+            HubActions(msg) => msg.serialise(),
             HubAlerts(_) => todo!(),
             HwNetworkCommands(_) => todo!(),
             FwUpdateGoIntoBootMode(_) => todo!(),

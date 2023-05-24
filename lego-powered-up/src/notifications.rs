@@ -75,10 +75,7 @@ pub enum HubPropertyValue {
 }
 
 impl HubPropertyValue {
-    pub fn parse<'a>(
-        prop_type: u8,
-        mut msg: impl Iterator<Item = &'a u8>,
-    ) -> Result<Self> {
+    pub fn parse<'a>(prop_type: u8, mut msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
         use HubPropertyValue::*;
         let prop_type = ok!(HubPropertyReference::from_u8(prop_type));
 
@@ -166,6 +163,34 @@ pub enum HubAction {
     HubWillSwitchOff = 0x30,
     HubWillDisconnect = 0x31,
     HubWillGoIntoBootMode = 0x32,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct HubActionRequest {
+    pub(crate) action_type: HubAction,
+}
+
+impl HubActionRequest {
+    pub fn parse<'a>(mut msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
+        // let port_id = next!(msg);
+        let action_type = HubAction::parse(&mut msg)?;
+        Ok(HubActionRequest {
+            action_type,
+        })
+    }
+    pub fn serialise(&self) -> Vec<u8> {
+        // use HubAction::*;
+        // let action_type = ok!(HubActionReference::from_u8(action_type));
+
+        let mut msg = Vec::with_capacity(10);
+        msg.extend_from_slice(&[
+            0,
+            0,
+            MessageType::HubActions as u8,
+            self.action_type as u8,
+        ]);
+        msg
+    }
 }
 
 #[repr(u8)]
