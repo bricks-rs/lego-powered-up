@@ -27,18 +27,25 @@ pub trait Hub: Debug + Send + Sync {
     fn characteristic(&self) -> &Characteristic;
 
     // Port information
-    async fn request_port_info(&mut self, port_id: u8, infotype: InformationType) -> Result<()> {
-        Err(Error::NotImplementedError(
-            "Not implemented for type".to_string(),
-        ))
+    async fn request_port_info(&self, port_id: u8, infotype: InformationType) -> Result<()> {
+        let msg =
+        NotificationMessage::PortInformationRequest(InformationRequest {
+            port_id,
+            information_type: infotype,
+        });
+        self.send(msg).await
     }
-    async fn request_mode_info(&mut self, port_id: u8, mode: u8, infotype: ModeInformationType) -> Result<()> {
-        Err(Error::NotImplementedError(
-            "Not implemented for type".to_string(),
-        ))
+    async fn request_mode_info(&self, port_id: u8, mode: u8, infotype: ModeInformationType) -> Result<()> {
+        let msg =
+        NotificationMessage::PortModeInformationRequest(ModeInformationRequest {
+            port_id,
+            mode,
+            information_type: infotype,
+        });
+        self.send(msg).await
     }
-
-    async fn send(&mut self, msg: NotificationMessage) -> Result<()> {
+   
+    async fn send(&self, msg: NotificationMessage) -> Result<()> {
         let buf = msg.serialise();
         self.peripheral()
             .write(self.characteristic(), &buf, WriteType::WithoutResponse)
@@ -46,6 +53,7 @@ pub trait Hub: Debug + Send + Sync {
         Ok(())
     }
 
+    
     // async fn port_map(&self) -> &PortMap {
     //     &self.properties().await.port_map
     // }

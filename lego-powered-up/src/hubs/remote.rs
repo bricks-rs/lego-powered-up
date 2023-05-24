@@ -25,14 +25,14 @@ impl Hub for RemoteControl {
     fn properties(&self) -> &HubProperties {
         &self.properties
     }
+
     fn characteristic(&self) -> &Characteristic {
         &self.lpf_characteristic
     }
+
     fn peripheral(&self) -> &Peripheral {
         &self.peripheral
     }
-
-   
 
     async fn disconnect(&self) -> Result<()> {
         if self.is_connected().await? {
@@ -52,12 +52,6 @@ impl Hub for RemoteControl {
             .write(&self.lpf_characteristic, msg, write_type)
             .await?)
     }
-
-    // fn send(&self, msg: NotificationMessage) -> Result<()> {
-    //     let msg = msg.serialise();
-    //     self.send_raw(&msg)?;
-    //     Ok(())
-    // }
 
     async fn subscribe(&self, char: Characteristic) -> Result<()> {
         Ok(self.peripheral.subscribe(&char).await?)
@@ -118,25 +112,6 @@ impl Hub for RemoteControl {
             }
             _ => todo!(),
         })
-    }
-
-     // Port information
-     async fn request_port_info(&mut self, port_id: u8, infotype: InformationType) -> Result<()> {
-        let msg =
-        NotificationMessage::PortInformationRequest(InformationRequest {
-            port_id,
-            information_type: infotype,
-        });
-        self.send(msg).await
-    }
-    async fn request_mode_info(&mut self, port_id: u8, mode: u8, infotype: ModeInformationType) -> Result<()> {
-        let msg =
-        NotificationMessage::PortModeInformationRequest(ModeInformationRequest {
-            port_id,
-            mode,
-            information_type: infotype,
-        });
-        self.send(msg).await
     }
 
 }
