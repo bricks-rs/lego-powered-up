@@ -53,12 +53,14 @@ pub trait Device: Debug + Send + Sync {
         ))
     }
 
-    // Hub internal
+    // Hub internal devices
     async fn set_rgb(&mut self, _rgb: &[u8; 3]) -> Result<()> {
         Err(Error::NotImplementedError(
             "Not implemented for type".to_string(),
         ))
     }
+
+    // Remote
     async fn remote_buttons_enable(&mut self, mode: u8, delta: u32) -> Result<()> {
         Err(Error::NotImplementedError(
             "Not implemented for type".to_string(),

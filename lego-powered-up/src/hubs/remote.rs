@@ -1,5 +1,8 @@
 /// Definition for the Remote Control
 use super::*;
+use crate::notifications::{NotificationMessage,};
+
+#[derive(Debug, )]
 pub struct RemoteControl {
     peripheral: Peripheral,
     lpf_characteristic: Characteristic,
@@ -28,6 +31,8 @@ impl Hub for RemoteControl {
     fn peripheral(&self) -> &Peripheral {
         &self.peripheral
     }
+
+   
 
     async fn disconnect(&self) -> Result<()> {
         if self.is_connected().await? {
@@ -114,6 +119,26 @@ impl Hub for RemoteControl {
             _ => todo!(),
         })
     }
+
+     // Port information
+     async fn request_port_info(&mut self, port_id: u8, infotype: InformationType) -> Result<()> {
+        let msg =
+        NotificationMessage::PortInformationRequest(InformationRequest {
+            port_id,
+            information_type: infotype,
+        });
+        self.send(msg).await
+    }
+    async fn request_mode_info(&mut self, port_id: u8, mode: u8, infotype: ModeInformationType) -> Result<()> {
+        let msg =
+        NotificationMessage::PortModeInformationRequest(ModeInformationRequest {
+            port_id,
+            mode,
+            information_type: infotype,
+        });
+        self.send(msg).await
+    }
+
 }
 
 

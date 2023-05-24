@@ -564,3 +564,27 @@ pub enum PortOutputSubCommandValue {
     GotoAbsolutePosition2 = 0x0e,
     PresetEncoder2 = 0x14,
 }
+
+#[repr(u16)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive)]
+pub enum IoTypeId {
+    Motor = 0x0001,
+    SystemTrainMotor = 0x0002,
+    Button = 0x0005,
+    LedLight = 0x0008,
+    Voltage = 0x0014,
+    Current = 0x0015,
+    PiezoToneSound = 0x0016,
+    RgbLight = 0x0017,
+    ExternalTiltSensor = 0x0022,
+    MotionSensor = 0x0023,
+    VisionSensor = 0x0025,
+    ExternalMotor = 0x0026,
+    InternalMotor = 0x0027,
+    InternalTilt = 0x0028,
+    TechnicHubGestSensor = 0x0036,
+    TechnicHubAccelerometer = 0x0039,
+    TechnicHubGyroSensor = 0x003a,
+    TechnicHubTiltSensor = 0x003b,
+    TechnicHubTemperatureSensor = 0x003c
+}

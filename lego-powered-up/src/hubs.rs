@@ -9,10 +9,14 @@ use crate::error::{OptionContext, Result};
 use btleplug::api::{Characteristic, Peripheral as _, WriteType};
 use btleplug::platform::Peripheral;
 use std::collections::HashMap;
+use std::fmt::Debug;
+
+use crate::Error;
+use crate::notifications::{ModeInformationRequest, ModeInformationType, InformationRequest, InformationType, NotificationMessage};
 
 /// Trait describing a generic hub.
 #[async_trait::async_trait]
-pub trait Hub {
+pub trait Hub: Debug + Send + Sync {
     async fn name(&self) -> Result<String>;
     async fn disconnect(&self) -> Result<()>;
     async fn is_connected(&self) -> Result<bool>;
@@ -21,6 +25,26 @@ pub trait Hub {
     fn properties(&self) -> &HubProperties;
     fn peripheral(&self) -> &Peripheral;
     fn characteristic(&self) -> &Characteristic;
+
+    // Port information
+    async fn request_port_info(&mut self, port_id: u8, infotype: InformationType) -> Result<()> {
+        Err(Error::NotImplementedError(
+            "Not implemented for type".to_string(),
+        ))
+    }
+    async fn request_mode_info(&mut self, port_id: u8, mode: u8, infotype: ModeInformationType) -> Result<()> {
+        Err(Error::NotImplementedError(
+            "Not implemented for type".to_string(),
+        ))
+    }
+
+    async fn send(&mut self, msg: NotificationMessage) -> Result<()> {
+        let buf = msg.serialise();
+        self.peripheral()
+            .write(self.characteristic(), &buf, WriteType::WithoutResponse)
+            .await?;
+        Ok(())
+    }
 
     // async fn port_map(&self) -> &PortMap {
     //     &self.properties().await.port_map

@@ -56,8 +56,8 @@ async fn main() -> anyhow::Result<()> {
 
     tokio::spawn(async move {
         while let Some(data) = hub1_stream.next().await {
-            // println!("Received data from {:?} [{:?}]: {:?}", &hub1_name, data.uuid, data.value);
-            println!("{}", &hub1_name);
+            println!("Received data from {:?} [{:?}]: {:?}", &hub1_name, data.uuid, data.value);
+            // println!("{}", &hub1_name);
             let n = NotificationMessage::parse(&data.value).unwrap();
             dbg!(&n);
         }  
@@ -78,7 +78,7 @@ async fn main() -> anyhow::Result<()> {
 
     println!("remote buttons mode 0");
     remote_a.remote_buttons_enable(4, 1).await?;
-    tokio::time::sleep(Duration::from_secs(30)).await;
+    tokio::time::sleep(Duration::from_secs(10)).await;
     
     // println!("remote buttons mode 1");
     // remote_b.remote_buttons_enable(1, 1).await?;

@@ -9,6 +9,7 @@ use crate::consts::HubPropertyPayload;
 
 
 use super::*;
+#[derive(Debug, )]
 pub struct TechnicHub {
     peripheral: Peripheral,
     lpf_characteristic: Characteristic,
