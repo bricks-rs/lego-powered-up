@@ -564,6 +564,16 @@ pub enum PortOutputSubCommandValue {
     GotoAbsolutePosition2 = 0x0e,
     PresetEncoder2 = 0x14,
 }
+
+pub enum InputSetupCombinedSubcommandValue {
+    SetModeanddatasetCombinations = 0x01,
+    LockLpf2DeviceForSetup = 0x02,
+    UnlockAndStartMultiEnabled = 0x03,
+    UnlockAndStartMultiDisabled = 0x04,
+    NotUsed = 0x05,
+    ResetSensor = 0x06,
+}
+
 // Added more IDs, some observed and some from 
 // https://github.com/nathankellenicki/node-poweredup/blob/master/src/consts.ts 
 // Also filled out missing numbers with "unknown" as a workaround for panicking 

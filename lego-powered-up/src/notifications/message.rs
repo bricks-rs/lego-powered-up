@@ -250,7 +250,7 @@ impl NotificationMessage {
             PortInformationRequest(msg) => msg.serialise(),
             PortModeInformationRequest(msg) => msg.serialise(),
             PortInputFormatSetupSingle(msg) => msg.serialise(),
-            PortInputFormatSetupCombinedmode(_) => todo!(),
+            PortInputFormatSetupCombinedmode(msg) => msg.serialise(),
             VirtualPortSetup(_) => todo!(),
             PortOutputCommand(cmd) => cmd.serialise(),
 

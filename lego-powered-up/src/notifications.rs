@@ -216,7 +216,7 @@ impl AttachedIo {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum IoAttachEvent {
     DetachedIo {
-        // io_type_id: IoTypeId,
+        // io_type_id: IoTypeId,        //Not included in detached event 
     },
     AttachedIo {
         io_type_id: IoTypeId,
@@ -655,8 +655,8 @@ impl InputSetupSingle {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct InputSetupCombined {
-    port_id: u8,
-    subcommand: InputSetupCombinedSubcommand,
+    pub(crate) port_id: u8,
+    pub(crate) subcommand: InputSetupCombinedSubcommand,
 }
 
 impl InputSetupCombined {
@@ -667,6 +667,84 @@ impl InputSetupCombined {
             port_id,
             subcommand,
         })
+    }
+    pub fn serialise(&self) -> Vec<u8> {
+        use InputSetupCombinedSubcommand::*;
+        match &self.subcommand {
+            SetModeanddatasetCombinations {
+                combination_index,
+                mode_dataset,
+            } => {
+                let mut bytes = vec![
+                    // Header
+                    0, // len
+                    0, // hub id - always set to 0
+                    MessageType::PortInputFormatSetupCombinedmode as u8,
+                    // Command
+                    self.port_id,
+                    InputSetupCombinedSubcommandValue::SetModeanddatasetCombinations as u8,
+                    // Subcommand payload
+                    *combination_index,
+                ];
+                bytes.extend_from_slice(mode_dataset.as_slice());
+                bytes
+            }
+            LockLpf2DeviceForSetup {} => {
+                vec![
+                    // Header
+                    0, // len
+                    0, // hub id - always set to 0
+                    MessageType::PortInputFormatSetupCombinedmode as u8,
+                    // Command
+                    self.port_id,
+                    InputSetupCombinedSubcommandValue::LockLpf2DeviceForSetup as u8,
+                ]
+            }
+            UnlockAndStartMultiEnabled {} => {
+                vec![
+                    // Header
+                    0, // len
+                    0, // hub id - always set to 0
+                    MessageType::PortInputFormatSetupCombinedmode as u8,
+                    // Command
+                    self.port_id,
+                    InputSetupCombinedSubcommandValue::UnlockAndStartMultiEnabled as u8,
+                ]
+            }
+            UnlockAndStartMultiDisabled {} => {
+                vec![
+                    // Header
+                    0, // len
+                    0, // hub id - always set to 0
+                    MessageType::PortInputFormatSetupCombinedmode as u8,
+                    // Command
+                    self.port_id,
+                    InputSetupCombinedSubcommandValue::UnlockAndStartMultiDisabled as u8,
+                ]
+            }
+            NotUsed {} => {
+                vec![
+                    // Header
+                    0, // len
+                    0, // hub id - always set to 0
+                    MessageType::PortInputFormatSetupCombinedmode as u8,
+                    // Command
+                    self.port_id,
+                    InputSetupCombinedSubcommandValue::NotUsed as u8,
+                ]
+            }
+            ResetSensor {} => {
+                vec![
+                    // Header
+                    0, // len
+                    0, // hub id - always set to 0
+                    MessageType::PortInputFormatSetupCombinedmode as u8,
+                    // Command
+                    self.port_id,
+                    InputSetupCombinedSubcommandValue::ResetSensor as u8,
+                ]
+            } 
+        }
     }
 }
 

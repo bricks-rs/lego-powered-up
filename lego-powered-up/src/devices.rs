@@ -7,19 +7,23 @@
 
 use crate::error::{Error, Result};
 use crate::hubs::Port;
-use crate::notifications::{HubLedMode, NotificationMessage, Power, EndState, PortModeInformationType};
+use crate::notifications::{HubLedMode, NotificationMessage, Power, EndState, PortModeInformationType, InputSetupCombined};
 use async_trait::async_trait;
 use btleplug::api::{Characteristic, Peripheral as _, WriteType};
 use btleplug::platform::Peripheral;
 use std::fmt::Debug;
 use std::process::ExitStatus;
+use core::time::Duration;
 
 use crate::notifications::{InputSetupSingle, PortOutputSubcommand, WriteDirectModeDataPayload, 
     PortOutputCommandFormat, StartupInfo, CompletionInfo, InformationRequest, ModeInformationRequest,
-    PortInformationType, ModeInformationType, InformationType, };
+    PortInformationType, ModeInformationType, InformationType,  };
 pub enum MotorSensorMode {
+    Power = 0x0,
     Speed = 0x1,
-    Angle = 0x2,
+    Pos = 0x2,
+    APos = 0x3,
+    Load = 0x4, 
 }
 
 
@@ -41,17 +45,17 @@ pub trait Device: Debug + Send + Sync {
         Ok(())
     }
 
-    // Port information
-    async fn request_port_info(&mut self, infotype: InformationType) -> Result<()> {
-        Err(Error::NotImplementedError(
-            "Not implemented for type".to_string(),
-        ))
-    }
-    async fn request_mode_info(&mut self, mode: u8, infotype: ModeInformationType) -> Result<()> {
-        Err(Error::NotImplementedError(
-            "Not implemented for type".to_string(),
-        ))
-    }
+    // // Port information
+    // async fn request_port_info(&mut self, infotype: InformationType) -> Result<()> {
+    //     Err(Error::NotImplementedError(
+    //         "Not implemented for type".to_string(),
+    //     ))
+    // }
+    // async fn request_mode_info(&mut self, mode: u8, infotype: ModeInformationType) -> Result<()> {
+    //     Err(Error::NotImplementedError(
+    //         "Not implemented for type".to_string(),
+    //     ))
+    // }
 
     // Hub internal devices
     async fn set_rgb(&mut self, _rgb: &[u8; 3]) -> Result<()> {
@@ -115,7 +119,11 @@ pub trait Device: Debug + Send + Sync {
             "Not implemented for type".to_string(),
         ))
     }
-
+    async fn motor_combined_sensor_enable(&mut self, mode: MotorSensorMode, speed_delta: u32, position_delta: u32) -> Result<()> {
+        Err(Error::NotImplementedError(
+            "Not implemented for type".to_string(),
+        ))
+    }
 
 
 
@@ -144,23 +152,23 @@ impl Device for RemoteButtons {
     fn characteristic(&self) -> &Characteristic {
         &self.characteristic
     }
-    async fn request_port_info(&mut self, infotype: InformationType) -> Result<()> {
-        let msg =
-        NotificationMessage::PortInformationRequest(InformationRequest {
-            port_id: self.port_id,
-            information_type: infotype,
-        });
-    self.send(msg).await
-    }
-    async fn request_mode_info(&mut self, mode: u8, infotype: ModeInformationType) -> Result<()> {
-        let msg =
-        NotificationMessage::PortModeInformationRequest(ModeInformationRequest {
-            port_id: self.port_id,
-            mode,
-            information_type: infotype,
-        });
-    self.send(msg).await
-    }
+    // async fn request_port_info(&mut self, infotype: InformationType) -> Result<()> {
+    //     let msg =
+    //     NotificationMessage::PortInformationRequest(InformationRequest {
+    //         port_id: self.port_id,
+    //         information_type: infotype,
+    //     });
+    // self.send(msg).await
+    // }
+    // async fn request_mode_info(&mut self, mode: u8, infotype: ModeInformationType) -> Result<()> {
+    //     let msg =
+    //     NotificationMessage::PortModeInformationRequest(ModeInformationRequest {
+    //         port_id: self.port_id,
+    //         mode,
+    //         information_type: infotype,
+    //     });
+    // self.send(msg).await
+    // }
     async fn remote_buttons_enable(&mut self, mode: u8, delta: u32) -> Result<()> {
         let mode_set_msg =
             NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
@@ -455,6 +463,84 @@ impl Device for Motor {
         self.send(mode_set_msg).await
     }
     
+    async fn motor_combined_sensor_enable(&mut self, primary_mode: MotorSensorMode, speed_delta: u32, position_delta: u32) -> Result<()> {
+        use crate::notifications::*;
+        
+        // Step 1: Lock device
+        let subcommand = InputSetupCombinedSubcommand::LockLpf2DeviceForSetup {};     
+   
+        let msg =
+            NotificationMessage::PortInputFormatSetupCombinedmode(InputSetupCombined {
+                port_id: self.port_id,
+                subcommand,
+            });
+        println!("Lock device");
+        self.send(msg).await;
+        println!("wait 5 s");
+        tokio::time::sleep(Duration::from_secs(5)).await;
+
+        // Step 2: Set up modes
+        println!("Set up speed mode");
+        self.motor_sensor_enable(MotorSensorMode::Speed, speed_delta).await;
+        // println!("Set up apos mode");
+        // self.motor_sensor_enable(MotorSensorMode::APos, position_delta).await;      // Returns "Invalid use" of Port Input Format Setup (Single) [0x41]"
+        println!("Set up pos mode");
+        self.motor_sensor_enable(MotorSensorMode::Pos, position_delta).await;
+
+
+        // Step 3: Set up combination
+        let mut sensor0_mode_nibble: u8;
+        let mut sensor1_mode_nibble: u8;
+        // let mut sensor2_mode_nibble: u8;
+        let dataset_nibble: u8 = 0x00;     // All motor modes have 1 dataset only 
+        match primary_mode {
+            MotorSensorMode::Speed => {
+                sensor0_mode_nibble = 0x10; // Speed 
+                sensor1_mode_nibble = 0x20; // Pos
+                // sensor2_mode_nibble = 0x30; // APos
+            }
+            _ => {
+                sensor0_mode_nibble = 0x00;  
+                sensor1_mode_nibble = 0x00; 
+                // sensor2_mode_nibble = 0x00; 
+            }
+
+        }
+        
+        let subcommand = InputSetupCombinedSubcommand::SetModeanddatasetCombinations { 
+            combination_index: 0, 
+            mode_dataset: [
+                sensor0_mode_nibble + dataset_nibble, 
+                sensor1_mode_nibble + dataset_nibble, 
+                // sensor2_mode_nibble + dataset_nibble,
+                0, 0, 0, 0, 0, 0
+            ] 
+        };     
+        
+        
+        let msg =
+            NotificationMessage::PortInputFormatSetupCombinedmode(InputSetupCombined {
+                port_id: self.port_id,
+                subcommand,
+            });
+        println!("Set up combo");
+        self.send(msg).await;
+
+ 
+        // Step 4: Unlock device and enable multi updates 
+        let subcommand = InputSetupCombinedSubcommand::UnlockAndStartMultiEnabled {};     
+   
+        let msg =
+            NotificationMessage::PortInputFormatSetupCombinedmode(InputSetupCombined {
+                port_id: self.port_id,
+                subcommand,
+            });
+        println!("Unlock / enable");
+        self.send(msg).await;
+
+        Ok(())
+
+    }
 
     
 }
