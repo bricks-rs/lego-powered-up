@@ -172,16 +172,12 @@ pub struct HubActionRequest {
 
 impl HubActionRequest {
     pub fn parse<'a>(mut msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
-        // let port_id = next!(msg);
         let action_type = HubAction::parse(&mut msg)?;
         Ok(HubActionRequest {
             action_type,
         })
     }
     pub fn serialise(&self) -> Vec<u8> {
-        // use HubAction::*;
-        // let action_type = ok!(HubActionReference::from_u8(action_type));
-
         let mut msg = Vec::with_capacity(10);
         msg.extend_from_slice(&[
             0,
