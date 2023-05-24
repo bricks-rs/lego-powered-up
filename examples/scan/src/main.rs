@@ -50,9 +50,13 @@ async fn main() -> anyhow::Result<()> {
 
     
     
+    let hub_count = 1;
+    println!("Waiting for hubs...");
+    let discovered_hubs = pu.wait_for_hubs_filter(HubFilter::Null, &hub_count).await?;
+    
+    println!("Discovered {} hubs, trying to connect...", &hub_count);    
 
 
-    let discovered_hubs = pu.wait_for_hubs_filter(HubFilter::Null, 2).await?;
    
     // for h in discovered_hubs.into_iter() {
     // }

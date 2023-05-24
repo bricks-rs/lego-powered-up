@@ -3,18 +3,25 @@
 #![allow(unused)]
 use core::panic;
 use std::println;
+use std::time::Duration;
 
-use lego_powered_up::{notifications::Power, PoweredUp, btleplug::{platform::Manager}, devices};
-use lego_powered_up::{HubFilter, notifications::EndState, notifications::NotificationMessage};
+
+use lego_powered_up::{PoweredUp, HubFilter, devices,};
+use lego_powered_up::notifications::{NotificationMessage, Power, EndState, 
+                                    InformationType, ModeInformationType,
+                                    HubAction};
+use lego_powered_up::consts::*;
 // use lego_powered_up::{DiscoveredHub};
+
+// Btleplug reexports, provide abstractions for these
 use lego_powered_up::{btleplug::api::{Central, CentralEvent, ScanFilter, Manager as _, Peripheral as _, PeripheralProperties}};
 use lego_powered_up::{btleplug::api::Peripheral};
 use lego_powered_up::{btleplug::api::{CharPropFlags, ValueNotification}};
+use lego_powered_up::{btleplug::platform::{Manager}};
+
 use lego_powered_up::{futures::stream::{StreamExt, FuturesUnordered}};
 use lego_powered_up::{futures::{future, select}};
 
-// use btleplug::api::*;
-use std::time::Duration;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -42,8 +49,11 @@ async fn main() -> anyhow::Result<()> {
     // Init PoweredUp with found adapter
     let mut pu = PoweredUp::with_adapter(adapter).await?;
 
-    let discovered_hubs = pu.wait_for_hubs_filter(HubFilter::Null, 1).await?;
-   
+    let hub_count = 1;
+    println!("Waiting for hubs...");
+    let discovered_hubs = pu.wait_for_hubs_filter(HubFilter::Null, &hub_count).await?;
+    
+    println!("Discovered {} hubs, trying to connect...", &hub_count);
     let mut dh_iter = discovered_hubs.into_iter();
     let dh1 = dh_iter.next().unwrap();
     println!("Connecting to hub `{}`", dh1.name);
@@ -63,9 +73,14 @@ async fn main() -> anyhow::Result<()> {
         }  
     });
 
+    let req = hub1.request_port_info(0x1, InformationType::ModeInfo).await;
+    match req {
+        Ok(()) => (),
+        Err(error) => println!("Request error: {}", &error)
+    }
 
 
-    let mut remote_a = hub1.port(lego_powered_up::hubs::Port::A).await?;
+    // let mut remote_a = hub1.port(lego_powered_up::hubs::Port::A).await?;
     // remote_b.request_port_info(lego_powered_up::notifications::InformationType::PortValue).await?;
     // remote_b.request_port_info(lego_powered_up::notifications::InformationType::ModeInfo).await?;
     // remote_b.request_port_info(lego_powered_up::notifications::InformationType::PossibleModeCombinations).await?;
@@ -76,9 +91,9 @@ async fn main() -> anyhow::Result<()> {
     // remote_b.request_mode_info(3, lego_powered_up::notifications::ModeInformationType::ValueFormat).await?;
     // remote_b.request_mode_info(4, lego_powered_up::notifications::ModeInformationType::ValueFormat).await?;
 
-    println!("remote buttons mode 0");
-    remote_a.remote_buttons_enable(4, 1).await?;
-    tokio::time::sleep(Duration::from_secs(10)).await;
+    // println!("remote buttons mode 0");
+    // remote_a.remote_buttons_enable(4, 1).await?;
+    // tokio::time::sleep(Duration::from_secs(10)).await;
     
     // println!("remote buttons mode 1");
     // remote_b.remote_buttons_enable(1, 1).await?;
@@ -100,6 +115,7 @@ async fn main() -> anyhow::Result<()> {
 
     // loop {}
 
+    tokio::time::sleep(Duration::from_secs(5)).await;
     println!("Disconnect from hub `{}`", hub1.name().await?);
     hub1.disconnect().await?;
     

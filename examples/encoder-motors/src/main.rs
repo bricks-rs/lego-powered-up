@@ -42,7 +42,11 @@ async fn main() -> anyhow::Result<()> {
     // Init PoweredUp with found adapter
     let mut pu = PoweredUp::with_adapter(adapter).await?;
 
-    let discovered_hubs = pu.wait_for_hubs_filter(HubFilter::Null, 1).await?;
+    let hub_count = 1;
+    println!("Waiting for hubs...");
+    let discovered_hubs = pu.wait_for_hubs_filter(HubFilter::Null, &hub_count).await?;
+    println!("Discovered {} hubs, trying to connect...", &hub_count);
+
    
     let mut dh_iter = discovered_hubs.into_iter();
     let dh1 = dh_iter.next().unwrap();
