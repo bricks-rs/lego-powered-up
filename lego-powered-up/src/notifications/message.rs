@@ -1,3 +1,31 @@
+use super::*;
+
+use crate::ok;
+use crate::next;
+
+/// Message format:
+/// HEAD |
+///
+///
+/// HEAD = LENGTH | HUB_ID (IGNORE) | TYPE
+/// * LENGTH: u7(8) or u16, see below. Total length of message
+/// * HUB_ID = 0_u8
+/// * TYPE: message type u8. Message types are in consts::MessageType
+///
+/// LENGTH
+/// lengths 0-127 are encoded as u8
+/// if MSB of first byte is SET then discard this bit and take the next
+/// byte from the message right shifted by 7 and OR it onto the first byte
+/// i.e. LEN = BYTE1 as u16 & 0x7F | (BYTE2 as u16 >> 7)
+///
+/// The conversion to/from u8 is a bit of a hack pending
+/// "Allow arbitrary enums to have explicit discriminants"
+/// <https://github.com/rust-lang/rust/issues/60553>
+///
+/// As it stands we have a horrendous bodge involving consts::MessageType.
+/// 
+/// Note: "Allow arbitrary enums to have explicit discriminants" is available as of v1.66.
+/// Possible to clean up the "horrendous bodge"?
 #[non_exhaustive]
 #[derive(Clone, Debug, PartialEq)]
 pub enum NotificationMessage {
@@ -206,7 +234,7 @@ impl NotificationMessage {
         }
     }
 
-    fn length<'a>(mut msg: impl Iterator<Item = &'a u8>) -> Result<usize> {
+    pub fn length<'a>(mut msg: impl Iterator<Item = &'a u8>) -> Result<usize> {
         let first = next!(msg);
 
         let length = if first & 0x80 == 0x00 {

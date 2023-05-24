@@ -1,12 +1,14 @@
-use num_traits::FromPrimitive;
-use crate::error::{Error, OptionContext, Result};
+// use num_traits::FromPrimitive;
+// use crate::error::{Error, OptionContext, Result};
 
+#[macro_export]
 macro_rules! ok {
     ($thing:expr) => {
         $thing.context("Cannot convert 'None'")?
     };
 }
 
+#[macro_export]
 macro_rules! next {
     ($iter:ident) => {
         *$iter.next().context("Insufficient length")?
