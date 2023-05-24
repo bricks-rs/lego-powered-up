@@ -127,15 +127,16 @@ impl Hub for MoveHub {
     }
 }
 
-//     PORT_A = 0x00
-//     PORT_B = 0x01
+//     PORT_A = 0x00                
+//     PORT_B = 0x01                
 //     PORT_C = 0x02
 //     PORT_D = 0x03
-//     PORT_AB = 0x10
-//     PORT_LED = 0x32
-//     PORT_TILT_SENSOR = 0x3A
-//     PORT_CURRENT = 0x3B
-//     PORT_VOLTAGE = 0x3C
+//     PORT_AB = 0x10               16
+//     PORT_LED = 0x32              50
+//     PORT_TILT_SENSOR = 0x3A      58
+//     PORT_CURRENT = 0x3B          59
+//     PORT_VOLTAGE = 0x3C          60
+//                                  70
 
 
 impl MoveHub {
@@ -158,9 +159,9 @@ impl MoveHub {
         port_map.insert(Port::D, 0x3);
         port_map.insert(Port::AB, 0x10);
         port_map.insert(Port::HubLed, 0x32);
+        port_map.insert(Port::TiltSensor, 0x3a);
         port_map.insert(Port::CurrentSensor, 0x3b);
         port_map.insert(Port::VoltageSensor, 0x3c);
-        port_map.insert(Port::TiltSensor, 0x3a);
 
 
         let properties = HubProperties {
