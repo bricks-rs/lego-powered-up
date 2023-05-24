@@ -1,6 +1,3 @@
-// use num_traits::FromPrimitive;
-// use crate::error::{Error, OptionContext, Result};
-
 #[macro_export]
 macro_rules! ok {
     ($thing:expr) => {
