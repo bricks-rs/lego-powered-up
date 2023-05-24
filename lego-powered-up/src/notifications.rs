@@ -220,8 +220,8 @@ pub enum IoAttachEvent {
     },
     AttachedIo {
         io_type_id: IoTypeId,
-        // hw_rev: VersionNumber,
-        // fw_rev: VersionNumber,
+        hw_rev: VersionNumber,
+        fw_rev: VersionNumber,
     },
     AttachedVirtualIo {
         port_a: u8,
@@ -230,6 +230,9 @@ pub enum IoAttachEvent {
 }
 
 impl IoAttachEvent {
+    // NOTE
+    // Parser panicks with "NoneError("Cannot convert 'None'")"
+    // if incoming IoTypeId-value is not in enum IoTypeId.
     pub fn parse<'a>(mut msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
         let event_type = ok!(Event::from_u8(next!(msg)));
 
@@ -238,20 +241,20 @@ impl IoAttachEvent {
                 // let io_type_id = ok!(IoTypeId::from_u16(next_u16!(msg)));
                 IoAttachEvent::DetachedIo { }
             }
-            Event::AttachedIo => {
-                let foo = msg.next().expect("should be a value here");
             
+            Event::AttachedIo => {
+                // let foo = msg.next().expect("should be a value here");
+                // let io_type_id = ok!(IoTypeId::from_u8(*foo));
                 // println!("{:?}", foo);
-                // let io_type_id = IoTypeId::from(foo);
+            
                 // let io_type_id = ok!(IoTypeId::from_u8(next!(msg)));
-                // let io_type_id = ok!(IoTypeId::from_u16(next_u16!(msg)));
-                let io_type_id = IoTypeId::LedLight;
-                // let hw_rev = VersionNumber::parse(&mut msg)?;
-                // let fw_rev = VersionNumber::parse(&mut msg)?;
+                let io_type_id = ok!(IoTypeId::from_u16(next_u16!(msg)));
+                let hw_rev = VersionNumber::parse(&mut msg)?;
+                let fw_rev = VersionNumber::parse(&mut msg)?;
                 // let fw_rev = VersionNumber{major:0, minor:0, bugfix:0, build:0};
+                // let io_type_id = IoTypeId::LedLight;  // Testing
                 // IoAttachEvent::AttachedIo { io_type_id }
-                IoAttachEvent::AttachedIo { io_type_id }
-                // IoAttachEvent::AttachedIo { io_type_id, hw_rev, fw_rev }
+                IoAttachEvent::AttachedIo { io_type_id, hw_rev, fw_rev }
             }
             Event::AttachedVirtualIo => {
                 let port_a = next!(msg);
@@ -272,14 +275,15 @@ pub struct VersionNumber {
     pub major: u8,
     pub minor: u8,
     pub bugfix: u8,
-    pub build: u8,
+    pub build: u16,
 }
 
 impl VersionNumber {
     pub fn parse<'a>(mut msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
         //let byte0 = next!(msg);
         //let byte1 = next!(msg);
-        let build = next!(msg);
+
+        let build = next_u16!(msg);
         let byte2 = next!(msg);
         let byte3 = next!(msg);
         //trace!("Bytes: {:02x?}", [byte3, byte2, byte1, byte0]);
@@ -318,8 +322,7 @@ impl VersionNumber {
         let byte1 = (digits[3] << 4) | digits[2];
         let byte0 = (digits[1] << 4) | digits[0];
         */
-        // let byte1 = (self.build >> 8) as u8;
-        let byte1 = 0;                          // To get attached IO type ID parsing working
+        let byte1 = (self.build >> 8) as u8;
         let byte0 = self.build as u8;
 
         vec![byte0, byte1, byte2, byte3]
