@@ -1,6 +1,6 @@
 use btleplug::api::{
     Central, CentralEvent, Manager as _, Peripheral as _, PeripheralProperties,
-    ScanFilter, ValueNotification
+    ScanFilter, //ValueNotification
 };
 use btleplug::platform::{Adapter, Manager, PeripheralId};
 use futures::{stream::StreamExt, Stream};
