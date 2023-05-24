@@ -576,21 +576,13 @@ pub enum InputSetupCombinedSubcommandValue {
 
 // Added more IDs, some observed and some from 
 // https://github.com/nathankellenicki/node-poweredup/blob/master/src/consts.ts 
-// Also filled out missing numbers with "unknown" as a workaround for panicking 
-// issue in IoAttachedEvent-parser.
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive)]
 pub enum IoTypeId {
-        Unknown0x00 = 0x00,
     Motor = 0x01,
     SystemTrainMotor = 0x02,
-        Unknown0x03 = 0x03,
-        Unknown0x04 = 0x04,
     Button = 0x05,
-        Unknown0x06 = 0x06,
-        Unknown0x07 = 0x07,
     LedLight = 0x08,
-        Unknown0x09 = 0x09,
     Voltage = 0x14,                         //20
     Current = 0x15,                         //21
     PiezoToneSound = 0x16,                  //22
@@ -598,7 +590,6 @@ pub enum IoTypeId {
 
     ExternalTiltSensor = 0x22,              //34
     MotionSensor = 0x23,                    //35
-        Unknown0x24 = 0x24,                 //36
     VisionSensor = 0x25,                    //37
     ExternalMotorTacho = 0x26,              //38
     InternalMotorTacho = 0x27,              //39
@@ -607,7 +598,6 @@ pub enum IoTypeId {
     DuploTrainBaseSpeaker = 42,             //42
     DuploTrainBaseColorSensor = 43,         //43
     DuploTrainBaseSpeedometer = 44,         //44
-        Unknown0x2d = 0x2d,                 //45
     TechnicLargeLinearMotor = 46,           //46   // Technic Control+
     TechnicXLargeLinearMotor = 47,          //47   // Technic Control+
     TechnicMediumAngularMotor = 48,         //48   // Spike Prime
