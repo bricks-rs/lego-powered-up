@@ -564,34 +564,64 @@ pub enum PortOutputSubCommandValue {
     GotoAbsolutePosition2 = 0x0e,
     PresetEncoder2 = 0x14,
 }
-// According to docs IO type id is u16 and should be sent in
-// Attached I/O Message as two bytes. However of the two bytes
-// in the notification the first (not the second) byte gives
-// the ID:s listed and the the second byte is always 0. In short,
-// we should treat this as a u8 and in parsing treat the first
-// byte as the actual value and discard the second (always 0) byte.
+// Added more IDs, some observed and some from 
+// https://github.com/nathankellenicki/node-poweredup/blob/master/src/consts.ts 
+// Also filled out missing numbers with "unknown" as a workaround for panicking 
+// issue in IoAttachedEvent-parser.
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive)]
 pub enum IoTypeId {
+        Unknown0x00 = 0x00,
     Motor = 0x01,
     SystemTrainMotor = 0x02,
+        Unknown0x03 = 0x03,
+        Unknown0x04 = 0x04,
     Button = 0x05,
+        Unknown0x06 = 0x06,
+        Unknown0x07 = 0x07,
     LedLight = 0x08,
-    Voltage = 0x14,
-    Current = 0x15,
-    PiezoToneSound = 0x16,
-    RgbLight = 0x17,
-    ExternalTiltSensor = 0x22,
-    MotionSensor = 0x23,
-    VisionSensor = 0x25,
-    ExternalMotor = 0x26,
-    InternalMotor = 0x27,
-    InternalTilt = 0x28,
-    TechnicHubGestSensor = 0x36,
-    TechnicHubAccelerometer = 0x39,
-    TechnicHubGyroSensor = 0x3a,
-    TechnicHubTiltSensor = 0x3b,
-    TechnicHubTemperatureSensor = 0x3c
+        Unknown0x09 = 0x09,
+    Voltage = 0x14,                         //20
+    Current = 0x15,                         //21
+    PiezoToneSound = 0x16,                  //22
+    RgbLight = 0x17,                        //23
+
+    ExternalTiltSensor = 0x22,              //34
+    MotionSensor = 0x23,                    //35
+        Unknown0x24 = 0x24,                 //36
+    VisionSensor = 0x25,                    //37
+    ExternalMotorTacho = 0x26,              //38
+    InternalMotorTacho = 0x27,              //39
+    InternalTilt = 0x28,                    //40
+    DuploTrainBaseMotor = 41,               //41
+    DuploTrainBaseSpeaker = 42,             //42
+    DuploTrainBaseColorSensor = 43,         //43
+    DuploTrainBaseSpeedometer = 44,         //44
+        Unknown0x2d = 0x2d,                 //45
+    TechnicLargeLinearMotor = 46,           //46   // Technic Control+
+    TechnicXLargeLinearMotor = 47,          //47   // Technic Control+
+    TechnicMediumAngularMotor = 48,         //48   // Spike Prime
+    TechnicLargeAngularMotor = 49,          //49   // Spike Prime
+
+    TechnicHubGestSensor = 0x36,            //54
+    RemoteButtons = 0x37,                   //55
+    Rssi = 0x38,                            //56
+    TechnicHubAccelerometer = 0x39,         //57
+    TechnicHubGyroSensor = 0x3a,            //58
+    TechnicHubTiltSensor = 0x3b,            //59
+    TechnicHubTemperatureSensor = 0x3c,     //60
+    TechnicColorSensor = 61,                //61    // Spike Prime
+    TechnicDistanceSensor = 62,             //62    // Spike Prime
+    TechnicForceSensor = 63,                //63    // Spike Prime
+    Technic3x3ColorLightMatrix = 64,        //64    // Spike Essential
+    TechnicSmallAngularMotor = 65,          //65    // Spike Essential
+    UnknownMovehubDevice = 0x42,            //66
+    
+    MarioAccelerometer = 71,                //71
+    MarioBarcodeSensor = 73,                //73
+    MarioPantsSensor = 74,                  //74    
+    TechnicMediumAngularMotorGrey = 75,     //75     // Mindstorms
+    TechnicLargeAngularMotorGrey = 76,      //76     // Technic Control+
 }
 
 // #[repr(u16)]
