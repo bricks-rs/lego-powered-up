@@ -564,27 +564,56 @@ pub enum PortOutputSubCommandValue {
     GotoAbsolutePosition2 = 0x0e,
     PresetEncoder2 = 0x14,
 }
-
-#[repr(u16)]
+// According to docs IO type id is u16 and should be sent in
+// Attached I/O Message as two bytes. However of the two bytes
+// in the notification the first (not the second) byte gives
+// the ID:s listed and the the second byte is always 0. In short,
+// we should treat this as a u8 and in parsing treat the first
+// byte as the actual value and discard the second (always 0) byte.
+#[repr(u8)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive)]
 pub enum IoTypeId {
-    Motor = 0x0001,
-    SystemTrainMotor = 0x0002,
-    Button = 0x0005,
-    LedLight = 0x0008,
-    Voltage = 0x0014,
-    Current = 0x0015,
-    PiezoToneSound = 0x0016,
-    RgbLight = 0x0017,
-    ExternalTiltSensor = 0x0022,
-    MotionSensor = 0x0023,
-    VisionSensor = 0x0025,
-    ExternalMotor = 0x0026,
-    InternalMotor = 0x0027,
-    InternalTilt = 0x0028,
-    TechnicHubGestSensor = 0x0036,
-    TechnicHubAccelerometer = 0x0039,
-    TechnicHubGyroSensor = 0x003a,
-    TechnicHubTiltSensor = 0x003b,
-    TechnicHubTemperatureSensor = 0x003c
+    Motor = 0x01,
+    SystemTrainMotor = 0x02,
+    Button = 0x05,
+    LedLight = 0x08,
+    Voltage = 0x14,
+    Current = 0x15,
+    PiezoToneSound = 0x16,
+    RgbLight = 0x17,
+    ExternalTiltSensor = 0x22,
+    MotionSensor = 0x23,
+    VisionSensor = 0x25,
+    ExternalMotor = 0x26,
+    InternalMotor = 0x27,
+    InternalTilt = 0x28,
+    TechnicHubGestSensor = 0x36,
+    TechnicHubAccelerometer = 0x39,
+    TechnicHubGyroSensor = 0x3a,
+    TechnicHubTiltSensor = 0x3b,
+    TechnicHubTemperatureSensor = 0x3c
 }
+
+// #[repr(u16)]
+// #[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive)]
+// pub enum IoTypeId {
+//     Motor = 0x0001,
+//     SystemTrainMotor = 0x0002,
+//     Button = 0x0005,
+//     LedLight = 0x0008,
+//     Voltage = 0x0014,
+//     Current = 0x0015,
+//     PiezoToneSound = 0x0016,
+//     RgbLight = 0x0017,
+//     ExternalTiltSensor = 0x0022,
+//     MotionSensor = 0x0023,
+//     VisionSensor = 0x0025,
+//     ExternalMotor = 0x0026,
+//     InternalMotor = 0x0027,
+//     InternalTilt = 0x0028,
+//     TechnicHubGestSensor = 0x0036,
+//     TechnicHubAccelerometer = 0x0039,
+//     TechnicHubGyroSensor = 0x003a,
+//     TechnicHubTiltSensor = 0x003b,
+//     TechnicHubTemperatureSensor = 0x003c
+// }
