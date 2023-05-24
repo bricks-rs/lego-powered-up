@@ -243,17 +243,9 @@ impl IoAttachEvent {
             }
             
             Event::AttachedIo => {
-                // let foo = msg.next().expect("should be a value here");
-                // let io_type_id = ok!(IoTypeId::from_u8(*foo));
-                // println!("{:?}", foo);
-            
-                // let io_type_id = ok!(IoTypeId::from_u8(next!(msg)));
                 let io_type_id = ok!(IoTypeId::from_u16(next_u16!(msg)));
                 let hw_rev = VersionNumber::parse(&mut msg)?;
                 let fw_rev = VersionNumber::parse(&mut msg)?;
-                // let fw_rev = VersionNumber{major:0, minor:0, bugfix:0, build:0};
-                // let io_type_id = IoTypeId::LedLight;  // Testing
-                // IoAttachEvent::AttachedIo { io_type_id }
                 IoAttachEvent::AttachedIo { io_type_id, hw_rev, fw_rev }
             }
             Event::AttachedVirtualIo => {
