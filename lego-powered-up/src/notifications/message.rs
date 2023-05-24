@@ -243,32 +243,31 @@ impl NotificationMessage {
             // HubProperties(msg) => msg.serialise(),
             HubActions(_) => todo!(),
             HubAlerts(_) => todo!(),
-            HubAttachedIo(_) => todo!(),
-            GenericErrorMessages(_) => todo!(),
             HwNetworkCommands(_) => todo!(),
             FwUpdateGoIntoBootMode(_) => todo!(),
             FwUpdateLockMemory(_) => todo!(),
             FwUpdateLockStatusRequest => todo!(),
-            FwLockStatus(_) => todo!(),
             PortInformationRequest(msg) => msg.serialise(),
             PortModeInformationRequest(msg) => msg.serialise(),
             PortInputFormatSetupSingle(msg) => msg.serialise(),
-            PortInputFormatSetupCombinedmode(_) => {
-                todo!()
-            }
+            PortInputFormatSetupCombinedmode(_) => todo!(),
+            VirtualPortSetup(_) => todo!(),
+            PortOutputCommand(cmd) => cmd.serialise(),
+
+            // Documentation unclear; marked as upstream only but desc says
+            // it can be used to request data. 
+            HubAttachedIo(_) => todo!(),
+
+            // These are upstream only and shouldn't need serialisation
+            GenericErrorMessages(_) => todo!(),
+            FwLockStatus(_) => todo!(),
             PortInformation(_) => todo!(),
             PortModeInformation(_) => todo!(),
             PortValueSingle(_) => todo!(),
             PortValueCombinedmode(_) => todo!(),
             PortInputFormatSingle(_) => todo!(),
-            PortInputFormatCombinedmode(_) => {
-                todo!()
-            }
-            VirtualPortSetup(_) => todo!(),
-            PortOutputCommand(cmd) => cmd.serialise(),
-            PortOutputCommandFeedback(_) => {
-                todo!()
-            }
+            PortInputFormatCombinedmode(_) => todo!(),
+            PortOutputCommandFeedback(_) => todo!(),
         };
         ser[0] = ser.len() as u8;
         debug!("Serialised to: {:02x?}", ser);
