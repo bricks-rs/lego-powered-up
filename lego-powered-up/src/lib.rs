@@ -138,7 +138,7 @@ impl PoweredUp {
         panic!()
     }
 
-    pub async fn wait_for_hubs_filter(&mut self, filter: HubFilter, count: u8) -> Result<Vec<DiscoveredHub>> {
+    pub async fn wait_for_hubs_filter(&mut self, filter: HubFilter, count: &u8) -> Result<Vec<DiscoveredHub>> {
         let mut events = self.adapter.events().await?;
         let mut hubs = Vec::new();
         self.adapter.start_scan(ScanFilter::default()).await?;
@@ -159,7 +159,7 @@ impl PoweredUp {
                 if filter.matches(&hub) {
                     hubs.push(hub);
                 }
-                if hubs.len() == count as usize {
+                if hubs.len() == *count as usize {
                     self.adapter.stop_scan().await?;
                     return Ok(hubs);    
                 }
