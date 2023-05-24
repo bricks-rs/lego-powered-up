@@ -162,6 +162,7 @@ impl MoveHub {
         port_map.insert(Port::TiltSensor, 0x3a);
         port_map.insert(Port::CurrentSensor, 0x3b);
         port_map.insert(Port::VoltageSensor, 0x3c);
+        // port_map.insert(Port::, 0x46);                  // Unknown device on this port. Its 3 modes are named TRIGGER, CANVAS and VAR
 
 
         let properties = HubProperties {

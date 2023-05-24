@@ -615,7 +615,7 @@ pub enum IoTypeId {
     TechnicForceSensor = 63,                //63    // Spike Prime
     Technic3x3ColorLightMatrix = 64,        //64    // Spike Essential
     TechnicSmallAngularMotor = 65,          //65    // Spike Essential
-    UnknownMovehubDevice = 0x42,            //66
+    UnknownMovehubDevice = 0x42,            //66    // Unknown MoveHub device. Its 3 modes are named TRIGGER, CANVAS and VAR
     
     MarioAccelerometer = 71,                //71
     MarioBarcodeSensor = 73,                //73
