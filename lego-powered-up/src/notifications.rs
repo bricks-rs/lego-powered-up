@@ -13,6 +13,9 @@ use num_traits::FromPrimitive;
 use std::collections::HashMap;
 use std::fmt::{self, Debug, Display};
 
+// mod macros;
+// pub use crate::notifications::macros;
+
 macro_rules! ok {
     ($thing:expr) => {
         $thing.context("Cannot convert 'None'")?
