@@ -5,15 +5,16 @@
 
 //! Definitions for the various devices which can attach to hubs, e.g. motors
 
-use crate::error::{Error, Result};
-use crate::hubs::Port;
-use crate::notifications::{HubLedMode, NotificationMessage, Power, EndState, PortModeInformationType, InputSetupCombined};
-use async_trait::async_trait;
 use btleplug::api::{Characteristic, Peripheral as _, WriteType};
 use btleplug::platform::Peripheral;
 use std::fmt::Debug;
 use std::process::ExitStatus;
+
+use async_trait::async_trait;
 use core::time::Duration;
+use crate::error::{Error, Result};
+use crate::hubs::Port;
+use crate::notifications::{HubLedMode, NotificationMessage, Power, EndState, PortModeInformationType, InputSetupCombined};
 
 use crate::notifications::{InputSetupSingle, PortOutputSubcommand, WriteDirectModeDataPayload, 
     PortOutputCommandFormat, StartupInfo, CompletionInfo, InformationRequest, ModeInformationRequest,

@@ -4,13 +4,13 @@
 
 //! Specific implementations for each of the supported hubs.
 
-use crate::devices::{self, Device};
-use crate::error::{OptionContext, Result};
 use btleplug::api::{Characteristic, Peripheral as _, WriteType};
 use btleplug::platform::Peripheral;
 use std::collections::HashMap;
 use std::fmt::Debug;
 
+use crate::devices::{self, Device};
+use crate::error::{OptionContext, Result};
 use crate::notifications::{ModeInformationRequest, ModeInformationType,
      InformationRequest, InformationType, NotificationMessage, 
      HubAction, HubActionRequest, InputSetupSingle};
