@@ -3,8 +3,9 @@
 
 // #![allow(unused)]
 
-use lego_powered_up::{PoweredUp, HubFilter};
+use lego_powered_up::{PoweredUp, HubFilter, devices::Device, error::Error};
 use lego_powered_up::notifications::NotificationMessage;
+use lego_powered_up::notifications::NetworkCommand::ConnectionRequest;
 // Btleplug reexports
 use lego_powered_up::btleplug::api::{Central, Peripheral};
 // Futures reexports
@@ -52,11 +53,22 @@ async fn main() -> anyhow::Result<()> {
                         hub1.peripheral().notifications().await?;  
 
 
-    // let hub1_name = hub1.name().await?;
+    let hub1_name = hub1.name().await?;
 
     // Track button status
     let mut remote_status = lego_powered_up::hubs::remote::RemoteStatus::new();
 
+    println!("Enable notifcations for A-side buttons, mode 1");
+    let mut remote_a = hub1.port(lego_powered_up::hubs::Port::A).await?;
+    remote_a.remote_buttons_enable(1, 1).await?;
+
+    println!("Enable notifcations for B-side buttons, mode 1");
+    let mut remote_b = hub1.port(lego_powered_up::hubs::Port::B).await?;
+    remote_b.remote_buttons_enable(1, 1).await?;
+
+    println!("Connect hub LED for feedback");
+    let mut hub_led = hub1.port(lego_powered_up::hubs::Port::HubLed).await?;
+    hub_led.set_rgb(&[0x00, 0x00, 0x00]).await.unwrap();
 
     tokio::spawn(async move {
         while let Some(data) = hub1_stream.next().await {
@@ -65,9 +77,27 @@ async fn main() -> anyhow::Result<()> {
             let r = NotificationMessage::parse(&data.value);
             match r {
                 Ok(n) => {
-                    // println!("{}", &hub1_name);
-                    // dbg!(&n);
+                    println!("{}", &hub1_name);
+                    dbg!(&n);
                     match n {
+                        NotificationMessage::HwNetworkCommands(cmd) => {
+                            match cmd {
+                                ConnectionRequest(state) => {
+                                    match state {
+                                        lego_powered_up::notifications::ButtonState::Up => {
+                                            remote_status.green = true;
+                                            println!("Green pressed");
+                                        }
+                                        lego_powered_up::notifications::ButtonState::Released => {
+                                            remote_status.green = false;
+                                            println!("Green released");
+                                        }
+                                        _ => ()
+                                    }    
+                                }
+                                _ => ()
+                            }
+                        }
                         NotificationMessage::PortValueSingle(val) => {
                             match val.values[0] {
                                 0x0 => {
@@ -92,7 +122,6 @@ async fn main() -> anyhow::Result<()> {
                                         }
                                         _  => ()
                                     }
-                                    dbg!(remote_status);
                                 }
                                 0x1 => {
                                     match val.values[1] {
@@ -101,26 +130,31 @@ async fn main() -> anyhow::Result<()> {
                                             remote_status.b_red = false; 
                                             remote_status.b_minus = false;
                                             println!("Some B-side button released");
+                                            hub_led.set_rgb(&[0x00, 0x00, 0x00]).await.unwrap();
                                         }
                                         1 => {
                                             remote_status.b_plus = true;
                                             println!("B+ pressed");
+                                            hub_led.set_rgb(&[0x00, 0xff, 0x00]).await.unwrap();
                                         }
                                         127 => {
                                             remote_status.b_red = true; 
                                             println!("Bred pressed");
+                                            // set_led(*hub_led, 0xFF, 0x00, 0x00);
+                                            hub_led.set_rgb(&[0xff, 0x00, 0x00]).await.unwrap();
                                         }
                                         255 => {
                                             remote_status.b_minus = true;
                                             println!("B- pressed");
+                                            hub_led.set_rgb(&[0x00, 0x00, 0xff]).await.unwrap();
                                         }
                                         _  => ()
                                     }
-                                    dbg!(remote_status);
+                                    
                                 }
                                 _ => ()                                
                             }
-                            
+                            // dbg!(remote_status);
                         }
                         _ => ()
                     }
@@ -132,17 +166,10 @@ async fn main() -> anyhow::Result<()> {
         }  
     });
 
-    
-    println!("Enable notifcations for A-side buttons, mode 1");
-    let mut remote_a = hub1.port(lego_powered_up::hubs::Port::A).await?;
-    remote_a.remote_buttons_enable(1, 1).await?;
 
-    println!("Enable notifcations for B-side buttons, mode 1");
-    let mut remote_b = hub1.port(lego_powered_up::hubs::Port::B).await?;
-    remote_b.remote_buttons_enable(1, 1).await?;
-
-
-    loop {}
+    while !remote_status.a_red && !remote_status.b_red {
+        loop {}
+    }
 
     println!("Disconnect from hub `{}`", hub1.name().await?);
     hub1.disconnect().await?;
@@ -152,3 +179,6 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
+async fn set_led(mut led: Box<dyn Device>, red: u8, green: u8, blue: u8) -> Result<(), Error> {
+    led.set_rgb(&[red, green, blue]).await
+}
