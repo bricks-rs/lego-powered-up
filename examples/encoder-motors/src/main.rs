@@ -4,7 +4,7 @@
 use core::panic;
 use std::println;
 
-use lego_powered_up::{notifications::Power, PoweredUp, btleplug::{platform::Manager}, devices};
+use lego_powered_up::{notifications::Power, PoweredUp, btleplug::{platform::Manager}, devices::{self, MotorSensorMode}};
 use lego_powered_up::{HubFilter, notifications::EndState, notifications::NotificationMessage};
 // use lego_powered_up::{DiscoveredHub};
 use lego_powered_up::{btleplug::api::{Central, CentralEvent, ScanFilter, Manager as _, Peripheral as _, PeripheralProperties}};
@@ -60,10 +60,18 @@ async fn main() -> anyhow::Result<()> {
 
     tokio::spawn(async move {
         while let Some(data) = hub1_stream.next().await {
-            // println!("Received data from {:?} [{:?}]: {:?}", &hub1_name, data.uuid, data.value);
-            let n = NotificationMessage::parse(&data.value).unwrap();
-            println!("{}", &hub1_name);
-            dbg!(&n);
+            println!("Received data from {:?} [{:?}]: {:?}", &hub1_name, data.uuid, data.value);
+
+            let r = NotificationMessage::parse(&data.value);
+            match r {
+                Ok(n) => {
+                    println!("{}", &hub1_name);
+                    dbg!(&n);
+                }
+                Err(e) => {
+                    println!("Parse error: {}", e);
+                }
+            }
         }  
     });
 
@@ -71,38 +79,46 @@ async fn main() -> anyhow::Result<()> {
 
     let mut motor_b = hub1.port(lego_powered_up::hubs::Port::B).await?;
 
-    motor_b.motor_sensor_enable(devices::MotorSensorMode::Speed, 10).await?;
-    motor_b.start_speed(50, Power::Cw(50)).await?;
-    tokio::time::sleep(Duration::from_secs(3)).await;
-    motor_b.start_speed(-35, Power::Cw(50)).await?;
-    tokio::time::sleep(Duration::from_secs(3)).await;
-    motor_b.start_speed(70, Power::Cw(50)).await?;
-    tokio::time::sleep(Duration::from_secs(3)).await;
+    println!("wait 5 s");
+    tokio::time::sleep(Duration::from_secs(5)).await;
 
-    motor_b.motor_sensor_enable(devices::MotorSensorMode::Angle, 180).await?;
+    motor_b.motor_combined_sensor_enable(MotorSensorMode::Speed, 20, 180).await?;
 
-    println!("Degrees 180 40 50 Brake");
-    motor_b.start_speed_for_degrees(180, 40, Power::Cw(50), EndState::Brake).await?;
-    tokio::time::sleep(Duration::from_secs(3)).await;
-    println!("Degrees 180 40 -50 Brake");
-    motor_b.start_speed_for_degrees(180, -40, Power::Cw(50), EndState::Brake).await?;
-    tokio::time::sleep(Duration::from_secs(3)).await;
-    println!("Position 360 40 50 Brake");
-    motor_b.goto_absolute_position(360, 40, Power::Cw((50)), EndState::Brake).await?;
-    tokio::time::sleep(Duration::from_secs(3)).await;
-    println!("Position 0 40 50 Brake");
+    println!("wait 5 s");
+    tokio::time::sleep(Duration::from_secs(5)).await;
 
-    motor_b.motor_sensor_disable().await?;
+    // motor_b.motor_sensor_enable(devices::MotorSensorMode::Speed, 10).await?;
+    // motor_b.start_speed(50, Power::Cw(50)).await?;
+    // tokio::time::sleep(Duration::from_secs(3)).await;
+    // motor_b.start_speed(-35, Power::Cw(50)).await?;
+    // tokio::time::sleep(Duration::from_secs(3)).await;
+    // motor_b.start_speed(70, Power::Cw(50)).await?;
+    // tokio::time::sleep(Duration::from_secs(3)).await;
 
-    motor_b.goto_absolute_position(180, 40, Power::Cw((50)), EndState::Brake).await?;
-    tokio::time::sleep(Duration::from_secs(3)).await;
-    motor_b.goto_absolute_position(360, 40, Power::Cw((50)), EndState::Brake).await?;
-    tokio::time::sleep(Duration::from_secs(3)).await;
+    // motor_b.motor_sensor_enable(devices::MotorSensorMode::Pos, 180).await?;
+
+    // println!("Degrees 180 40 50 Brake");
+    // motor_b.start_speed_for_degrees(180, 40, Power::Cw(50), EndState::Brake).await?;
+    // tokio::time::sleep(Duration::from_secs(3)).await;
+    // println!("Degrees 180 40 -50 Brake");
+    // motor_b.start_speed_for_degrees(180, -40, Power::Cw(50), EndState::Brake).await?;
+    // tokio::time::sleep(Duration::from_secs(3)).await;
+    // println!("Position 360 40 50 Brake");
+    // motor_b.goto_absolute_position(360, 40, Power::Cw((50)), EndState::Brake).await?;
+    // tokio::time::sleep(Duration::from_secs(3)).await;
+    // println!("Position 0 40 50 Brake");
+
+    // motor_b.motor_sensor_disable().await?;
+
+    // motor_b.goto_absolute_position(180, 40, Power::Cw((50)), EndState::Brake).await?;
+    // tokio::time::sleep(Duration::from_secs(3)).await;
+    // motor_b.goto_absolute_position(360, 40, Power::Cw((50)), EndState::Brake).await?;
+    // tokio::time::sleep(Duration::from_secs(3)).await;
     
 
    
     println!("Stop motors");
-    motor_b.start_speed(0, Power::Float).await?;
+    // motor_b.start_speed(0, Power::Float).await?;
 
 
     
