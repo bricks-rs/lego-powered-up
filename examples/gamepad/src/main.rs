@@ -9,7 +9,7 @@ use std::time::Duration;
 use lego_powered_up::{PoweredUp, HubFilter, devices,};
 use lego_powered_up::notifications::{NotificationMessage, Power, EndState, 
                                     InformationType, ModeInformationType,
-                                    HubAction};
+                                    HubAction, PortValueSingleFormat};
 use lego_powered_up::consts::*;
 // use lego_powered_up::{DiscoveredHub};
 
@@ -63,22 +63,82 @@ async fn main() -> anyhow::Result<()> {
     let mut hub1_stream =
                         hub1.peripheral().notifications().await?;  
 
+    let mut remote_status = lego_powered_up::hubs::remote::RemoteStatus::new();
+
 
     tokio::spawn(async move {
         while let Some(data) = hub1_stream.next().await {
             println!("Received data from {:?} [{:?}]: {:?}", &hub1_name, data.uuid, data.value);
-            // println!("{}", &hub1_name);
-            let n = NotificationMessage::parse(&data.value).unwrap();
-            dbg!(&n);
+
+            let r = NotificationMessage::parse(&data.value);
+            match r {
+                Ok(n) => {
+                    // println!("{}", &hub1_name);
+                    // dbg!(&n);
+                    match n {
+                        NotificationMessage::PortValueSingle(val) => {
+                            match val.values[0] {
+                                0x0 => {
+                                    match val.values[1] {
+                                        0 => {
+                                            remote_status.a_plus = false;
+                                            remote_status.a_red = false; 
+                                            remote_status.a_minus = false;
+                                            println!("A-button released");
+                                        }
+                                        1 => {
+                                            remote_status.a_plus = true;
+                                            remote_status.a_red = false; 
+                                            remote_status.a_minus = false;
+                                            println!("A+ pressed");
+                                        }
+                                        127 => {
+                                            remote_status.a_plus = false;
+                                            remote_status.a_red = true; 
+                                            remote_status.a_minus = false;
+                                            println!("Ared pressed");
+                                        }
+                                        255 => {
+                                            remote_status.a_plus = false;
+                                            remote_status.a_red = false; 
+                                            remote_status.a_minus = true;
+                                            println!("A- pressed");
+                                        }
+                                        _  => ()
+                                    }
+                                    // dbg!(remote_status);
+                                }
+                                _ => ()                                
+                            }
+                            
+                        }
+                        _ => ()
+                    }
+                }
+                Err(e) => {
+                    println!("Parse error: {}", e);
+                }
+            }
         }  
     });
 
-    let req = hub1.request_port_info(0x1, InformationType::ModeInfo).await;
-    match req {
-        Ok(()) => (),
-        Err(error) => println!("Request error: {}", &error)
-    }
 
+
+    // let req = hub1.request_port_info(0x46, InformationType::ModeInfo).await;
+    // match req {
+    //     Ok(()) => (),
+    //     Err(error) => println!("Request error: {}", &error)
+    // }
+
+    // hub1.request_port_info(0x2, InformationType::ModeInfo).await?;
+    // hub1.request_port_info(0x2, InformationType::PossibleModeCombinations).await?;
+
+    // hub1.request_mode_info(0x2, 1, ModeInformationType::ValueFormat).await?;
+    // hub1.request_mode_info(0x2, 2, ModeInformationType::ValueFormat).await?;
+    // hub1.request_mode_info(0x2, 3, ModeInformationType::ValueFormat).await?;
+    // hub1.request_mode_info(0x3, 8, ModeInformationType::Name).await?;
+    // hub1.request_mode_info(0x3, 9, ModeInformationType::Name).await?;
+    // hub1.request_mode_info(0x3, 10, ModeInformationType::Name).await?;
 
     // let mut remote_a = hub1.port(lego_powered_up::hubs::Port::A).await?;
     // remote_b.request_port_info(lego_powered_up::notifications::InformationType::PortValue).await?;
@@ -92,11 +152,17 @@ async fn main() -> anyhow::Result<()> {
     // remote_b.request_mode_info(4, lego_powered_up::notifications::ModeInformationType::ValueFormat).await?;
 
     // println!("remote buttons mode 0");
-    // remote_a.remote_buttons_enable(4, 1).await?;
+    // remote_a.remote_buttons_enable(0, 1).await?;
     // tokio::time::sleep(Duration::from_secs(10)).await;
     
-    // println!("remote buttons mode 1");
-    // remote_b.remote_buttons_enable(1, 1).await?;
+    println!("remote buttons A mode 1");
+    let mut remote_a = hub1.port(lego_powered_up::hubs::Port::A).await?;
+    remote_a.remote_buttons_enable(1, 1).await?;
+    // tokio::time::sleep(Duration::from_secs(10)).await;
+
+    println!("remote buttons B mode 1");
+    let mut remote_b = hub1.port(lego_powered_up::hubs::Port::B).await?;
+    remote_b.remote_buttons_enable(1, 1).await?;
     // tokio::time::sleep(Duration::from_secs(10)).await;
 
     // println!("remote buttons mode 2");
@@ -113,7 +179,7 @@ async fn main() -> anyhow::Result<()> {
 
 
 
-    // loop {}
+    loop {}
 
     tokio::time::sleep(Duration::from_secs(5)).await;
     println!("Disconnect from hub `{}`", hub1.name().await?);
