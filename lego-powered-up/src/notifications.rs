@@ -686,7 +686,18 @@ impl InputSetupCombined {
                     // Subcommand payload
                     *combination_index,
                 ];
-                bytes.extend_from_slice(mode_dataset.as_slice());
+                // Not sure why mode_dataset needs to be a [u8; 8] but changing it necessitates reworking
+                // the parse function and possibly more. Workaround for now is to set unneeded values to
+                // all 1's as a marker. Should be ok since no device probably has 128 modes and 128 datasets.
+                let md = mode_dataset.as_slice(); 
+                for val in md.into_iter() {
+                    if *val == 255 {
+                        break;
+                    } else {
+                        bytes.push(*val);
+                    }
+                }
+                // bytes.extend_from_slice(mode_dataset.as_slice());
                 bytes
             }
             LockLpf2DeviceForSetup {} => {
@@ -1103,7 +1114,11 @@ impl PortInputFormatCombinedFormat {
     pub fn parse<'a>(mut msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
         let port_id = next!(msg);
         let control = next!(msg);
-        let combination_index = next!(msg);
+        
+        // let combination_index = next!(msg);  // combination index is part of control byte, not separate byte.
+                                                // This caused function to fail with "NoneError: Insufficient length"
+        let combination_index: u8 = 0;          // Set to 0 for now, figure out how to get from control byte later
+
         let multi_update = (control >> 7) != 0;
         let mode_dataset_combination_pointer = next_u16!(msg);
 
@@ -1588,6 +1603,43 @@ impl PortOutputSubcommand {
                 )))
             }
         })
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Speed {
+    Cw(u8),
+    Ccw(u8),
+    Hold,
+}
+
+impl Speed {
+    pub fn parse<'a>(mut msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
+        let val = next_i8!(msg);
+        Speed::from_i8(val)
+    }
+
+    pub fn to_u8(&self) -> u8 {
+        use Speed::*;
+        let integer: i8 = match self {
+            Hold => 0,
+            Cw(p) => *p as i8,
+            Ccw(p) => -(*p as i8),
+        };
+        integer.to_le_bytes()[0]
+    }
+
+    pub fn from_i8(val: i8) -> Result<Self> {
+        use Speed::*;
+        match val {
+            0 => Ok(Hold),
+            p if (1..=100).contains(&p) => Ok(Cw(p as u8)),
+            p if (-100..=-1).contains(&p) => Ok(Ccw((-p) as u8)),
+            p => Err(Error::ParseError(format!(
+                "Invalid value for Speed: {}",
+                p
+            ))),
+        }
     }
 }
 
