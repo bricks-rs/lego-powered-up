@@ -1040,7 +1040,7 @@ pub enum TypedValue {
 /// based on a separate port type mapping
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PortValueSingleFormat {
-    values: Vec<u8>,
+    pub values: Vec<u8>,
 }
 
 impl PortValueSingleFormat {
