@@ -514,6 +514,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "hub-devices"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "lego-powered-up",
+ "tokio",
+]
+
+[[package]]
 name = "hub-props"
 version = "0.1.0"
 dependencies = [
@@ -857,6 +866,15 @@ name = "regex-syntax"
 version = "0.6.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "456c603be3e8d448b072f410900c09faf164fbce2d480456f50eea6e25f9c848"
+
+[[package]]
+name = "remote-control"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "lego-powered-up",
+ "tokio",
+]
 
 [[package]]
 name = "run-motors"
