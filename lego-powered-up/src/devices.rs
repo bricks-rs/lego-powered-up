@@ -468,25 +468,17 @@ impl Device for Motor {
         
         // Step 1: Lock device
         let subcommand = InputSetupCombinedSubcommand::LockLpf2DeviceForSetup {};     
-   
         let msg =
             NotificationMessage::PortInputFormatSetupCombinedmode(InputSetupCombined {
                 port_id: self.port_id,
                 subcommand,
             });
-        println!("Lock device");
         self.send(msg).await;
-        println!("wait 5 s");
-        tokio::time::sleep(Duration::from_secs(5)).await;
 
         // Step 2: Set up modes
-        println!("Set up speed mode");
         self.motor_sensor_enable(MotorSensorMode::Speed, speed_delta).await;
-        // println!("Set up apos mode");
         // self.motor_sensor_enable(MotorSensorMode::APos, position_delta).await;      // Returns "Invalid use" of Port Input Format Setup (Single) [0x41]"
-        println!("Set up pos mode");
         self.motor_sensor_enable(MotorSensorMode::Pos, position_delta).await;
-
 
         // Step 3: Set up combination
         let mut sensor0_mode_nibble: u8;
@@ -499,50 +491,44 @@ impl Device for Motor {
                 sensor1_mode_nibble = 0x20; // Pos
                 // sensor2_mode_nibble = 0x30; // APos
             }
+            MotorSensorMode::Pos => {
+                sensor0_mode_nibble = 0x20; // Pos 
+                sensor1_mode_nibble = 0x10; // Speed
+                // sensor2_mode_nibble = 0x30; // APos
+            }
             _ => {
                 sensor0_mode_nibble = 0x00;  
                 sensor1_mode_nibble = 0x00; 
                 // sensor2_mode_nibble = 0x00; 
             }
-
         }
-        
         let subcommand = InputSetupCombinedSubcommand::SetModeanddatasetCombinations { 
             combination_index: 0, 
             mode_dataset: [
                 sensor0_mode_nibble + dataset_nibble, 
                 sensor1_mode_nibble + dataset_nibble, 
                 // sensor2_mode_nibble + dataset_nibble,
-                0, 0, 0, 0, 0, 0
+                255, 0, 0, 0, 0, 0 // 255-byte marks end, cf. comment in InputSetupCombined::serialise.
             ] 
         };     
-        
-        
         let msg =
             NotificationMessage::PortInputFormatSetupCombinedmode(InputSetupCombined {
                 port_id: self.port_id,
                 subcommand,
             });
-        println!("Set up combo");
         self.send(msg).await;
-
  
         // Step 4: Unlock device and enable multi updates 
         let subcommand = InputSetupCombinedSubcommand::UnlockAndStartMultiEnabled {};     
-   
         let msg =
             NotificationMessage::PortInputFormatSetupCombinedmode(InputSetupCombined {
                 port_id: self.port_id,
                 subcommand,
             });
-        println!("Unlock / enable");
         self.send(msg).await;
 
         Ok(())
-
     }
-
-    
 }
 
 impl Motor {
