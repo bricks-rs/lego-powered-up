@@ -13,7 +13,7 @@ use std::fmt::Debug;
 
 use crate::notifications::{ModeInformationRequest, ModeInformationType,
      InformationRequest, InformationType, NotificationMessage, 
-     HubAction, HubActionRequest};
+     HubAction, HubActionRequest, InputSetupSingle};
 
 /// Trait describing a generic hub.
 #[async_trait::async_trait]
@@ -44,6 +44,17 @@ pub trait Hub: Debug + Send + Sync {
             information_type: infotype,
         });
         self.send(msg).await
+    }
+
+    async fn set_port_mode(&self, port_id: u8, mode: u8, delta: u32, notification_enabled: bool) -> Result<()> {
+        let mode_set_msg =
+            NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
+                port_id,
+                mode, 
+                delta,
+                notification_enabled,
+            });
+        self.send(mode_set_msg).await
     }
 
     async fn hub_action(&self, action_type: HubAction) -> Result<()> {
