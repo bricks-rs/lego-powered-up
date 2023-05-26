@@ -39,6 +39,7 @@ impl Hub for MoveHub {
     async fn is_connected(&self) -> Result<bool> {
         Ok(self.peripheral.is_connected().await?)
     }
+    
 
     fn properties(&self) -> &HubProperties {
         &self.properties
@@ -50,6 +51,16 @@ impl Hub for MoveHub {
         &self.peripheral
     }
 
+    fn attach_io(&mut self, device_to_insert: ConnectedIo) -> Result<()> {
+        self.connected_io.insert(device_to_insert.port_id, device_to_insert );
+        dbg!(&self.connected_io);
+        Ok(())
+
+    }
+
+    fn attached_io_raw(&self) -> &HashMap<u8, ConnectedIo> {
+        &self.connected_io
+    }
 
     async fn send_raw(&self, msg: &[u8]) -> Result<()> {
         let write_type = WriteType::WithoutResponse;
@@ -196,6 +207,7 @@ impl MoveHub {
     fn peripheral(&self) -> &Peripheral {
         &self.peripheral
     }
+ 
 
     // async fn get_prop(&mut self, property_ref: HubPropertyReference) -> Result<()> {
     //     use crate::notifications::*;

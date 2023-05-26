@@ -3,7 +3,7 @@
 
 // #![allow(unused)]
 
-use lego_powered_up::{PoweredUp, HubFilter, devices::Device, error::Error};
+use lego_powered_up::{PoweredUp, HubFilter, }; //devices::Device, error::Error};
 use lego_powered_up::notifications::NotificationMessage;
 use lego_powered_up::notifications::NetworkCommand::ConnectionRequest;
 // Btleplug reexports
@@ -179,6 +179,6 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn set_led(mut led: Box<dyn Device>, red: u8, green: u8, blue: u8) -> Result<(), Error> {
-    led.set_rgb(&[red, green, blue]).await
-}
+// async fn set_led(mut led: Box<dyn Device>, red: u8, green: u8, blue: u8) -> Result<(), Error> {
+//     led.set_rgb(&[red, green, blue]).await
+// }

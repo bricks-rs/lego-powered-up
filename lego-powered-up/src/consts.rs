@@ -578,7 +578,10 @@ pub enum InputSetupCombinedSubcommandValue {
 // https://github.com/nathankellenicki/node-poweredup/blob/master/src/consts.ts 
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive)]
+#[derive(Default)]
 pub enum IoTypeId {
+    #[default]
+    Unknown = 0x00,
     Motor = 0x01,
     SystemTrainMotor = 0x02,
     Button = 0x05,
@@ -646,4 +649,36 @@ pub enum IoTypeId {
 //     TechnicHubGyroSensor = 0x003a,
 //     TechnicHubTiltSensor = 0x003b,
 //     TechnicHubTemperatureSensor = 0x003c
+// }
+
+pub enum MotorSensorMode {
+    // Valid combinations: 1+2+3  (Speed, Pos, Apos)
+    Power = 0x0,
+    Speed = 0x1,
+    Pos = 0x2,
+    APos = 0x3,
+    Load = 0x4, 
+}
+
+pub enum VisionSensorMode {
+    // Valid combinations: 0+1+2+3+6	Color, Prox, Count, Reflt, Rgb I
+    Color = 0x0,
+    Prox = 0x1,
+    Count = 0x2,
+    Reflt = 0x3,
+    Ambi = 0x4,
+    ColO = 0x5,
+    RgbI = 0x6,
+    IrTx = 0x7,
+    Spec1 = 0x8,
+    Debug = 0x9,
+    Calib = 0xa,
+}   
+
+// pub struct PortCapabilities(u8);
+// impl PortCapabilities {
+//     pub const LOGICAL_SYNCHRONIZABLE: u8 = 0b1000;
+//     pub const LOGICAL_COMBINABLE: u8 = 0b0100;
+//     pub const INPUT: u8 = 0b0010;
+//     pub const OUTPUT: u8 = 0b0001;
 // }

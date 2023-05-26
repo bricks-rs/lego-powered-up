@@ -22,7 +22,7 @@ pub use error::{Error, OptionContext, Result};
 pub use futures;
 
 use consts::{BLEManufacturerData, HubType};
-use hubs::Hub;
+pub use hubs::Hub;
 
 pub struct PoweredUp {
     adapter: Adapter,

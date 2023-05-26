@@ -19,12 +19,12 @@ async fn main() -> anyhow::Result<()> {
 
     println!("Run motors");
     let mut motor_b = hub.port(lego_powered_up::hubs::Port::B).await?;
-    // motor_b.start_speed(50, Power::Cw(50)).await?;
+    motor_b.start_speed(50, Power::Cw(50)).await?;
 
     tokio::time::sleep(Duration::from_secs(3)).await;
 
     println!("Stop motors");
-    // motor_b.start_speed(0, Power::Float).await?;
+    motor_b.start_speed(0, Power::Float).await?;
 
     println!("Disconnect from hub `{}`", hub.name().await?);
     hub.disconnect().await?;

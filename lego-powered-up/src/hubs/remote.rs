@@ -33,6 +33,16 @@ impl Hub for RemoteControl {
         &self.peripheral
     }
 
+    fn attached_io_raw(&self) -> &HashMap<u8, ConnectedIo> {
+        &self.connected_io
+    }
+
+    fn attach_io(&mut self, device_to_insert: ConnectedIo) -> Result<()> {
+        self.connected_io.insert(device_to_insert.port_id, device_to_insert );
+        // dbg!(&self.connected_io);
+        Ok(())
+    }
+
     async fn disconnect(&self) -> Result<()> {
         if self.is_connected().await? {
             self.peripheral.disconnect().await?;

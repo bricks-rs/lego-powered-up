@@ -6,6 +6,7 @@
 
 use btleplug::api::{Characteristic, Peripheral as _, WriteType};
 use btleplug::platform::Peripheral;
+use devices::IoTypeId;
 use std::collections::HashMap;
 use std::fmt::Debug;
 
@@ -26,6 +27,7 @@ pub trait Hub: Debug + Send + Sync {
     fn properties(&self) -> &HubProperties;
     fn peripheral(&self) -> &Peripheral;
     fn characteristic(&self) -> &Characteristic;
+    fn attached_io_raw(&self) -> &HashMap<u8, ConnectedIo>;
 
     // Port information
     async fn request_port_info(&self, port_id: u8, infotype: InformationType) -> Result<()> {
@@ -73,7 +75,8 @@ pub trait Hub: Debug + Send + Sync {
         Ok(())
     }
 
-    
+    fn attach_io(&mut self, device_to_insert: ConnectedIo) -> Result<()>;
+
     // async fn port_map(&self) -> &PortMap {
     //     &self.properties().await.port_map
     // }
@@ -155,17 +158,29 @@ impl Port {
 }
 
 /// Struct representing a device connected to a port
+// #[derive(Debug, Clone)]
+// pub struct ConnectedIo {
+//     /// Name/type of device
+//     pub port: Port,
+//     /// Internal numeric ID of the device
+//     pub port_id: u8,
+//     /// Device firmware revision
+//     pub fw_rev: VersionNumber,
+//     /// Device hardware revision
+//     pub hw_rev: VersionNumber,
+// }
 #[derive(Debug, Clone)]
 pub struct ConnectedIo {
     /// Name/type of device
-    pub port: Port,
+    pub io_type_id: IoTypeId,
     /// Internal numeric ID of the device
     pub port_id: u8,
-    /// Device firmware revision
-    pub fw_rev: VersionNumber,
-    /// Device hardware revision
-    pub hw_rev: VersionNumber,
+    // Device firmware revision
+    // pub fw_rev: VersionNumber,
+    // Device hardware revision
+    // pub hw_rev: VersionNumber,
 }
+
 
 pub mod technic_hub;
 pub mod remote;

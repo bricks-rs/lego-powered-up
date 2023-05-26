@@ -19,14 +19,10 @@ use crate::notifications::{HubLedMode, NotificationMessage, Power, EndState, Por
 use crate::notifications::{InputSetupSingle, PortOutputSubcommand, WriteDirectModeDataPayload, 
     PortOutputCommandFormat, StartupInfo, CompletionInfo, InformationRequest, ModeInformationRequest,
     PortInformationType, ModeInformationType, InformationType,  };
-pub enum MotorSensorMode {
-    Power = 0x0,
-    Speed = 0x1,
-    Pos = 0x2,
-    APos = 0x3,
-    Load = 0x4, 
-}
 
+pub use crate::consts::*;
+
+pub mod iodevice;
 
 /// Trait that any d
 /// evice may implement. Having a single trait covering

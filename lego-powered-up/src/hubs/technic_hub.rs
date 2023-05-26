@@ -37,6 +37,15 @@ impl Hub for TechnicHub {
     fn peripheral(&self) -> &Peripheral {
         &self.peripheral
     }
+    fn attached_io_raw(&self) -> &HashMap<u8, ConnectedIo> {
+        &self.connected_io
+    }
+
+    fn attach_io(&mut self, device_to_insert: ConnectedIo) -> Result<()> {
+        self.connected_io.insert(0, device_to_insert );
+        Ok(())
+    }
+
     async fn disconnect(&self) -> Result<()> {
         if self.is_connected().await? {
             self.peripheral.disconnect().await?;
