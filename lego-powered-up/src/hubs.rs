@@ -10,7 +10,7 @@ use btleplug::api::{Characteristic, Peripheral as _, WriteType};
 use btleplug::platform::Peripheral;
 use btleplug::api::ValueNotification;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, BTreeMap};
 use std::fmt::Debug;
 
 use crate::{PoweredUp, HubFilter, devices::Device, error::Error};
@@ -49,7 +49,7 @@ pub trait Hub: Debug + Send + Sync {
     fn properties(&self) -> &HubProperties;
     fn peripheral(&self) -> &Peripheral;
     fn characteristic(&self) -> &Characteristic;
-    fn connected_io(&mut self) -> &mut HashMap<u8, IoDevice>;
+    fn connected_io(&mut self) -> &mut BTreeMap<u8, IoDevice>;
 
     // Port information
     async fn request_port_info(&self, port_id: u8, infotype: InformationType) -> Result<()> {
@@ -270,6 +270,19 @@ pub async fn handle_notification_stream(mut stream: PinnedStream, mutex: HubMute
 
                         }
                     }
+                    NotificationMessage::HubProperties(val) => {}
+                    NotificationMessage::HubActions(val) => {}
+                    NotificationMessage::HubAlerts(val) => {}
+                    NotificationMessage::GenericErrorMessages(val) => {}
+                    NotificationMessage::HwNetworkCommands(val) => {}
+                    NotificationMessage::FwLockStatus(val) => {}
+                    NotificationMessage::PortValueSingle(val) => {}
+                    NotificationMessage::PortValueCombinedmode(val) => {}
+                    NotificationMessage::PortInputFormatSingle(val) => {}
+                    NotificationMessage::PortInputFormatCombinedmode(val) => {}
+                    NotificationMessage::PortOutputCommandFeedback(val ) => {}
+
+
                     _ => ()
                 }
             }
