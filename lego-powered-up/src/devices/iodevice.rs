@@ -9,6 +9,7 @@ use std::collections::{BTreeMap};
 use std::fmt;
 
 use crate::consts::IoTypeId;
+use crate::notifications::{ValueFormatType, DatasetType, MappingValue};
 type ModeId = u8;
 
 #[derive(Debug, Default)]
@@ -18,26 +19,26 @@ pub struct IoDevice {
     capabilities: Vec<Capability>,
     pub mode_count: u8,
     modes: BTreeMap<ModeId, PortMode>,
-    valid_combos: Vec<ModeCombo>,
+    valid_combos: Vec<Vec<u8>>,
 }
 #[derive(Debug, Default)]
 pub struct PortMode {
     mode_kind: ModeKind,
-    pub name: String,           // Transmitted from hub as [u8; 11]
-    raw: (f32, f32),            // (min, max) The range for the raw (transmitted) signal, remember other ranges are used for scaling the value.
-    pct: (f32, f32),            // (min, max) % scaling. Ex: RAW == 0-200 PCT == 0-100 => 100 RAW == 50%
-    si: (f32, f32),                // (min, max) SI-unit scaling (probably?)
-    symbol: String,          // Transmitted from hub as [u8; 5]
-    input_mapping: Mapping,     // Cf. info below. Can more than 1 mapping be enabled?
-    output_mapping: Mapping,
-    motor_bias: u8,             // 0..100
-    // sensor_cabability: [u8; 6], // Sensor capabilities as bits. No help from docs how to interpret, just ignore it for now.
-    value_format: ValueFormat,
+    pub name: String,               // Transmitted from hub as [u8; 11]
+    raw: (f32, f32),                // (min, max) The range for the raw (transmitted) signal, remember other ranges are used for scaling the value.
+    pct: (f32, f32),                // (min, max) % scaling. Ex: RAW == 0-200 PCT == 0-100 => 100 RAW == 50%
+    si: (f32, f32),                 // (min, max) SI-unit scaling (probably?)
+    symbol: String,                 // Transmitted from hub as [u8; 5]
+    input_mapping: Vec<Mapping>,    // Cf. info below. Can more than 1 mapping be enabled? Seems so.
+    output_mapping: Vec<Mapping>,
+    motor_bias: u8,                 // 0..100
+    // sensor_cabability: [u8; 6],  // Sensor capabilities as bits. No help from docs how to interpret, just ignore it for now.
+    value_format: ValueFormatType,
 }
-#[derive(Debug, Default)]
-pub struct ModeCombo {
-    modes: Vec<PortMode>
-}
+// #[derive(Debug, Default)]
+// pub struct ModeCombo {
+//     modes: Vec<PortMode>
+// }
 #[derive(Debug, Default)]
 pub struct ValueFormat {
     dataset_count: u8,
@@ -64,14 +65,18 @@ impl IoDevice {
         let mut r: BTreeMap<ModeId, PortMode> = BTreeMap::new();
         for mode in (0..15) {
             if (input_modes >> mode as u16) & 1 == 1 {
-                r.insert(mode as u8, PortMode::new(true));
+                r.insert(mode as u8, PortMode::new(ModeKind::Sensor));
             }    
         }
         for mode in (0..15) {
             if (output_modes >> mode as u16) & 1 == 1 {
-                r.insert(mode as u8, PortMode::new(false));
+                r.insert(mode as u8, PortMode::new(ModeKind::Output));
             }    
         }
+        // Add hidden modes
+        while r.len() < self.mode_count as usize {
+            r.insert(r.len() as u8, PortMode::new(ModeKind::Hidden));
+        } 
         self.modes = r;
     }
     pub fn get_modes(&self) -> &BTreeMap<ModeId, PortMode> {
@@ -87,6 +92,20 @@ impl IoDevice {
         self.capabilities = r;
     }
     
+    pub fn set_valid_combos(&mut self, valid: Vec<u8>) -> () {
+        for combo in valid {
+            let mut v: Vec<u8> = Vec::new();
+            for mode in (0..7) {
+                if (combo >> mode as u8) & 1 == 1 {
+                    v.push(mode as u8);
+                }    
+            }
+            self.valid_combos.push(v);
+        }
+        self.valid_combos.pop(); // Last one is empty end-marker
+
+    }
+
     pub fn set_mode_name(&mut self, mode_id: u8, chars_as_bytes: Vec<u8>) -> () {
         // let mut truncated = vec![chars_as_bytes.into_iter)]; // iter with closure..?E
         let mut truncated: Vec<u8> = Vec::new();
@@ -110,6 +129,66 @@ impl IoDevice {
             }
         }
     }
+    pub fn set_mode_raw(&mut self, mode_id: u8, min: f32, max: f32) -> () {
+        // let mut mode = 
+        self.modes.get_mut(&mode_id).unwrap().raw = (min, max);
+    }
+    pub fn set_mode_pct(&mut self, mode_id: u8, min: f32, max: f32) -> () {
+        // let mut mode = 
+        self.modes.get_mut(&mode_id).unwrap().pct = (min, max);
+    }
+    pub fn set_mode_si(&mut self, mode_id: u8, min: f32, max: f32) -> () {
+        // let mut mode = 
+        self.modes.get_mut(&mode_id).unwrap().si = (min, max);
+    }
+    pub fn set_mode_symbol(&mut self, mode_id: u8, chars_as_bytes: Vec<u8>) -> () {
+        let mut truncated: Vec<u8> = Vec::new();
+        for c in chars_as_bytes {
+            if c == 0 {break}
+            else {truncated.push(c)}
+        }
+        let symbol = String::from_utf8(truncated).expect("Found invalid UTF-8");
+        let mut mode = self.modes.get_mut(&mode_id);
+        match mode {
+            Some(m) => m.symbol = symbol,
+            None => {
+                error!("Found symbol without matching mode. Port:{} Mode:{} Symbol:{}", self.port, &mode_id, &symbol);
+                println!("Found symbol without matching mode. Port:{} Mode:{} Symbol:{}", self.port, &mode_id, &symbol);
+            }
+        }
+    }
+    pub fn set_mode_mapping(&mut self, mode_id: u8, input: MappingValue, output: MappingValue) -> () {
+        let mut mode = self.modes.get_mut(&mode_id).unwrap();
+        let mut r: Vec<Mapping> = Vec::new();
+        if (input.0 >> 7) & 1 == 1 { r.push(Mapping::SupportsNull) }
+        if (input.0 >> 6) & 1 == 1 { r.push(Mapping::SupportsFunctional) }
+        // if (input.0 >> 5) & 1 == 1 {}
+        if (input.0 >> 4) & 1 == 1 { r.push(Mapping::Absolute) }
+        if (input.0 >> 3) & 1 == 1 { r.push(Mapping::Relative) }
+        if (input.0 >> 2) & 1 == 1 { r.push(Mapping::Discrete) }
+        // if (input.0 >> 1) & 1 == 1 {}
+        // if (input.0 >> 0) & 1 == 1 {}
+        mode.input_mapping = r;
+
+        let mut r: Vec<Mapping> = Vec::new();
+        if (output.0 >> 7) & 1 == 1 { r.push(Mapping::SupportsNull) }
+        if (output.0 >> 6) & 1 == 1 { r.push(Mapping::SupportsFunctional) }
+        // if (output.0 >> 5) & 1 == 1 {}
+        if (output.0 >> 4) & 1 == 1 { r.push(Mapping::Absolute) }
+        if (output.0 >> 3) & 1 == 1 { r.push(Mapping::Relative) }
+        if (output.0 >> 2) & 1 == 1 { r.push(Mapping::Discrete) }
+        // if (output.0 >> 1) & 1 == 1 {}
+        // if (output.0 >> 0) & 1 == 1 {}
+        mode.output_mapping = r;
+    }
+    pub fn set_mode_valueformat(&mut self, mode_id: u8, format: ValueFormatType) -> () {
+        self.modes.get_mut(&mode_id).unwrap().value_format = format;
+    }
+
+    pub fn set_mode_motor_bias(&mut self, mode_id: u8, bias: u8) -> () {
+        // let mut mode = 
+        self.modes.get_mut(&mode_id).unwrap().motor_bias = bias;
+    }
 }
 
 impl fmt::Display for IoDevice {
@@ -120,8 +199,8 @@ impl fmt::Display for IoDevice {
             names.push(&m.name);
         }
         
-        write!(f, "{:#?} on port {:#x} with {} modes: {:#?}", 
-        self.kind, self.port, self.mode_count, names)
+        write!(f, "{:#?} on port {} ({:#x}) with {} modes: {:#?}", 
+        self.kind, self.port, self.port, self.mode_count, names)
         // self.kind, self.port, self.mode_count, self.modes.values().map(|x| x.name.as_str())) 
         // self.kind, self.port, self.mode_count, self.modes.values().map(|x| x.name.as_str())) 
     
@@ -129,12 +208,9 @@ impl fmt::Display for IoDevice {
 }
 
 impl PortMode {
-    pub fn new(is_input: bool) -> Self {
+    pub fn new(mode_kind: ModeKind) -> Self {
         Self {
-            mode_kind: match is_input {
-                            true => ModeKind::Sensor,
-                            false => ModeKind::Output
-                        },                   
+            mode_kind,                   
             name: Default::default(),   
             raw: Default::default(),            
             pct: Default::default(),            
@@ -155,23 +231,24 @@ impl PortMode {
 }
 
 
-#[derive(Debug, Default)]
-pub enum DatasetType {
-    // Transmitted as u8, upper 6 bits not used
-    #[default]
-    Unknown = 255,
-    Bits8 = 0b00,
-    Bits16 = 0b01,
-    Bits32 = 0b10,
-    Float = 0b11,
-}
+// #[derive(Debug, Default)]
+// pub enum DatasetType {
+//     // Transmitted as u8, upper 6 bits not used
+//     #[default]
+//     Unknown = 255,
+//     Bits8 = 0b00,
+//     Bits16 = 0b01,
+//     Bits32 = 0b10,
+//     Float = 0b11,
+// }
 
 #[derive(Debug, Default)]
 pub enum ModeKind {
     #[default]
     Unknown,
     Sensor,
-    Output
+    Output,
+    Hidden
 }
 
 #[derive(Debug, Default)]

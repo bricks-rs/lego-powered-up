@@ -998,7 +998,7 @@ impl PortModeInformationType {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
 pub struct ValueFormatType {
     number_of_datasets: u8,
     dataset_type: DatasetType,
@@ -1007,7 +1007,7 @@ pub struct ValueFormatType {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct MappingValue(u8);
+pub struct MappingValue(pub u8);
 impl MappingValue {
     pub const SUPPORTS_NULL: u8 = 0b1000_0000;
     pub const SUPPORTS_FUNCTIONAL2: u8 = 0b0100_0000;
@@ -1017,8 +1017,10 @@ impl MappingValue {
 }
 
 #[repr(u8)]
-#[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive, Parse)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive, Parse, Default)]
 pub enum DatasetType {
+    #[default]
+    Unknown = 255,
     Bits8 = 0b00,
     Bits16 = 0b01,
     Bits32 = 0b10,
@@ -1733,6 +1735,10 @@ impl EndState {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum WriteDirectModeDataPayload {
     StartPower(Power),
+    StartPower2{
+        power1: Power,
+        power2: Power
+    },
     PresetEncoder(i32),
     TiltImpactPreset(i32),
     TiltConfigOrientation(Orientation),
@@ -1754,7 +1760,7 @@ impl WriteDirectModeDataPayload {
 
         let mode = next!(msg);
         Ok(match mode {
-            0x01 => {
+            0x01 => {   //should be 0x00 according to docs, test if it works
                 // StartPower(Power)
                 let power = Power::parse(&mut msg)?;
                 StartPower(power)

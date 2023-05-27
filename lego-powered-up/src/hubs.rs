@@ -225,7 +225,7 @@ pub async fn handle_notification_stream(mut stream: PinnedStream, mutex: HubMute
                                             let mut hub = mutex.lock().await;
                                             hub.attach_io(aio);
                                             hub.request_port_info(port_id, InformationType::ModeInfo).await;
-                                            // hub.request_port_info(port_id, InformationType::PossibleModeCombinations).await;
+                                            hub.request_port_info(port_id, InformationType::PossibleModeCombinations).await;
                                         }
                                     }
                                     IoAttachEvent::DetachedIo{} => {}
@@ -247,10 +247,20 @@ pub async fn handle_notification_stream(mut stream: PinnedStream, mutex: HubMute
                                             hub.connected_io().get_mut(&port_id).unwrap().set_modes(input_modes, output_modes);
                                             for mode_id in 0..mode_count {
                                                 hub.request_mode_info(port_id, mode_id, ModeInformationType::Name).await;
+                                                hub.request_mode_info(port_id, mode_id, ModeInformationType::Raw).await;
+                                                hub.request_mode_info(port_id, mode_id, ModeInformationType::Pct).await;
+                                                hub.request_mode_info(port_id, mode_id, ModeInformationType::Si).await;
+                                                hub.request_mode_info(port_id, mode_id, ModeInformationType::Symbol).await;
+                                                hub.request_mode_info(port_id, mode_id, ModeInformationType::Mapping).await;
+                                                hub.request_mode_info(port_id, mode_id, ModeInformationType::MotorBias).await;
+                                                // hub.request_mode_info(port_id, mode_id, ModeInformationType::CapabilityBits).await;
+                                                hub.request_mode_info(port_id, mode_id, ModeInformationType::ValueFormat).await;
                                             }
                                         }
                                     }
                                     PortInformationType::PossibleModeCombinations(combs) => {
+                                        let mut hub = mutex.lock().await;
+                                        hub.connected_io().get_mut(&port_id).unwrap().set_valid_combos(combs);   
                                     }
                                 }
                             }
@@ -263,6 +273,38 @@ pub async fn handle_notification_stream(mut stream: PinnedStream, mutex: HubMute
                                     PortModeInformationType::Name(name) => {
                                         let mut hub = mutex.lock().await;
                                         hub.connected_io().get_mut(&port_id).unwrap().set_mode_name(mode, name);
+                                    }
+                                    PortModeInformationType::RawRange{min, max } => {
+                                        let mut hub = mutex.lock().await;
+                                        hub.connected_io().get_mut(&port_id).unwrap().set_mode_raw(mode, min, max);
+                                    }
+                                    PortModeInformationType::PctRange{min, max } => {
+                                        let mut hub = mutex.lock().await;
+                                        hub.connected_io().get_mut(&port_id).unwrap().set_mode_pct(mode, min, max);
+                                    }
+                                    PortModeInformationType::SiRange{min, max } => {
+                                        let mut hub = mutex.lock().await;
+                                        hub.connected_io().get_mut(&port_id).unwrap().set_mode_si(mode, min, max);
+                                    }
+                                    PortModeInformationType::Symbol(symbol) => {
+                                        let mut hub = mutex.lock().await;
+                                        hub.connected_io().get_mut(&port_id).unwrap().set_mode_symbol(mode, symbol);
+                                    }
+                                    PortModeInformationType::Mapping{input, output} => {
+                                        let mut hub = mutex.lock().await;
+                                        hub.connected_io().get_mut(&port_id).unwrap().set_mode_mapping(mode, input, output);
+                                    }
+                                    PortModeInformationType::MotorBias(bias) => {
+                                        let mut hub = mutex.lock().await;
+                                        hub.connected_io().get_mut(&port_id).unwrap().set_mode_motor_bias(mode, bias);
+                                    }
+                                    // PortModeInformationType::CapabilityBits(name) => {
+                                        // let mut hub = mutex.lock().await;
+                                        // hub.connected_io().get_mut(&port_id).unwrap().set_mode_cabability(mode, name);
+                                    // }
+                                    PortModeInformationType::ValueFormat(format) => {
+                                        let mut hub = mutex.lock().await;
+                                        hub.connected_io().get_mut(&port_id).unwrap().set_mode_valueformat(mode, format);
                                     }
                                     _ => ()
                                 }
