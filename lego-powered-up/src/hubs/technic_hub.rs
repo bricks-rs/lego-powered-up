@@ -14,7 +14,7 @@ pub struct TechnicHub {
     peripheral: Peripheral,
     lpf_characteristic: Characteristic,
     properties: HubProperties,
-    connected_io: HashMap<u8, IoDevice>,
+    connected_io: BTreeMap<u8, IoDevice>,
 }
 
 #[async_trait::async_trait]
@@ -37,7 +37,7 @@ impl Hub for TechnicHub {
     fn peripheral(&self) -> &Peripheral {
         &self.peripheral
     }
-    fn connected_io(&mut self) -> &mut HashMap<u8, IoDevice> {
+    fn connected_io(&mut self) -> &mut BTreeMap<u8, IoDevice> {
         &mut self.connected_io
     }
 

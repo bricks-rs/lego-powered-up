@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 /// Definition for the Remote Control
 use super::*;
 
@@ -6,7 +8,7 @@ pub struct RemoteControl {
     peripheral: Peripheral,
     lpf_characteristic: Characteristic,
     properties: HubProperties,
-    pub connected_io: HashMap<u8, IoDevice>,
+    pub connected_io: BTreeMap<u8, IoDevice>,
 }
 
 #[async_trait::async_trait]
@@ -33,7 +35,7 @@ impl Hub for RemoteControl {
         &self.peripheral
     }
 
-    fn connected_io(&mut self) -> &mut HashMap<u8, IoDevice> {
+    fn connected_io(&mut self) -> &mut BTreeMap<u8, IoDevice> {
         &mut self.connected_io
     }
 
