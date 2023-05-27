@@ -1,3 +1,5 @@
+#![feature(byte_slice_trim_ascii)]
+
 use btleplug::api::{
     Central, CentralEvent, Manager as _, Peripheral as _, PeripheralProperties,
     ScanFilter, //ValueNotification
@@ -202,6 +204,40 @@ impl PoweredUp {
             _ => unimplemented!("Hub type not implemented."),
         }
 
+    }
+
+    
+}
+
+use core::pin::Pin;
+use std::sync::{Arc};    
+use tokio::sync::Mutex;
+use btleplug::api::ValueNotification;
+type HubMutex = Arc<Mutex<Box<dyn Hub>>>;
+type PinnedStream = Pin<Box<dyn Stream<Item = ValueNotification> + Send>>;
+pub struct ConnectedHub {
+    pub name: String,
+    pub mutex: HubMutex
+}
+impl ConnectedHub {
+    pub async fn setup_hub (created_hub: Box<dyn Hub>) -> ConnectedHub {    // Return result later
+        let created_stream: PinnedStream = created_hub.peripheral().notifications().await.unwrap();    // Can use ? here then
+        let connected_hub = ConnectedHub {
+            name: created_hub.name().await.unwrap(),                                                    // And here
+            mutex: Arc::new(Mutex::new(created_hub)),
+        };
+        let mutex_handle = connected_hub.mutex.clone();
+        let name = connected_hub.name.clone();
+        tokio::spawn(async move {
+            crate::hubs::handle_notification_stream(
+                created_stream, mutex_handle, &name).await;
+        });
+        {
+            let lock = connected_hub.mutex.lock().await;
+            lock.peripheral().subscribe(&lock.characteristic()).await.unwrap();
+        }
+
+        connected_hub
     }
 }
 

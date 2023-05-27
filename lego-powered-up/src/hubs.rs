@@ -204,9 +204,9 @@ pub mod technic_hub;
 pub mod remote;
 pub mod move_hub;
 
-pub async fn parse_notification_stream(mut stream: PinnedStream, mutex: HubMutex, hub_name: &str) {
+pub async fn handle_notification_stream(mut stream: PinnedStream, mutex: HubMutex, hub_name: &str) {
     while let Some(data) = stream.next().await {
-        println!("Received data from {:?} [{:?}]: {:?}", hub_name, data.uuid, data.value);
+        // println!("Received data from {:?} [{:?}]: {:?}", hub_name, data.uuid, data.value);
 
         let r = NotificationMessage::parse(&data.value);
         match r {
@@ -245,21 +245,9 @@ pub async fn parse_notification_stream(mut stream: PinnedStream, mutex: HubMutex
                                             hub.connected_io().get_mut(&port_id).unwrap().set_mode_count(mode_count);
                                             hub.connected_io().get_mut(&port_id).unwrap().set_capabilities(capabilities.0);
                                             hub.connected_io().get_mut(&port_id).unwrap().set_modes(input_modes, output_modes);
-                                            // hub.request_mode_info(port_id, 0, ModeInformationType::Name).await;
-                                            // let modes = hub.connected_io().get_mut(&port_id).unwrap().get_modes().keys().clone();
-                                            // for mode in 
-                                            //     hub.connected_io().get_mut(&port_id).unwrap().get_modes().keys() {
-                                            //         hub.request_mode_info(port_id, *mode, ModeInformationType::Name);
-                                            //     }
-                                            // for mode in modes {
-                                            //     hub.request_mode_info(port_id, *mode, ModeInformationType::Name);
-                                            // }
                                             for mode_id in 0..mode_count {
-                                                println!("req name for port:{} mode:{}", port_id, mode_id);
                                                 hub.request_mode_info(port_id, mode_id, ModeInformationType::Name).await;
                                             }
-
-
                                         }
                                     }
                                     PortInformationType::PossibleModeCombinations(combs) => {
@@ -273,7 +261,6 @@ pub async fn parse_notification_stream(mut stream: PinnedStream, mutex: HubMutex
                             PortModeInformationValue{port_id, mode, information_type} => {
                                 match information_type {
                                     PortModeInformationType::Name(name) => {
-                                        println!("Found modename: {}  {}  {}", port_id, mode, String::from_utf8(name.clone()).expect("Found invalid UTF-8"));
                                         let mut hub = mutex.lock().await;
                                         hub.connected_io().get_mut(&port_id).unwrap().set_mode_name(mode, name);
                                     }

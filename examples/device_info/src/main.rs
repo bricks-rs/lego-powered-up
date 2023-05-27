@@ -1,42 +1,34 @@
 // Any copyright is dedicated to the Public Domain.
 // https://creativecommons.org/publicdomain/zero/1.0/
 
-#![allow(unused)]
+// #![allow(unused)]
 use std::time::Duration;
 
-use lego_powered_up::{PoweredUp, Hub, HubFilter, devices::Device, error::Error};
-use lego_powered_up::notifications::NotificationMessage;
-use lego_powered_up::notifications::NetworkCommand::ConnectionRequest;
-use lego_powered_up::notifications::*;
-use lego_powered_up::consts::*;
-use lego_powered_up::devices::iodevice::IoDevice;
+use lego_powered_up::{PoweredUp, HubFilter, ConnectedHub};
+
+// use lego_powered_up::{PoweredUp, Hub, HubFilter, devices::Device, error::Error, ConnectedHub};
+// use lego_powered_up::notifications::NotificationMessage;
+// use lego_powered_up::notifications::NetworkCommand::ConnectionRequest;
+// use lego_powered_up::notifications::*;
+// use lego_powered_up::consts::*;
+// use lego_powered_up::devices::iodevice::IoDevice;
 
 
 // Btleplug reexports
-use lego_powered_up::btleplug::api::{Central, Peripheral};
-use lego_powered_up::btleplug::api::ValueNotification;
+// use lego_powered_up::btleplug::api::{Peripheral, ValueNotification};
 
 // Futures reexports
-use lego_powered_up::{futures::stream::{StreamExt, FuturesUnordered, Stream}};
-use lego_powered_up::{futures::{future, select}};
+// use lego_powered_up::futures::stream::Stream;
+// use lego_powered_up::{futures::{future, select, stream::{StreamExt, FuturesUnordered}};
 
+// use core::pin::Pin;
+// use std::sync::{Arc};
+// use tokio::sync::Mutex;
 
-use core::pin::Pin;
+use tokio::time::sleep as tokiosleep;
 
-
-use std::collections::HashMap;
-use std::sync::{Arc};
-use tokio::sync::Mutex;
-
-
-type HubMutex = Arc<Mutex<Box<dyn Hub>>>;
-type PinnedStream = Pin<Box<dyn Stream<Item = ValueNotification> + Send>>;
-
-// use lego_powered_up::
-struct ConnectedHub {
-    name: String,
-    mutex: HubMutex
-}
+// type HubMutex = Arc<Mutex<Box<dyn Hub>>>;
+// type PinnedStream = Pin<Box<dyn Stream<Item = ValueNotification> + Send>>;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -55,47 +47,38 @@ async fn main() -> anyhow::Result<()> {
 
     // Setup hub
     let created_hub = pu.create_hub(&dh1).await?;
-    let mut created_stream: PinnedStream = created_hub.peripheral().notifications().await?;  
-    let hub1 = ConnectedHub {
-        name: created_hub.name().await?,
-        mutex: Arc::new(Mutex::new(created_hub)),
-    };
-    let mutex_handle = hub1.mutex.clone();
-    tokio::spawn(async move {
-        lego_powered_up::hubs::parse_notification_stream(created_stream, mutex_handle, &hub1.name).await;
-    });
-    {
-        let mut lock = hub1.mutex.lock().await;
-        lock.peripheral().subscribe(&lock.characteristic()).await?;
-    }
-    // Setup done
+    let hub1 = ConnectedHub::setup_hub(created_hub).await;
 
     {
-        tokio::time::sleep(Duration::from_secs(5)).await;
+        // tokiosleep(Duration::from_secs(5)).await;
         // println!("req name for port:{} mode:{}", 1, 0);
         // let mut lock = hub1.mutex.lock().await;
         // lock.request_mode_info(1, 0, ModeInformationType::Name);
     }
 
     {
-        tokio::time::sleep(Duration::from_secs(15)).await;
+        tokiosleep(Duration::from_secs(3)).await;
         let mut lock = hub1.mutex.lock().await;
         dbg!(lock.connected_io());
-        // tokio::time::sleep(Duration::from_secs(5)).await;
+        for device in lock.connected_io().values() {
+            println!("{}", device);
+        }
+        tokiosleep(Duration::from_secs(5)).await;
 
     }
 
 
-    let a_hub = hub1.mutex.lock().await;
-    println!("Disconnect from hub `{}`", a_hub.name().await?);
-    a_hub.disconnect().await?;
+    let lock = hub1.mutex.lock().await;
+    println!("Disconnect from hub `{}`", lock.name().await?);
+    lock.disconnect().await?;
     
     println!("Done!");
 
     Ok(())
 }
 
-async fn set_led(mut led: Box<dyn Device>, red: u8, green: u8, blue: u8) -> Result<(), Error> {
-    led.set_rgb(&[red, green, blue]).await
-}
+// async fn set_led(mut led: Box<dyn Device>, red: u8, green: u8, blue: u8) -> Result<(), Error> {
+//     led.set_rgb(&[red, green, blue]).await
+// }
+
 

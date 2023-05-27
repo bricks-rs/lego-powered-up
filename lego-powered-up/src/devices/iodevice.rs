@@ -1,10 +1,16 @@
-// Representation of an IoDevice
+// Representation of an IoDevice 
+// (expanded replacement for ConnectedIo, PortMap and Port).
+//
 //      This overlaps with previous definitions spread out through the lib, 
 //      mostly in notifications and consts modules. Doing this to make organization
 //      clearer for myself to start. Perhaps we'll use it if it helps. 
 
+// use futures::AsyncWriteExt;
+
 use crate::consts::*;
 use std::collections::HashMap;
+use std::fmt;
+
 type ModeId = u8;
 #[derive(Debug, Default)]
 pub struct IoDevice {
@@ -16,10 +22,26 @@ pub struct IoDevice {
     valid_combos: Vec<ModeCombo>,
 }
 
+impl fmt::Display for IoDevice {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let modes: Vec<&PortMode> = self.modes.values().collect();
+        let mut names: Vec<&str> = Vec::new();
+        for m in modes.iter() {
+            names.push(&m.name);
+        }
+        
+        write!(f, "{:#?} on port {:#x} with {} modes: {:#?}", 
+        self.kind, self.port, self.mode_count, names)
+        // self.kind, self.port, self.mode_count, self.modes.values().map(|x| x.name.as_str())) 
+        // self.kind, self.port, self.mode_count, self.modes.values().map(|x| x.name.as_str())) 
+    
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct PortMode {
-    is_input: bool,             // true = inputmode, false = outputmode
-    name: String,           // Transmitted from hub as [u8; 11]
+    mode_kind: ModeKind,
+    pub name: String,           // Transmitted from hub as [u8; 11]
     raw: (f32, f32),            // (min, max) The range for the raw (transmitted) signal, remember other ranges are used for scaling the value.
     pct: (f32, f32),            // (min, max) % scaling. Ex: RAW == 0-200 PCT == 0-100 => 100 RAW == 50%
     si: (f32, f32),                // (min, max) SI-unit scaling (probably?)
@@ -33,7 +55,10 @@ pub struct PortMode {
 impl PortMode {
     pub fn new(is_input: bool) -> Self {
         Self {
-            is_input,                   
+            mode_kind: match is_input {
+                            true => ModeKind::Sensor,
+                            false => ModeKind::Output
+                        },                   
             name: Default::default(),   
             raw: Default::default(),            
             pct: Default::default(),            
@@ -46,8 +71,10 @@ impl PortMode {
             value_format: Default::default(),
         }
     }
-    pub fn set_name(&self, chars: Vec<u8>) -> () {
+    // pub fn set_name(&self, chars: Vec<u8>) -> () {}
 
+    pub fn name(&self) -> &str {
+        &self.name
     }
 }
 
@@ -64,7 +91,7 @@ pub struct ValueFormat {
     decimals: u8
 }
 
-// connected_io: Default::default(),
+
 
 impl IoDevice {
     pub fn new(kind: IoTypeId, port: u8) -> Self {
@@ -107,12 +134,29 @@ impl IoDevice {
         self.capabilities = r;
     }
 
-    pub fn set_mode_name(&mut self, mode_id: u8, chars: Vec<u8>) -> () {
-        let name = String::from_utf8(chars).expect("Found invalid UTF-8");
-        let mut mode = self.modes.get_mut(&mode_id).unwrap();
-        mode.name = name;
+    pub fn set_mode_name(&mut self, mode_id: u8, chars_as_bytes: Vec<u8>) -> () {
+        // let mut truncated = vec![chars_as_bytes.into_iter)]; // iter with closure..?E
+        let mut truncated: Vec<u8> = Vec::new();
+        for c in chars_as_bytes {
+            if c == 0 {break}
+            else {truncated.push(c)}
+        }
+
+        let name = String::from_utf8(truncated).expect("Found invalid UTF-8");
+        let mut mode = self.modes.get_mut(&mode_id);
+        match mode {
+            Some(m) => m.name = name,
+            None => {
+                error!("Found name without matching mode. Port:{} Mode:{} Name:{}", self.port, &mode_id, &name);
+                println!("Found name without matching mode. Port:{} Mode:{} Name:{}", self.port, &mode_id, &name);
+            }
+        }
     }
     
+    // With move hub:
+    // thread 'tokio-runtime-worker' panicked at 'called `Option::unwrap()` on a `None` value', 
+    // lego-powered-up\src\devices\iodevice.rs:116:53
+
 }
 
 
@@ -125,6 +169,14 @@ pub enum DatasetType {
     Bits16 = 0b01,
     Bits32 = 0b10,
     Float = 0b11,
+}
+
+#[derive(Debug, Default)]
+pub enum ModeKind {
+    #[default]
+    Unknown,
+    Sensor,
+    Output
 }
 
 #[derive(Debug, Default)]
