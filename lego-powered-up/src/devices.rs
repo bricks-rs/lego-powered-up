@@ -75,6 +75,16 @@ pub trait Device: Debug + Send + Sync {
 
 
     // Motors
+    async fn start_power(&mut self, _power: Power,) -> Result<()> {
+        Err(Error::NotImplementedError(
+            "Not implemented for type".to_string(),
+        ))
+    }
+    async fn start_power2(&mut self, _power1: Power, _power2: Power) -> Result<()> {
+        Err(Error::NotImplementedError(
+            "Not implemented for type".to_string(),
+        ))
+    }
     async fn start_speed(&mut self, _speed: i8, _max_power: Power,) -> Result<()> {
         Err(Error::NotImplementedError(
             "Not implemented for type".to_string(),
@@ -233,8 +243,6 @@ impl Device for HubLED {
     }
 
     async fn set_rgb(&mut self, rgb: &[u8; 3]) -> Result<()> {
-        // use crate::notifications::*;
-
         self.rgb = *rgb;
 
         let mode_set_msg =
@@ -318,6 +326,39 @@ impl Device for Motor {
     fn characteristic(&self) -> &Characteristic {
         &self.characteristic
     }
+
+    async fn start_power(&mut self, power: Power) -> Result<()> {
+        let subcommand = PortOutputSubcommand::WriteDirectModeData(
+            WriteDirectModeDataPayload::StartPower(power) 
+        );
+
+        let msg =
+            NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
+                port_id: self.port_id,
+                startup_info: StartupInfo::ExecuteImmediately,
+                completion_info: CompletionInfo::NoAction,
+                subcommand,
+            });
+        self.send(msg).await
+    }
+    async fn start_power2(&mut self, power1: Power, power2: Power) -> Result<()> {
+        let subcommand = PortOutputSubcommand::WriteDirectModeData(
+            WriteDirectModeDataPayload::StartPower2 {
+                power1,
+                power2
+            } 
+        );
+
+        let msg =
+            NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
+                port_id: self.port_id,
+                startup_info: StartupInfo::ExecuteImmediately,
+                completion_info: CompletionInfo::NoAction,
+                subcommand,
+            });
+        self.send(msg).await
+    }
+
 
     async fn start_speed(&mut self, speed: i8, max_power: Power) -> Result<()> {
         use crate::notifications::*;
