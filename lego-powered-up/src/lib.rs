@@ -189,33 +189,18 @@ impl PoweredUp {
             .context("Device does not advertise LPF2_ALL characteristic")?
             .clone();
     
-        println!("Subscribing to {:?}", &lpf_char);
-        peripheral.subscribe(&lpf_char).await?;
-
-        if hub.hub_type == HubType::TechnicMediumHub {
-            return Ok(Box::new(hubs::technic_hub::TechnicHub::init(peripheral, lpf_char).await?))
+        match hub.hub_type {
+            HubType::TechnicMediumHub => {
+                Ok(Box::new(hubs::technic_hub::TechnicHub::init(peripheral, lpf_char).await?))
+            }
+            HubType::RemoteControl => {
+                Ok(Box::new(hubs::remote::RemoteControl::init(peripheral, lpf_char).await?))
+            }
+            HubType::MoveHub => {
+                Ok(Box::new(hubs::move_hub::MoveHub::init(peripheral, lpf_char).await?))
+            }
+            _ => unimplemented!("Hub type not implemented."),
         }
-        else if hub.hub_type == HubType::RemoteControl {
-            return Ok(Box::new(hubs::remote::RemoteControl::init(peripheral, lpf_char).await?))
-        } 
-        else if hub.hub_type == HubType::MoveHub {
-            return Ok(Box::new(hubs::move_hub::MoveHub::init(peripheral, lpf_char).await?))
-        } 
-        else  {
-            unimplemented!("Hub type not implemented.");
-        }
-
-        // Note: 'match' arms have incompatible types
-        // Ok(Box::new(match hub.hub_type {
-        //     HubType::TechnicMediumHub => {
-        //         hubs::technic_hub::TechnicHub::init(peripheral, lpf_char).await?
-        //     }
-        //     HubType::RemoteControl => {
-        //         hubs::remote::RemoteControl::init(peripheral, lpf_char).await?
-        //     }
-
-        //     _ => unimplemented!(),
-        // }))
 
     }
 }

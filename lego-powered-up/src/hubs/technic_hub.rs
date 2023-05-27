@@ -14,7 +14,7 @@ pub struct TechnicHub {
     peripheral: Peripheral,
     lpf_characteristic: Characteristic,
     properties: HubProperties,
-    connected_io: HashMap<u8, ConnectedIo>,
+    connected_io: HashMap<u8, IoDevice>,
 }
 
 #[async_trait::async_trait]
@@ -37,12 +37,12 @@ impl Hub for TechnicHub {
     fn peripheral(&self) -> &Peripheral {
         &self.peripheral
     }
-    fn attached_io_raw(&self) -> &HashMap<u8, ConnectedIo> {
-        &self.connected_io
+    fn connected_io(&mut self) -> &mut HashMap<u8, IoDevice> {
+        &mut self.connected_io
     }
 
-    fn attach_io(&mut self, device_to_insert: ConnectedIo) -> Result<()> {
-        self.connected_io.insert(0, device_to_insert );
+    fn attach_io(&mut self, device_to_insert: IoDevice) -> Result<()> {
+        self.connected_io.insert(device_to_insert.port, device_to_insert );
         Ok(())
     }
 
@@ -73,16 +73,16 @@ impl Hub for TechnicHub {
         Ok(self.peripheral.subscribe(&char).await?)
     }
 
-    async fn attached_io(&self) -> Vec<ConnectedIo> {
-        let mut ret = Vec::with_capacity(self.connected_io.len());
-        for (_k, v) in self.connected_io.iter() {
-            ret.push(v.clone());
-        }
+    // async fn attached_io(&self) -> Vec<IoDevice> {
+    //     let mut ret = Vec::with_capacity(self.connected_io.len());
+    //     for (_k, v) in self.connected_io.iter() {
+    //         ret.push(v.clone());
+    //     }
 
-        ret.sort_by_key(|x| x.port_id);
+    //     ret.sort_by_key(|x| x.port);
 
-        ret
-    }
+    //     ret
+    // }
 
     // fn process_io_event(&mut self, evt: AttachedIo) {
     //     match evt.event {

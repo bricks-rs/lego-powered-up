@@ -4,12 +4,13 @@
 #![allow(unused)]
 use std::time::Duration;
 
-use lego_powered_up::hubs::ConnectedIo;
 use lego_powered_up::{PoweredUp, Hub, HubFilter, devices::Device, error::Error};
 use lego_powered_up::notifications::NotificationMessage;
 use lego_powered_up::notifications::NetworkCommand::ConnectionRequest;
 use lego_powered_up::notifications::*;
 use lego_powered_up::consts::*;
+use lego_powered_up::devices::iodevice::IoDevice;
+
 
 // Btleplug reexports
 use lego_powered_up::btleplug::api::{Central, Peripheral};
@@ -26,10 +27,16 @@ use core::pin::Pin;
 use std::collections::HashMap;
 use std::sync::{Arc};
 use tokio::sync::Mutex;
+
+
 type HubMutex = Arc<Mutex<Box<dyn Hub>>>;
 type PinnedStream = Pin<Box<dyn Stream<Item = ValueNotification> + Send>>;
-// use lego_powered_up::
 
+// use lego_powered_up::
+struct ConnectedHub {
+    name: String,
+    mutex: HubMutex
+}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -46,39 +53,40 @@ async fn main() -> anyhow::Result<()> {
     let dh1 = dh_iter.next().unwrap();
     println!("Connecting to hub `{}`", dh1.name);
 
-    let hub1 = pu.create_hub(&dh1).await?;
-    let hub1_name = hub1.name().await?;
-    let mut hub1_stream: PinnedStream = hub1.peripheral().notifications().await?;  
-
-    let mu_hub1: HubMutex = Arc::new(Mutex::new(hub1));
-    
-    let new_handle = mu_hub1.clone();
+    // Setup hub
+    let created_hub = pu.create_hub(&dh1).await?;
+    let mut created_stream: PinnedStream = created_hub.peripheral().notifications().await?;  
+    let hub1 = ConnectedHub {
+        name: created_hub.name().await?,
+        mutex: Arc::new(Mutex::new(created_hub)),
+    };
+    let mutex_handle = hub1.mutex.clone();
     tokio::spawn(async move {
-        process(hub1_stream, new_handle, &hub1_name).await;
+        lego_powered_up::hubs::parse_notification_stream(created_stream, mutex_handle, &hub1.name).await;
     });
-
+    {
+        let mut lock = hub1.mutex.lock().await;
+        lock.peripheral().subscribe(&lock.characteristic()).await?;
+    }
+    // Setup done
 
     {
-        let a_hub = mu_hub1.lock().await;
-        a_hub.request_port_info(0x0, InformationType::ModeInfo).await?;
-        // hub1.request_mode_info(port_id, mode, infotype);
+        tokio::time::sleep(Duration::from_secs(5)).await;
+        // println!("req name for port:{} mode:{}", 1, 0);
+        // let mut lock = hub1.mutex.lock().await;
+        // lock.request_mode_info(1, 0, ModeInformationType::Name);
     }
-
-    // loop {
-    //     let a_hub = mu_hub1.lock().await;
-    //     dbg!(a_hub.attached_io_raw());
-    //     tokio::time::sleep(Duration::from_secs(5)).await;
-    // }
 
     {
         tokio::time::sleep(Duration::from_secs(15)).await;
-        let a_hub = mu_hub1.lock().await;
-        dbg!(a_hub.attached_io_raw());
+        let mut lock = hub1.mutex.lock().await;
+        dbg!(lock.connected_io());
         // tokio::time::sleep(Duration::from_secs(5)).await;
 
     }
 
-    let a_hub = mu_hub1.lock().await;
+
+    let a_hub = hub1.mutex.lock().await;
     println!("Disconnect from hub `{}`", a_hub.name().await?);
     a_hub.disconnect().await?;
     
@@ -91,53 +99,3 @@ async fn set_led(mut led: Box<dyn Device>, red: u8, green: u8, blue: u8) -> Resu
     led.set_rgb(&[red, green, blue]).await
 }
 
-async fn process(mut stream: PinnedStream, m_hub: HubMutex, hub_name: &str) {
-    while let Some(data) = stream.next().await {
-        
-        println!("Received data from {:?} [{:?}]: {:?}", hub_name, data.uuid, data.value);
-
-        
-
-        let r = NotificationMessage::parse(&data.value);
-        match r {
-            Ok(n) => {
-                // println!("{}", hub_name);
-                // dbg!(&n);
-                match n {
-                    NotificationMessage::PortInformation(val) => {
-
-
-                    }
-                    NotificationMessage::HubAttachedIo(io_event) => {
-                        match io_event {
-                            AttachedIo{port, event} => {
-                                let port_id = port;
-                                match event {
-                                    IoAttachEvent::AttachedIo{io_type_id, hw_rev, fw_rev} => {
-                                        let aio = ConnectedIo {
-                                            port_id: port_id,
-                                            io_type_id,
-                                        };
-                                        {
-                                            let mut hub = m_hub.lock().await;
-                                            hub.attach_io(aio);
-                                        }
-                                    }
-                                    IoAttachEvent::DetachedIo{} => {}
-                                    IoAttachEvent::AttachedVirtualIo {port_a, port_b }=> {}
-                                }
-
-                            }
-                        }
-
-                    }
-                    _ => ()
-                }
-            }
-            Err(e) => {
-                println!("Parse error: {}", e);
-            }
-        }
-
-    }  
-}

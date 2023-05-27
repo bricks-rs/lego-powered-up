@@ -4,17 +4,39 @@
 
 //! Specific implementations for each of the supported hubs.
 
+#![allow(unused)]
+
 use btleplug::api::{Characteristic, Peripheral as _, WriteType};
 use btleplug::platform::Peripheral;
-use devices::IoTypeId;
+use btleplug::api::ValueNotification;
+
 use std::collections::HashMap;
 use std::fmt::Debug;
 
-use crate::devices::{self, Device};
+use crate::{PoweredUp, HubFilter, devices::Device, error::Error};
+use crate::notifications::NotificationMessage;
+use crate::notifications::NetworkCommand::ConnectionRequest;
+use crate::notifications::*;
+use crate::consts::*;
+use devices::iodevice::IoDevice;
+
+
+
+use crate::devices::{self, };
 use crate::error::{OptionContext, Result};
 use crate::notifications::{ModeInformationRequest, ModeInformationType,
-     InformationRequest, InformationType, NotificationMessage, 
-     HubAction, HubActionRequest, InputSetupSingle};
+     InformationRequest, InformationType,  
+     HubAction, HubActionRequest, InputSetupSingle, PortModeInformationType};
+use devices::IoTypeId;
+use devices::iodevice::*;
+
+use futures::stream::{StreamExt, FuturesUnordered, Stream};
+use futures::{future, select};
+use core::pin::Pin;
+use std::sync::{Arc};
+use tokio::sync::Mutex;
+type HubMutex = Arc<Mutex<Box<dyn Hub>>>;
+type PinnedStream = Pin<Box<dyn Stream<Item = ValueNotification> + Send>>;
 
 /// Trait describing a generic hub.
 #[async_trait::async_trait]
@@ -27,7 +49,7 @@ pub trait Hub: Debug + Send + Sync {
     fn properties(&self) -> &HubProperties;
     fn peripheral(&self) -> &Peripheral;
     fn characteristic(&self) -> &Characteristic;
-    fn attached_io_raw(&self) -> &HashMap<u8, ConnectedIo>;
+    fn connected_io(&mut self) -> &mut HashMap<u8, IoDevice>;
 
     // Port information
     async fn request_port_info(&self, port_id: u8, infotype: InformationType) -> Result<()> {
@@ -75,7 +97,7 @@ pub trait Hub: Debug + Send + Sync {
         Ok(())
     }
 
-    fn attach_io(&mut self, device_to_insert: ConnectedIo) -> Result<()>;
+    fn attach_io(&mut self, device_to_insert: IoDevice) -> Result<()>;
 
     // async fn port_map(&self) -> &PortMap {
     //     &self.properties().await.port_map
@@ -90,7 +112,7 @@ pub trait Hub: Debug + Send + Sync {
     async fn subscribe(&self, char: Characteristic) -> Result<()>;
 
     /// Ideally the vec should be sorted somehow
-    async fn attached_io(&self) -> Vec<ConnectedIo>;
+    // async fn attached_io(&self) -> Vec<IoDevice>;
 
     // fn process_io_event(&mut self, _evt: AttachedIo);
 
@@ -175,10 +197,6 @@ pub struct ConnectedIo {
     pub io_type_id: IoTypeId,
     /// Internal numeric ID of the device
     pub port_id: u8,
-    // Device firmware revision
-    // pub fw_rev: VersionNumber,
-    // Device hardware revision
-    // pub hw_rev: VersionNumber,
 }
 
 
@@ -186,3 +204,92 @@ pub mod technic_hub;
 pub mod remote;
 pub mod move_hub;
 
+pub async fn parse_notification_stream(mut stream: PinnedStream, mutex: HubMutex, hub_name: &str) {
+    while let Some(data) = stream.next().await {
+        println!("Received data from {:?} [{:?}]: {:?}", hub_name, data.uuid, data.value);
+
+        let r = NotificationMessage::parse(&data.value);
+        match r {
+            Ok(n) => {
+                // println!("{}", hub_name);
+                // dbg!(&n);
+                match n {
+                    NotificationMessage::HubAttachedIo(io_event) => {
+                        match io_event {
+                            AttachedIo{port, event} => {
+                                let port_id = port;
+                                match event {
+                                    IoAttachEvent::AttachedIo{io_type_id, hw_rev, fw_rev} => {
+                                        let aio = IoDevice::new(io_type_id, port_id);
+                                        {
+                                            let mut hub = mutex.lock().await;
+                                            hub.attach_io(aio);
+                                            hub.request_port_info(port_id, InformationType::ModeInfo).await;
+                                            // hub.request_port_info(port_id, InformationType::PossibleModeCombinations).await;
+                                        }
+                                    }
+                                    IoAttachEvent::DetachedIo{} => {}
+                                    IoAttachEvent::AttachedVirtualIo {port_a, port_b }=> {}
+                                }
+                            }
+                        }
+                    }
+                    NotificationMessage::PortInformation(val) => {
+                        match val {
+                            PortInformationValue{port_id, information_type} => {
+                                let port_id = port_id;
+                                match information_type {
+                                    PortInformationType::ModeInfo{capabilities, mode_count, input_modes, output_modes} => {
+                                        {
+                                            let mut hub = mutex.lock().await;
+                                            hub.connected_io().get_mut(&port_id).unwrap().set_mode_count(mode_count);
+                                            hub.connected_io().get_mut(&port_id).unwrap().set_capabilities(capabilities.0);
+                                            hub.connected_io().get_mut(&port_id).unwrap().set_modes(input_modes, output_modes);
+                                            // hub.request_mode_info(port_id, 0, ModeInformationType::Name).await;
+                                            // let modes = hub.connected_io().get_mut(&port_id).unwrap().get_modes().keys().clone();
+                                            // for mode in 
+                                            //     hub.connected_io().get_mut(&port_id).unwrap().get_modes().keys() {
+                                            //         hub.request_mode_info(port_id, *mode, ModeInformationType::Name);
+                                            //     }
+                                            // for mode in modes {
+                                            //     hub.request_mode_info(port_id, *mode, ModeInformationType::Name);
+                                            // }
+                                            for mode_id in 0..mode_count {
+                                                println!("req name for port:{} mode:{}", port_id, mode_id);
+                                                hub.request_mode_info(port_id, mode_id, ModeInformationType::Name).await;
+                                            }
+
+
+                                        }
+                                    }
+                                    PortInformationType::PossibleModeCombinations(combs) => {
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    NotificationMessage::PortModeInformation(val ) => {
+                        match val {
+                            PortModeInformationValue{port_id, mode, information_type} => {
+                                match information_type {
+                                    PortModeInformationType::Name(name) => {
+                                        println!("Found modename: {}  {}  {}", port_id, mode, String::from_utf8(name.clone()).expect("Found invalid UTF-8"));
+                                        let mut hub = mutex.lock().await;
+                                        hub.connected_io().get_mut(&port_id).unwrap().set_mode_name(mode, name);
+                                    }
+                                    _ => ()
+                                }
+                            }
+
+                        }
+                    }
+                    _ => ()
+                }
+            }
+            Err(e) => {
+                println!("Parse error: {}", e);
+            }
+        }
+
+    }  
+}

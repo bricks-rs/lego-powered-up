@@ -807,8 +807,8 @@ impl InputSetupCombinedSubcommand {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PortInformationValue {
-    port_id: u8,
-    information_type: PortInformationType,
+    pub port_id: u8,
+    pub information_type: PortInformationType,
 }
 
 impl PortInformationValue {
@@ -866,7 +866,7 @@ impl PortInformationType {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct PortCapabilities(u8);
+pub struct PortCapabilities(pub u8);
 impl PortCapabilities {
     pub const LOGICAL_SYNCHRONIZABLE: u8 = 0b1000;
     pub const LOGICAL_COMBINABLE: u8 = 0b0100;
@@ -876,9 +876,9 @@ impl PortCapabilities {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct PortModeInformationValue {
-    port_id: u8,
-    mode: u8,
-    information_type: PortModeInformationType,
+    pub port_id: u8,
+    pub mode: u8,
+    pub information_type: PortModeInformationType,
 }
 
 impl PortModeInformationValue {
