@@ -657,7 +657,9 @@ pub enum MotorSensorMode {
     Speed = 0x1,
     Pos = 0x2,
     APos = 0x3,
-    Load = 0x4, 
+    // Load = 0x4,
+    Calib = 0x4, 
+    Stats = 0x5
 }
 
 pub enum VisionSensorMode {
