@@ -70,47 +70,9 @@ impl Hub for MoveHub {
             .await?)
     }
 
-    // fn send(&self, msg: NotificationMessage) -> Result<()> {
-    //     let msg = msg.serialise();
-    //     self.send_raw(&msg)?;
-    //     Ok(())
-    // }
-
     async fn subscribe(&self, char: Characteristic) -> Result<()> {
         Ok(self.peripheral.subscribe(&char).await?)
     }
-
-    // async fn attached_io(&self) -> Vec<IoDevice> {
-    //     let mut ret = Vec::with_capacity(self.connected_io.len());
-    //     for (_k, v) in self.connected_io.iter() {
-    //         ret.push(v.clone());
-    //     }
-
-    //     ret.sort_by_key(|x| x.port);
-
-    //     ret
-    // }
-
-    // fn process_io_event(&mut self, evt: AttachedIo) {
-    //     match evt.event {
-    //         IoAttachEvent::AttachedIo { hw_rev, fw_rev } => {
-    //             if let Some(port) = self.port_from_id(evt.port) {
-    //                 let io = ConnectedIo {
-    //                     port_id: evt.port,
-    //                     port,
-    //                     fw_rev,
-    //                     hw_rev,
-    //                 };
-    //                 self.connected_io.insert(evt.port, io);
-    //             }
-    //         }
-    //         IoAttachEvent::DetachedIo { io_type_id: _ } => {}
-    //         IoAttachEvent::AttachedVirtualIo {
-    //             port_a: _,
-    //             port_b: _,
-    //         } => {}
-    //     }
-    // }
 
     async fn port(&self, port_id: Port) -> Result<Box<dyn Device>> {
         let port =
@@ -191,15 +153,6 @@ impl MoveHub {
             connected_io: Default::default(),
         })
     }
-
-    // async fn port_from_id(&self, _port_id: u8) -> Option<Port> {
-    // for (k, v) in self.port_map().await.iter() {
-    //     if *v == port_id {
-    //         return Some(*k);
-    //     }
-    // }
-    // None
-    // }
 
     fn characteristic(&self) -> &Characteristic {
         &self.lpf_characteristic

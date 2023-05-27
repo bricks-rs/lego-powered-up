@@ -7,7 +7,6 @@ pub struct RemoteControl {
     lpf_characteristic: Characteristic,
     properties: HubProperties,
     pub connected_io: HashMap<u8, IoDevice>,
-    // pub stream: super::PinnedStream,
 }
 
 #[async_trait::async_trait]
@@ -76,27 +75,6 @@ impl Hub for RemoteControl {
     //     ret.sort_by_key(|x| x.port);
 
     //     ret
-    // }
-
-    // fn process_io_event(&mut self, evt: AttachedIo) {
-    //     match evt.event {
-    //         IoAttachEvent::AttachedIo { hw_rev, fw_rev } => {
-    //             if let Some(port) = self.port_from_id(evt.port) {
-    //                 let io = ConnectedIo {
-    //                     port_id: evt.port,
-    //                     port,
-    //                     fw_rev,
-    //                     hw_rev,
-    //                 };
-    //                 self.connected_io.insert(evt.port, io);
-    //             }
-    //         }
-    //         IoAttachEvent::DetachedIo { io_type_id: _ } => {}
-    //         IoAttachEvent::AttachedVirtualIo {
-    //             port_a: _,
-    //             port_b: _,
-    //         } => {}
-    //     }
     // }
 
     async fn port(&self, port_id: Port) -> Result<Box<dyn Device>> {
@@ -172,14 +150,7 @@ impl RemoteControl {
         })
     }
 
-    // async fn port_from_id(&self, _port_id: u8) -> Option<Port> {
-    // for (k, v) in self.port_map().await.iter() {
-    //     if *v == port_id {
-    //         return Some(*k);
-    //     }
-    // }
-    // None
-    // }
+
 }
 #[derive(Debug, Copy, Clone)]
 pub struct RemoteStatus {
