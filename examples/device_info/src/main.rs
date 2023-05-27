@@ -1,8 +1,9 @@
 // Any copyright is dedicated to the Public Domain.
 // https://creativecommons.org/publicdomain/zero/1.0/
 
-// #![allow(unused)]
+#![allow(unused)]
 use std::time::Duration;
+use tokio::time::sleep as tokiosleep;
 
 use lego_powered_up::{PoweredUp, HubFilter, ConnectedHub};
 
@@ -25,7 +26,10 @@ use lego_powered_up::{PoweredUp, HubFilter, ConnectedHub};
 // use std::sync::{Arc};
 // use tokio::sync::Mutex;
 
-use tokio::time::sleep as tokiosleep;
+
+
+// #[macro_use] 
+use text_io::*;
 
 // type HubMutex = Arc<Mutex<Box<dyn Hub>>>;
 // type PinnedStream = Pin<Box<dyn Stream<Item = ValueNotification> + Send>>;
@@ -57,14 +61,50 @@ async fn main() -> anyhow::Result<()> {
     }
 
     {
-        tokiosleep(Duration::from_secs(3)).await;
-        let mut lock = hub1.mutex.lock().await;
-        dbg!(lock.connected_io());
-        for device in lock.connected_io().values() {
-            println!("{}", device);
-        }
-        tokiosleep(Duration::from_secs(5)).await;
+        // tokiosleep(Duration::from_secs(3)).await;
+        // let mut lock = hub1.mutex.lock().await;
+        // // dbg!(lock.connected_io());
+        // for device in lock.connected_io().values() {
+        //     println!("{}", device);
+        // }
+        // tokiosleep(Duration::from_secs(5)).await;
 
+    }
+
+    loop {
+        print!("(l)ist, <port> or (q)uit > ");
+        let line: String = read!("{}\n");
+        if line.len() == 1 {
+            continue;
+        } 
+        else if line.contains("l") {
+            let mut lock = hub1.mutex.lock().await;
+            for device in lock.connected_io().values() {
+                println!("{}", device);
+            }
+            continue;
+        } 
+        else if line.contains("q") {
+            break
+        }
+        else {
+            let input = line.trim().parse::<u8>();
+            match input {
+                Ok(num) => {
+                    // println!("Number: {}", num);
+                    let mut lock = hub1.mutex.lock().await;
+                    let o = lock.connected_io().get(&num);
+                    match o {
+                        Some(device) => {dbg!(device);}
+                    
+                        None => {println!("Device not found");}
+                    }
+                }
+                Err(e) => {
+                    println!("Not a number: {}", e);
+                }
+            }
+        }
     }
 
 
