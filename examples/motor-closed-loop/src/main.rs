@@ -58,9 +58,14 @@ async fn main() -> anyhow::Result<()> {
     let hub1 = ConnectedHub::setup_hub(created_hub).await;
 
 
-    // Set up another handler
+    // Set up RC input 
     let setup = ConnectedHub::set_up_handler(hub1.mutex.clone()).await;
-    let handler1 = tokio::spawn(async move { another_handler(setup.0, setup.1, setup.2).await; });
+    let remote1 = tokio::spawn(async move { remote_control(setup.0, setup.1, setup.2).await; }); 
+    
+
+    // Set up motor feedback
+    let setup = ConnectedHub::set_up_handler(hub1.mutex.clone()).await;
+    let motor1 = tokio::spawn(async move { motor_control(setup.0, setup.1, setup.2).await; });
 
     // Attempt with function pointer
     // let ptr: fn(stream: PinnedStream, mutex: HubMutex, hub_name: String) -> () = another_handler;
@@ -83,12 +88,128 @@ async fn set_led(mut led: Box<dyn Device>, red: u8, green: u8, blue: u8) -> Resu
     led.set_rgb(&[red, green, blue]).await
 }
 
-pub async fn another_handler(mut stream: PinnedStream, mutex: HubMutex, hub_name: String) -> () {
-    use lego_powered_up::notifications::NotificationMessage;
+pub async fn remote_control(mut stream: PinnedStream, mutex: HubMutex, hub_name: String) {
+    // use lego_powered_up::notifications::NotificationMessage::*;
+    use lego_powered_up::notifications::*;
+    use lego_powered_up::notifications::NetworkCommand::ConnectionRequest;
     while let Some(data) = stream.next().await {
-        println!("Another handler received data from {:?} [{:?}]: {:?}", hub_name, data.uuid, data.value);
-    }
+        // println!("Received data from {:?} [{:?}]: {:?}", hub_name, data.uuid, data.value);
+
+        let r = NotificationMessage::parse(&data.value);
+        match r {
+            Ok(n) => {
+                // dbg!(&n);
+                match n {
+                    // Active feedback
+                    NotificationMessage::HwNetworkCommands(cmd) => {
+                        match cmd {
+                            ConnectionRequest(state) => {
+                                match state {
+                                    ButtonState::Up => {        //Green on
+                                    }
+                                    ButtonState::Released => {  //Green off
+                                    }
+                                    _ => ()
+                                }    
+                            }
+                            
+                            _ => ()
+                        }
+                    }
+                    NotificationMessage::PortValueSingle(val) => {
+                        match val.values[0] {
+                            0x0 => {
+                                match val.values[1] {
+                                    0 => {      // A side off
+                                        println!("Some A-side button released");
+                                    }
+                                    1 => {      // A + on
+                                        println!("A+ on");
+                                    }
+                                    127 => {    // A red on
+                                        println!("A red on");
+                                    }
+                                    255 => {    // A - on
+                                        println!("A- on");
+                                    }
+                                    _  => ()
+                                }
+                            }
+                            0x1 => {
+                                match val.values[1] {
+                                    0 => {      // B side off
+                                        println!("Some B-side button released");
+                                    }
+                                    1 => {      // B + on
+                                        println!("B+ on");
+                                    }
+                                    127 => {    // B red on
+                                        println!("B red on");
+                                    }
+                                    255 => {    // A + on
+                                        println!("B- on");
+                                    }
+                                    _  => ()
+                                }
+                                
+                            }
+                            _ => ()                                
+                        }
+                        // dbg!(remote_status);
+                    }
+                    NotificationMessage::PortValueCombinedmode(val) => {}
+
+                    // Setup feedback and errors
+                    NotificationMessage::PortInputFormatSingle(val) => {}
+                    NotificationMessage::PortInputFormatCombinedmode(val) => {}
+                    NotificationMessage::PortOutputCommandFeedback(val ) => {}
+                    NotificationMessage::GenericErrorMessages(val) => {}
+
+                    _ => ()
+                }
+            }
+            Err(e) => {
+                println!("Parse error: {}", e);
+            }
+        }
+
+    }  
 }
+
+pub async fn motor_control(mut stream: PinnedStream, mutex: HubMutex, hub_name: String) {
+    use lego_powered_up::notifications::NotificationMessage;
+
+    while let Some(data) = stream.next().await {
+        // println!("Received data from {:?} [{:?}]: {:?}", hub_name, data.uuid, data.value);
+
+        let r = NotificationMessage::parse(&data.value);
+        match r {
+            Ok(n) => {
+                // dbg!(&n);
+                match n {
+                    // Active feedback
+                    NotificationMessage::PortValueSingle(val) => {
+
+                    }
+                    NotificationMessage::PortValueCombinedmode(val) => {}
+
+                    // Setup feedback and errors
+                    NotificationMessage::PortInputFormatSingle(val) => {}
+                    NotificationMessage::PortInputFormatCombinedmode(val) => {}
+                    NotificationMessage::PortOutputCommandFeedback(val ) => {}
+                    NotificationMessage::GenericErrorMessages(val) => {}
+
+                    _ => ()
+                }
+            }
+            Err(e) => {
+                println!("Parse error: {}", e);
+            }
+        }
+
+    }  
+}
+
 
 pub async fn ui(mutex: HubMutex) -> () {
     use text_io::read;
