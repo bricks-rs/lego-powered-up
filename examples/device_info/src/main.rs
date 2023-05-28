@@ -1,38 +1,26 @@
 // Any copyright is dedicated to the Public Domain.
 // https://creativecommons.org/publicdomain/zero/1.0/
 
-#![allow(unused)]
-use std::time::Duration;
-use tokio::time::sleep as tokiosleep;
+// #![allow(unused)]
+// use std::time::Duration;
+// use tokio::time::sleep as tokiosleep;
 
-use lego_powered_up::{PoweredUp, HubFilter, ConnectedHub};
+use lego_powered_up::{PoweredUp, Hub, HubFilter, ConnectedHub,}; 
 
-// use lego_powered_up::{PoweredUp, Hub, HubFilter, devices::Device, error::Error, ConnectedHub};
-// use lego_powered_up::notifications::NotificationMessage;
-// use lego_powered_up::notifications::NetworkCommand::ConnectionRequest;
-// use lego_powered_up::notifications::*;
-// use lego_powered_up::consts::*;
-// use lego_powered_up::devices::iodevice::IoDevice;
+// Access hub 
+use std::sync::{Arc};
+use tokio::sync::Mutex;
+type HubMutex = Arc<Mutex<Box<dyn Hub>>>;
 
+// / Access devices
+// use lego_powered_up::{devices::Device, error::Error};
 
-// Btleplug reexports
-// use lego_powered_up::btleplug::api::{Peripheral, ValueNotification};
-
-// Futures reexports
-// use lego_powered_up::futures::stream::Stream;
-// use lego_powered_up::{futures::{future, select, stream::{StreamExt, FuturesUnordered}};
-
+// Handle notifications
 // use core::pin::Pin;
-// use std::sync::{Arc};
-// use tokio::sync::Mutex;
-
-
-
-// #[macro_use] 
-use text_io::*;
-
-// type HubMutex = Arc<Mutex<Box<dyn Hub>>>;
+// use lego_powered_up::futures::stream::{Stream,};
+// use lego_powered_up::btleplug::api::ValueNotification;
 // type PinnedStream = Pin<Box<dyn Stream<Item = ValueNotification> + Send>>;
+
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -53,24 +41,21 @@ async fn main() -> anyhow::Result<()> {
     let created_hub = pu.create_hub(&dh1).await?;
     let hub1 = ConnectedHub::setup_hub(created_hub).await;
 
-    {
-        // tokiosleep(Duration::from_secs(5)).await;
-        // println!("req name for port:{} mode:{}", 1, 0);
-        // let mut lock = hub1.mutex.lock().await;
-        // lock.request_mode_info(1, 0, ModeInformationType::Name);
-    }
+    // Start ui
+    let mutex = hub1.mutex.clone();
+    ui(mutex).await;
 
-    {
-        // tokiosleep(Duration::from_secs(3)).await;
-        // let mut lock = hub1.mutex.lock().await;
-        // // dbg!(lock.connected_io());
-        // for device in lock.connected_io().values() {
-        //     println!("{}", device);
-        // }
-        // tokiosleep(Duration::from_secs(5)).await;
+    // Cleanup after ui exit
+    let lock = hub1.mutex.lock().await;
+    println!("Disconnect from hub `{}`", lock.name().await?);
+    lock.disconnect().await?;
+    println!("Done!");
 
-    }
+    Ok(())
+}
 
+pub async fn ui(mutex: HubMutex) -> () {
+    use text_io::read;
     loop {
         print!("(l)ist, <port> or (q)uit > ");
         let line: String = read!("{}\n");
@@ -78,7 +63,7 @@ async fn main() -> anyhow::Result<()> {
             continue;
         } 
         else if line.contains("l") {
-            let mut lock = hub1.mutex.lock().await;
+            let mut lock = mutex.lock().await;
             for device in lock.connected_io().values() {
                 println!("{}", device);
             }
@@ -89,14 +74,13 @@ async fn main() -> anyhow::Result<()> {
         }
         else {
             let input = line.trim().parse::<u8>();
+            // println!("Input: {}", input);
             match input {
                 Ok(num) => {
-                    // println!("Number: {}", num);
-                    let mut lock = hub1.mutex.lock().await;
+                    let mut lock = mutex.lock().await;
                     let o = lock.connected_io().get(&num);
                     match o {
                         Some(device) => {dbg!(device);}
-                    
                         None => {println!("Device not found");}
                     }
                 }
@@ -106,19 +90,4 @@ async fn main() -> anyhow::Result<()> {
             }
         }
     }
-
-
-    let lock = hub1.mutex.lock().await;
-    println!("Disconnect from hub `{}`", lock.name().await?);
-    lock.disconnect().await?;
-    
-    println!("Done!");
-
-    Ok(())
 }
-
-// async fn set_led(mut led: Box<dyn Device>, red: u8, green: u8, blue: u8) -> Result<(), Error> {
-//     led.set_rgb(&[red, green, blue]).await
-// }
-
-
