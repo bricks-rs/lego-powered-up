@@ -15,6 +15,7 @@ pub struct TechnicHub {
     lpf_characteristic: Characteristic,
     properties: HubProperties,
     connected_io: BTreeMap<u8, IoDevice>,
+    kind: HubType,
 }
 
 #[async_trait::async_trait]
@@ -40,6 +41,7 @@ impl Hub for TechnicHub {
     fn connected_io(&mut self) -> &mut BTreeMap<u8, IoDevice> {
         &mut self.connected_io
     }
+    fn kind(&self) -> HubType { self.kind } 
 
     fn attach_io(&mut self, device_to_insert: IoDevice) -> Result<()> {
         self.connected_io.insert(device_to_insert.port, device_to_insert );
@@ -157,6 +159,7 @@ impl TechnicHub {
     pub async fn init(
         peripheral: Peripheral,
         lpf_characteristic: Characteristic,
+        kind: HubType
     ) -> Result<Self> {
         // Peripheral is already connected before we get here
 
@@ -193,6 +196,7 @@ impl TechnicHub {
             lpf_characteristic,
             properties,
             connected_io: Default::default(),
+            kind
         })
     }
 
@@ -205,12 +209,6 @@ impl TechnicHub {
     // None
     // }
 
-    fn characteristic(&self) -> &Characteristic {
-        &self.lpf_characteristic
-    }
-    fn peripheral(&self) -> &Peripheral {
-        &self.peripheral
-    }
 
     // async fn get_prop(&mut self, property_ref: HubPropertyReference) -> Result<()> {
     //     use crate::notifications::*;

@@ -72,12 +72,6 @@ async fn main() -> anyhow::Result<()> {
     let discovered_hubs = pu.wait_for_hubs_filter(HubFilter::Null, &hub_count).await?;
     println!("Discovered {} hubs, trying to connect...", &hub_count);
 
-    // let mut dh_iter = discovered_hubs.into_iter();
-    // let dh1 = dh_iter.next().unwrap();
-    // println!("Connecting to hub `{}`", dh1.name);
-    // let created_hub = pu.create_hub(&dh1).await?;
-    // let h[0] = ConnectedHub::setup_hub(created_hub).await;
-
     let mut h: Vec<ConnectedHub> = Vec::new();
     for dh in discovered_hubs {
         println!("Connecting to hub `{}`", dh.name);
@@ -85,21 +79,28 @@ async fn main() -> anyhow::Result<()> {
         h.push(ConnectedHub::setup_hub(created_hub).await)
     }
 
+    let rc_hub: ConnectedHub = h.remove(0);
+    let main_hub: ConnectedHub;
     // match h[0].kind {
-    //     lego_powered_up::consts::HubType::RemoteControl => {}
-    //     _ => {}
-
+    //     lego_powered_up::consts::HubType::RemoteControl => {
+    //         rc_hub = h.remove(0);
+    //         if h.len() > 0 { main_hub = h.remove(0) }
+    //     }
+    //     _ => {
+    //         main_hub = h.remove(0);
+    //         if h.len() > 0 { rc_hub = h.remove(0) }
+    //     }
     // }
 
     // Set up RC input 
-    let setup = ConnectedHub::set_up_handler(h[0].mutex.clone()).await;
+    let setup = ConnectedHub::set_up_handler(rc_hub.mutex.clone()).await;
     let (rc_tx, mut rc_rx) = broadcast::channel::<RcButtonState>(3);
     let rc_tx_spawn = rc_tx.clone();
     let remote_handler1 = tokio::spawn(async move { 
         rc_handler(setup.0, setup.1, setup.2, rc_tx_spawn).await; 
     }); 
     {
-        let lock = h[0].mutex.lock().await;
+        let lock = rc_hub.mutex.lock().await;
         let mut remote_a = lock.enable_from_port(0x00).await?;
         remote_a.remote_buttons_enable(1, 1).await?;    // mode 0x1, delta 1
         let mut remote_b = lock.enable_from_port(0x01).await?;
@@ -121,24 +122,24 @@ async fn main() -> anyhow::Result<()> {
         }
     });
 
-
     // Set up motor feedback
-    // let setup = ConnectedHub::set_up_handler(h[0].mutex.clone()).await;
-    // let motor1 = tokio::spawn(async move { motor_control(setup.0, setup.1, setup.2).await; });
-    // println!("Enable notifcations motor, speed, delta 1");
+    // let setup = ConnectedHub::set_up_handler(main_hub.mutex.clone()).await;
+    // let motor1 = tokio::spawn(async move { motor_handler(setup.0, setup.1, setup.2).await; });
     // use lego_powered_up::devices::MotorSensorMode;
     // {
-    //     let lock = h[0].mutex.lock().await;
+    //     let lock = main_hub.mutex.lock().await;
     //     let mut motor_c = lock.enable_from_port(0x02).await?;
     //     motor_c.motor_sensor_enable(MotorSensorMode::Pos, 1).await?;
     // }
 
+
+
     // Start ui
-    let mutex = h[0].mutex.clone();
+    let mutex = rc_hub.mutex.clone();
     ui(mutex).await;
 
     // Cleanup after ui exit
-    let lock = h[0].mutex.lock().await;
+    let lock = rc_hub.mutex.lock().await;
     println!("Disconnect from hub `{}`", lock.name().await?);
     lock.disconnect().await?;
     println!("Done!");

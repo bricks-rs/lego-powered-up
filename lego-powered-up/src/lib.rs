@@ -192,23 +192,47 @@ impl PoweredUp {
             .context("Device does not advertise LPF2_ALL characteristic")?
             .clone();
     
+        // match hub.hub_type {
+        //     HubType::TechnicMediumHub => {
+        //         Ok(Box::new(hubs::technic_hub::TechnicHub::init(
+        //             peripheral, lpf_char, hub.hub_type).await?))
+        //     }
+        //     HubType::RemoteControl => {
+        //         Ok(Box::new(hubs::remote::RemoteControl::init(
+        //             peripheral, lpf_char, HubType::RemoteControl).await?))
+        //     }
+        //     HubType::MoveHub => {
+        //         Ok(Box::new(hubs::move_hub::MoveHub::init(
+        //             peripheral, lpf_char, hub.hub_type).await?))
+        //     }
+        //     _ => unimplemented!("Hub type not implemented."),
+        // }
+
         match hub.hub_type {
-            HubType::TechnicMediumHub => {
-                Ok(Box::new(hubs::technic_hub::TechnicHub::init(peripheral, lpf_char).await?))
+            // These have had some real life-testing.
+            HubType::TechnicMediumHub |
+            HubType::MoveHub |
+            HubType::RemoteControl  => {
+                Ok(Box::new(hubs::generic_hub::GenericHub::init(
+                    peripheral, lpf_char, hub.hub_type).await?))
             }
-            HubType::RemoteControl => {
-                Ok(Box::new(hubs::remote::RemoteControl::init(
-                    peripheral, lpf_char, HubType::RemoteControl).await?))
+            // These are untested, but if they support the same "Lego Wireless protocol 3.0"
+            // then they should probably work with the generic implementation?
+            HubType::Wedo2SmartHub |
+            HubType::Hub |
+            HubType::DuploTrainBase |
+            HubType::Mario          => {
+            Ok(Box::new(hubs::generic_hub::GenericHub::init(
+                peripheral, lpf_char, hub.hub_type).await?))
             }
-            HubType::MoveHub => {
-                Ok(Box::new(hubs::move_hub::MoveHub::init(peripheral, lpf_char).await?))
+            // Here is some hub that advertises LPF2_ALL but is not in the known list.
+            // Set kind to Unknown and give it a try, why not?
+            _ => {
+                Ok(Box::new(hubs::generic_hub::GenericHub::init(
+                peripheral, lpf_char, HubType::Unknown).await?))
             }
-            _ => unimplemented!("Hub type not implemented."),
         }
-
     }
-
-    
 }
 
 use core::pin::Pin;
@@ -221,12 +245,13 @@ pub struct ConnectedHub {
     pub name: String,
     pub mutex: HubMutex,
     // pub stream: PinnedStream
-    // pub kind: HubType,
+    pub kind: HubType,
 }
 impl ConnectedHub {
     pub async fn setup_hub (created_hub: Box<dyn Hub>) -> ConnectedHub {    // Return result later
         let connected_hub = ConnectedHub {
             // kind: created_hub.kind(),
+            kind: created_hub.kind(),
             name: created_hub.name().await.unwrap(),                                                    // And here
             mutex: Arc::new(Mutex::new(created_hub)),
             // stream: created_hub.peripheral().notifications().await.unwrap()

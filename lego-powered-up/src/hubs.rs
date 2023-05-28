@@ -51,6 +51,7 @@ pub trait Hub: Debug + Send + Sync {
     fn properties(&self) -> &HubProperties;
     fn peripheral(&self) -> &Peripheral;
     fn characteristic(&self) -> &Characteristic;
+    fn kind(&self) -> HubType;
     fn connected_io(&mut self) -> &mut BTreeMap<u8, IoDevice>;
 
     // Port information
@@ -205,9 +206,10 @@ pub struct ConnectedIo {
 }
 
 
-pub mod technic_hub;
+// pub mod technic_hub;
 pub mod remote;
-pub mod move_hub;
+// pub mod move_hub;
+pub mod generic_hub;
 
 pub async fn handle_notification_stream(mut stream: PinnedStream, mutex: HubMutex, hub_name: String) {
     while let Some(data) = stream.next().await {
