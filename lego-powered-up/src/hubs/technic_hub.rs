@@ -129,6 +129,27 @@ impl Hub for TechnicHub {
             _ => todo!(),
         })
     }
+
+    async fn enable_from_port(&self, port_id: u8) -> Result<Box<dyn Device>> {
+        if let Some(connected_device) = self.connected_io.get(&port_id) {
+            match connected_device.kind {
+                IoTypeId::RemoteButtons => {
+                    Ok(
+                        Box::new(devices::RemoteButtons::newnew(
+                                    self.peripheral.clone(),
+                                    self.lpf_characteristic.clone(),
+                                    port_id,
+                                )
+                            )
+                    )
+                }
+                _ => { Err(Error::NotImplementedError(String::from("Not implemtned"))) }
+                
+            }
+        } else {
+            Err(Error::HubError(String::from("No device on port {&port_id}"))) 
+        }
+    }
 }
 
 impl TechnicHub {

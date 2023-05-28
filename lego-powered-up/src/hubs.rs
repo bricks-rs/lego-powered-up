@@ -119,6 +119,8 @@ pub trait Hub: Debug + Send + Sync {
     // fn process_io_event(&mut self, _evt: AttachedIo);
 
     async fn port(&self, port_id: Port) -> Result<Box<dyn Device>>;
+    async fn enable_from_port(&self, port_id: u8) -> Result<Box<dyn Device>>;
+    // async fn enable_from_kind(&self, port_id: u8) -> Result<Box<dyn Device>>;
 }
 
 pub type VersionNumber = u8;

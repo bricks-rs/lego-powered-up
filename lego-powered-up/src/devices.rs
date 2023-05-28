@@ -145,7 +145,6 @@ pub struct VisionSensor {
 /// Struct representing a remote button cluster
 #[derive(Debug, Clone)]
 pub struct RemoteButtons {
-    // kind: IoTypeId
     peripheral: Peripheral,
     characteristic: Characteristic,
     port_id: u8,
@@ -197,6 +196,19 @@ impl RemoteButtons {
             characteristic,
             port,
             port_id,
+        }
+    }
+
+    pub(crate) fn newnew(
+        peripheral: Peripheral,
+        characteristic: Characteristic,
+        port_id: u8,
+    ) -> Self {
+        Self {
+            peripheral,
+            characteristic,
+            port_id,
+            port: Port::RemoteA   // deprecated
         }
     }
 }
@@ -262,6 +274,17 @@ impl HubLED {
         characteristic: Characteristic,
         port_id: u8,
     ) -> Self {
+        let mode = HubLedMode::Rgb;
+        Self {
+            rgb: [0; 3],
+            _mode: mode,
+            characteristic,
+            peripheral,
+            port_id,
+        }
+    }
+
+    pub(crate) fn newnew(peripheral: Peripheral, characteristic: Characteristic, port_id: u8,) -> Self {
         let mode = HubLedMode::Rgb;
         Self {
             rgb: [0; 3],
