@@ -16,35 +16,31 @@ type ModeId = u8;
 pub struct IoDevice {
     pub kind: IoTypeId,
     pub port: u8,
-    capabilities: Vec<Capability>,
+    pub capabilities: Vec<Capability>,
     pub mode_count: u8,
-    modes: BTreeMap<ModeId, PortMode>,
-    valid_combos: Vec<Vec<u8>>,
+    pub modes: BTreeMap<ModeId, PortMode>,
+    pub valid_combos: Vec<Vec<u8>>,
 }
 #[derive(Debug, Default)]
 pub struct PortMode {
-    mode_kind: ModeKind,
-    pub name: String,               // Transmitted from hub as [u8; 11]
-    raw: (f32, f32),                // (min, max) The range for the raw (transmitted) signal, remember other ranges are used for scaling the value.
-    pct: (f32, f32),                // (min, max) % scaling. Ex: RAW == 0-200 PCT == 0-100 => 100 RAW == 50%
-    si: (f32, f32),                 // (min, max) SI-unit scaling (probably?)
-    symbol: String,                 // Transmitted from hub as [u8; 5]
-    input_mapping: Vec<Mapping>,    // Cf. info below. Can more than 1 mapping be enabled? Seems so.
-    output_mapping: Vec<Mapping>,
-    motor_bias: u8,                 // 0..100
-    // sensor_cabability: [u8; 6],  // Sensor capabilities as bits. No help from docs how to interpret, just ignore it for now.
-    value_format: ValueFormatType,
+    pub kind: ModeKind,
+    pub name: String,                   // Transmitted from hub as [u8; 11]
+    pub raw: (f32, f32),                // (min, max) The range for the raw (transmitted) signal, remember other ranges are used for scaling the value.
+    pub pct: (f32, f32),                // (min, max) % scaling. Ex: RAW == 0-200 PCT == 0-100 => 100 RAW == 50%
+    pub si: (f32, f32),                 // (min, max) SI-unit scaling (probably?)
+    pub symbol: String,                 // Transmitted from hub as [u8; 5]
+    pub input_mapping: Vec<Mapping>,    // Cf. info below. Can more than 1 mapping be enabled? Yes.
+    pub output_mapping: Vec<Mapping>,
+    pub motor_bias: u8,                 // 0..100
+    // pub sensor_cabability: [u8; 6],  // Sensor capabilities as bits. No help from docs how to interpret, just ignore it for now.
+    pub value_format: ValueFormatType,
 }
-// #[derive(Debug, Default)]
-// pub struct ModeCombo {
-//     modes: Vec<PortMode>
-// }
 #[derive(Debug, Default)]
 pub struct ValueFormat {
-    dataset_count: u8,
-    dataset_type: DatasetType,
-    total_figures: u8,
-    decimals: u8
+    pub dataset_count: u8,
+    pub dataset_type: DatasetType,
+    pub total_figures: u8,
+    pub decimals: u8
 }
 
 impl IoDevice {
@@ -73,16 +69,19 @@ impl IoDevice {
                 r.insert(mode as u8, PortMode::new(ModeKind::Output));
             }    
         }
+
         // Add hidden modes
         while r.len() < self.mode_count as usize {
-            r.insert(r.len() as u8, PortMode::new(ModeKind::Hidden));
+            let mut empty_key = 0;
+            while r.contains_key(&empty_key) { empty_key += 1 }
+            r.insert(empty_key as u8, PortMode::new(ModeKind::Hidden));
         } 
         self.modes = r;
     }
     pub fn get_modes(&self) -> &BTreeMap<ModeId, PortMode> {
         &self.modes
     } 
-    
+
     pub fn set_capabilities(&mut self, capabilities: u8) -> () {
         let mut r: Vec<Capability> = Vec::new();
         if (capabilities >> 3) & 1 == 1 {r.push(Capability::LogicalSynchronizable)}
@@ -210,7 +209,7 @@ impl fmt::Display for IoDevice {
 impl PortMode {
     pub fn new(mode_kind: ModeKind) -> Self {
         Self {
-            mode_kind,                   
+            kind: mode_kind,                   
             name: Default::default(),   
             raw: Default::default(),            
             pct: Default::default(),            

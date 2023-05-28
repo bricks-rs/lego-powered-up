@@ -41,6 +41,8 @@ type PinnedStream = Pin<Box<dyn Stream<Item = ValueNotification> + Send>>;
 /// Trait describing a generic hub.
 #[async_trait::async_trait]
 pub trait Hub: Debug + Send + Sync {
+    // fn cached_name(&self) -> String;
+
     async fn name(&self) -> Result<String>;
     async fn disconnect(&self) -> Result<()>;
     async fn is_connected(&self) -> Result<bool>;
@@ -60,7 +62,7 @@ pub trait Hub: Debug + Send + Sync {
         });
         self.send(msg).await
     }
-    async fn request_mode_info(&self, port_id: u8, mode: u8, infotype: ModeInformationType) -> Result<()> {
+    async fn req_mode_info(&self, port_id: u8, mode: u8, infotype: ModeInformationType) -> Result<()> {
         let msg =
         NotificationMessage::PortModeInformationRequest(ModeInformationRequest {
             port_id,
@@ -204,14 +206,13 @@ pub mod technic_hub;
 pub mod remote;
 pub mod move_hub;
 
-pub async fn handle_notification_stream(mut stream: PinnedStream, mutex: HubMutex, hub_name: &str) {
+pub async fn handle_notification_stream(mut stream: PinnedStream, mutex: HubMutex, hub_name: String) {
     while let Some(data) = stream.next().await {
         // println!("Received data from {:?} [{:?}]: {:?}", hub_name, data.uuid, data.value);
 
         let r = NotificationMessage::parse(&data.value);
         match r {
             Ok(n) => {
-                // println!("{}", hub_name);
                 // dbg!(&n);
                 match n {
                     NotificationMessage::HubAttachedIo(io_event) => {
@@ -242,19 +243,22 @@ pub async fn handle_notification_stream(mut stream: PinnedStream, mutex: HubMute
                                     PortInformationType::ModeInfo{capabilities, mode_count, input_modes, output_modes} => {
                                         {
                                             let mut hub = mutex.lock().await;
-                                            hub.connected_io().get_mut(&port_id).unwrap().set_mode_count(mode_count);
-                                            hub.connected_io().get_mut(&port_id).unwrap().set_capabilities(capabilities.0);
-                                            hub.connected_io().get_mut(&port_id).unwrap().set_modes(input_modes, output_modes);
+                                            let mut port = hub.connected_io().get_mut(&port_id).unwrap();
+                                            port.set_mode_count(mode_count);
+                                            port.set_capabilities(capabilities.0);
+                                            port.set_modes(input_modes, output_modes);
+                                      
+                                            // let count = 
                                             for mode_id in 0..mode_count {
-                                                hub.request_mode_info(port_id, mode_id, ModeInformationType::Name).await;
-                                                hub.request_mode_info(port_id, mode_id, ModeInformationType::Raw).await;
-                                                hub.request_mode_info(port_id, mode_id, ModeInformationType::Pct).await;
-                                                hub.request_mode_info(port_id, mode_id, ModeInformationType::Si).await;
-                                                hub.request_mode_info(port_id, mode_id, ModeInformationType::Symbol).await;
-                                                hub.request_mode_info(port_id, mode_id, ModeInformationType::Mapping).await;
-                                                hub.request_mode_info(port_id, mode_id, ModeInformationType::MotorBias).await;
+                                                hub.req_mode_info(port_id, mode_id, ModeInformationType::Name).await;
+                                                hub.req_mode_info(port_id, mode_id, ModeInformationType::Raw).await;
+                                                hub.req_mode_info(port_id, mode_id, ModeInformationType::Pct).await;
+                                                hub.req_mode_info(port_id, mode_id, ModeInformationType::Si).await;
+                                                hub.req_mode_info(port_id, mode_id, ModeInformationType::Symbol).await;
+                                                hub.req_mode_info(port_id, mode_id, ModeInformationType::Mapping).await;
+                                                hub.req_mode_info(port_id, mode_id, ModeInformationType::MotorBias).await;
                                                 // hub.request_mode_info(port_id, mode_id, ModeInformationType::CapabilityBits).await;
-                                                hub.request_mode_info(port_id, mode_id, ModeInformationType::ValueFormat).await;
+                                                hub.req_mode_info(port_id, mode_id, ModeInformationType::ValueFormat).await;
                                             }
                                         }
                                     }
@@ -299,8 +303,8 @@ pub async fn handle_notification_stream(mut stream: PinnedStream, mutex: HubMute
                                         hub.connected_io().get_mut(&port_id).unwrap().set_mode_motor_bias(mode, bias);
                                     }
                                     // PortModeInformationType::CapabilityBits(name) => {
-                                        // let mut hub = mutex.lock().await;
-                                        // hub.connected_io().get_mut(&port_id).unwrap().set_mode_cabability(mode, name);
+                                    //     let mut hub = mutex.lock().await;
+                                    //     hub.connected_io().get_mut(&port_id).unwrap().set_mode_cabability(mode, name);  //set_mode_capability not implemented
                                     // }
                                     PortModeInformationType::ValueFormat(format) => {
                                         let mut hub = mutex.lock().await;
@@ -318,6 +322,7 @@ pub async fn handle_notification_stream(mut stream: PinnedStream, mutex: HubMute
                     NotificationMessage::GenericErrorMessages(val) => {}
                     NotificationMessage::HwNetworkCommands(val) => {}
                     NotificationMessage::FwLockStatus(val) => {}
+
                     NotificationMessage::PortValueSingle(val) => {}
                     NotificationMessage::PortValueCombinedmode(val) => {}
                     NotificationMessage::PortInputFormatSingle(val) => {}
