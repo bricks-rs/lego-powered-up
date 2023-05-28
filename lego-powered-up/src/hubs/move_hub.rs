@@ -53,7 +53,7 @@ impl Hub for MoveHub {
 
     fn attach_io(&mut self, device_to_insert: IoDevice) -> Result<()> {
         self.connected_io.insert(device_to_insert.port, device_to_insert );
-        dbg!(&self.connected_io);
+        // dbg!(&self.connected_io);
         Ok(())
 
     }

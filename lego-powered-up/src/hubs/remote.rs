@@ -9,6 +9,7 @@ pub struct RemoteControl {
     lpf_characteristic: Characteristic,
     properties: HubProperties,
     pub connected_io: BTreeMap<u8, IoDevice>,
+    // cached_name: String
 }
 
 #[async_trait::async_trait]
@@ -142,6 +143,8 @@ impl RemoteControl {
             port_map,
             ..Default::default()
         };
+
+        // let cached_name = 
 
         Ok(Self {
             peripheral,
