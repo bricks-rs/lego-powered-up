@@ -9,6 +9,11 @@ use btleplug::api::{Characteristic, Peripheral as _, WriteType};
 use futures::{stream::StreamExt, Stream};
 use num_traits::FromPrimitive;
 
+use core::pin::Pin;
+use std::sync::{Arc};    
+use tokio::sync::Mutex;
+use btleplug::api::ValueNotification;
+
 #[macro_use]
 extern crate log;
 
@@ -24,6 +29,10 @@ pub use futures;
 
 use consts::{BLEManufacturerData, HubType};
 pub use hubs::Hub;
+
+
+type HubMutex = Arc<Mutex<Box<dyn Hub>>>;
+type PinnedStream = Pin<Box<dyn Stream<Item = ValueNotification> + Send>>;
 
 pub struct PoweredUp {
     adapter: Adapter,
@@ -191,22 +200,6 @@ impl PoweredUp {
             .find(|c| c.uuid == *consts::blecharacteristic::LPF2_ALL)
             .context("Device does not advertise LPF2_ALL characteristic")?
             .clone();
-    
-        // match hub.hub_type {
-        //     HubType::TechnicMediumHub => {
-        //         Ok(Box::new(hubs::technic_hub::TechnicHub::init(
-        //             peripheral, lpf_char, hub.hub_type).await?))
-        //     }
-        //     HubType::RemoteControl => {
-        //         Ok(Box::new(hubs::remote::RemoteControl::init(
-        //             peripheral, lpf_char, HubType::RemoteControl).await?))
-        //     }
-        //     HubType::MoveHub => {
-        //         Ok(Box::new(hubs::move_hub::MoveHub::init(
-        //             peripheral, lpf_char, hub.hub_type).await?))
-        //     }
-        //     _ => unimplemented!("Hub type not implemented."),
-        // }
 
         match hub.hub_type {
             // These have had some real life-testing.
@@ -235,12 +228,7 @@ impl PoweredUp {
     }
 }
 
-use core::pin::Pin;
-use std::sync::{Arc};    
-use tokio::sync::Mutex;
-use btleplug::api::ValueNotification;
-type HubMutex = Arc<Mutex<Box<dyn Hub>>>;
-type PinnedStream = Pin<Box<dyn Stream<Item = ValueNotification> + Send>>;
+
 pub struct ConnectedHub {
     pub name: String,
     pub mutex: HubMutex,
@@ -282,10 +270,11 @@ impl ConnectedHub {
         connected_hub
     }
 
-    pub fn create_channel() -> () {
-        let (tx, mut rx) = tokio::sync::broadcast::channel::<u8>(3);
-    }
+    // pub fn create_channel() -> () {
+    //     let (tx, mut rx) = tokio::sync::broadcast::channel::<u8>(3);
+    // }
 
+    // Return Result
     pub async fn set_up_handler(mutex: HubMutex) -> (PinnedStream, HubMutex, String) {
         let mutex_to_handler = mutex.clone();
         let mut lock = mutex.lock().await;
