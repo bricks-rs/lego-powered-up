@@ -174,6 +174,7 @@ pub enum Port {
     RemoteA,
     RemoteB,
     Virtual(u8),
+    Deprecated         // Port enum depreacated, have this for backwards comp
 }
 
 impl Port {

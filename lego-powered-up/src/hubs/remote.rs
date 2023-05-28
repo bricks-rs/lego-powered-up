@@ -9,6 +9,7 @@ pub struct RemoteControl {
     lpf_characteristic: Characteristic,
     properties: HubProperties,
     pub connected_io: BTreeMap<u8, IoDevice>,
+    pub kind: crate::consts::HubType
 }
 
 #[async_trait::async_trait]
@@ -121,6 +122,8 @@ impl Hub for RemoteControl {
                 
             }
         } else {
+            // let mut e = String::new();
+            // write!(&mut e, "No device on port {}", &port_id);
             Err(Error::HubError(String::from("No device on port {&port_id}"))) 
         }
     }
@@ -141,6 +144,7 @@ impl RemoteControl {
     pub async fn init(
         peripheral: Peripheral,
         lpf_characteristic: Characteristic,
+        kind: crate::consts::HubType,
     ) -> Result<Self> {
         // Peripheral is already connected before we get here
 
@@ -170,6 +174,7 @@ impl RemoteControl {
             lpf_characteristic,
             properties,
             connected_io: Default::default(),
+            kind
             // stream: peripheral().notifications().await?
         })
     }

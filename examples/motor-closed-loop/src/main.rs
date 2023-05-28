@@ -30,6 +30,7 @@ type HubMutex = Arc<Mutex<Box<dyn Hub>>>;
 
 // / Access devices
 use lego_powered_up::{devices::Device, error::Error};
+use tokio::sync::broadcast;
 
 // Handle notifications
 use core::pin::Pin;
@@ -37,6 +38,28 @@ use lego_powered_up::futures::stream::{Stream, StreamExt};
 use lego_powered_up::btleplug::api::ValueNotification;
 type PinnedStream = Pin<Box<dyn Stream<Item = ValueNotification> + Send>>;
 
+pub enum Tx {
+    Remote()
+}
+#[derive(Debug, Copy, Clone)]
+pub enum RcButtonState {
+    Aup,
+    Aplus,
+    Ared,
+    Aminus,
+    Bup,
+    Bplus,
+    Bred,
+    Bminus,
+    Green,
+    GreenUp
+}
+#[derive(Debug, Copy, Clone)]
+pub enum MotorState{
+    Speed(i8),
+    Pos(i16),
+    Apos(i16)
+}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -47,36 +70,75 @@ async fn main() -> anyhow::Result<()> {
     let hub_count = 1;
     println!("Waiting for hubs...");
     let discovered_hubs = pu.wait_for_hubs_filter(HubFilter::Null, &hub_count).await?;
-    
     println!("Discovered {} hubs, trying to connect...", &hub_count);
-    let mut dh_iter = discovered_hubs.into_iter();
-    let dh1 = dh_iter.next().unwrap();
-    println!("Connecting to hub `{}`", dh1.name);
 
-    // Setup hub
-    let created_hub = pu.create_hub(&dh1).await?;
-    let hub1 = ConnectedHub::setup_hub(created_hub).await;
+    // let mut dh_iter = discovered_hubs.into_iter();
+    // let dh1 = dh_iter.next().unwrap();
+    // println!("Connecting to hub `{}`", dh1.name);
+    // let created_hub = pu.create_hub(&dh1).await?;
+    // let h[0] = ConnectedHub::setup_hub(created_hub).await;
 
+    let mut h: Vec<ConnectedHub> = Vec::new();
+    for dh in discovered_hubs {
+        println!("Connecting to hub `{}`", dh.name);
+        let created_hub = pu.create_hub(&dh).await?;
+        h.push(ConnectedHub::setup_hub(created_hub).await)
+    }
+
+    // match h[0].kind {
+    //     lego_powered_up::consts::HubType::RemoteControl => {}
+    //     _ => {}
+
+    // }
 
     // Set up RC input 
-    let setup = ConnectedHub::set_up_handler(hub1.mutex.clone()).await;
-    let remote1 = tokio::spawn(async move { remote_control(setup.0, setup.1, setup.2).await; }); 
-    
+    let setup = ConnectedHub::set_up_handler(h[0].mutex.clone()).await;
+    let (rc_tx, mut rc_rx) = broadcast::channel::<RcButtonState>(3);
+    let rc_tx_spawn = rc_tx.clone();
+    let remote_handler1 = tokio::spawn(async move { 
+        rc_handler(setup.0, setup.1, setup.2, rc_tx_spawn).await; 
+    }); 
+    {
+        let lock = h[0].mutex.lock().await;
+        let mut remote_a = lock.enable_from_port(0x00).await?;
+        remote_a.remote_buttons_enable(1, 1).await?;    // mode 0x1, delta 1
+        let mut remote_b = lock.enable_from_port(0x01).await?;
+        remote_b.remote_buttons_enable(1, 1).await?;    // mode 0x1, delta 1
+    }    
+
+
+    let mut rc_rx_test = rc_tx.subscribe();
+    tokio::spawn(async move {
+        while let Ok(data) = rc_rx_test.recv().await {
+            match data {
+                RcButtonState::Aup => { println!("Hej! Aup") }
+                RcButtonState::Aplus => { println!("Hej! Aplus") }
+                RcButtonState::Ared => { println!("Hej! Ared") }
+                RcButtonState::Aminus => { println!("Hej! Aminus") }
+                _ => { println!("Hej! Annan knapp");}
+                
+            }
+        }
+    });
+
 
     // Set up motor feedback
-    let setup = ConnectedHub::set_up_handler(hub1.mutex.clone()).await;
-    let motor1 = tokio::spawn(async move { motor_control(setup.0, setup.1, setup.2).await; });
-
-    // Attempt with function pointer
-    // let ptr: fn(stream: PinnedStream, mutex: HubMutex, hub_name: String) -> () = another_handler;
-    // let new_handler = ConnectedHub::spawn_handler(hub1.mutex.clone()).await, ptr);
+    // let setup = ConnectedHub::set_up_handler(h[0].mutex.clone()).await;
+    // let motor1 = tokio::spawn(async move { motor_control(setup.0, setup.1, setup.2).await; });
+    // println!("Enable notifcations motor, speed, delta 1");
+    // use lego_powered_up::devices::MotorSensorMode;
+    // {
+    //     let lock = h[0].mutex.lock().await;
+    //     let mut motor_c = lock.enable_from_port(0x02).await?;
+    //     motor_c.motor_sensor_enable(MotorSensorMode::Pos, 1).await?;
+    // }
 
     // Start ui
-    let mutex = hub1.mutex.clone();
+    let mutex = h[0].mutex.clone();
     ui(mutex).await;
 
     // Cleanup after ui exit
-    let lock = hub1.mutex.lock().await;
+    let lock = h[0].mutex.lock().await;
     println!("Disconnect from hub `{}`", lock.name().await?);
     lock.disconnect().await?;
     println!("Done!");
@@ -88,31 +150,24 @@ async fn set_led(mut led: Box<dyn Device>, red: u8, green: u8, blue: u8) -> Resu
     led.set_rgb(&[red, green, blue]).await
 }
 
-pub async fn remote_control(mut stream: PinnedStream, mutex: HubMutex, hub_name: String) {
-    // use lego_powered_up::notifications::NotificationMessage::*;
+pub async fn rc_handler(mut stream: PinnedStream, mutex: HubMutex, 
+                        hub_name: String, tx: broadcast::Sender::<RcButtonState>) {
     use lego_powered_up::notifications::*;
     use lego_powered_up::notifications::NetworkCommand::ConnectionRequest;
     while let Some(data) = stream.next().await {
-        // println!("Received data from {:?} [{:?}]: {:?}", hub_name, data.uuid, data.value);
-
         let r = NotificationMessage::parse(&data.value);
         match r {
             Ok(n) => {
-                // dbg!(&n);
                 match n {
-                    // Active feedback
                     NotificationMessage::HwNetworkCommands(cmd) => {
                         match cmd {
                             ConnectionRequest(state) => {
                                 match state {
-                                    ButtonState::Up => {        //Green on
-                                    }
-                                    ButtonState::Released => {  //Green off
-                                    }
+                                    ButtonState::Up => { tx.send(RcButtonState::Green); }
+                                    ButtonState::Released => { tx.send(RcButtonState::GreenUp); }
                                     _ => ()
                                 }    
                             }
-                            
                             _ => ()
                         }
                     }
@@ -120,51 +175,25 @@ pub async fn remote_control(mut stream: PinnedStream, mutex: HubMutex, hub_name:
                         match val.values[0] {
                             0x0 => {
                                 match val.values[1] {
-                                    0 => {      // A side off
-                                        println!("Some A-side button released");
-                                    }
-                                    1 => {      // A + on
-                                        println!("A+ on");
-                                    }
-                                    127 => {    // A red on
-                                        println!("A red on");
-                                    }
-                                    255 => {    // A - on
-                                        println!("A- on");
-                                    }
+                                    0 => { tx.send(RcButtonState::Aup); }
+                                    1 => { tx.send(RcButtonState::Aplus); }
+                                    127 => { tx.send(RcButtonState::Ared); }
+                                    255 => { tx.send(RcButtonState::Aminus); }
                                     _  => ()
                                 }
                             }
                             0x1 => {
                                 match val.values[1] {
-                                    0 => {      // B side off
-                                        println!("Some B-side button released");
-                                    }
-                                    1 => {      // B + on
-                                        println!("B+ on");
-                                    }
-                                    127 => {    // B red on
-                                        println!("B red on");
-                                    }
-                                    255 => {    // A + on
-                                        println!("B- on");
-                                    }
+                                    0 => { tx.send(RcButtonState::Bup); }
+                                    1 => { tx.send(RcButtonState::Bplus); }
+                                    127 => { tx.send(RcButtonState::Bred); }
+                                    255 => { tx.send(RcButtonState::Bminus); }
                                     _  => ()
                                 }
-                                
                             }
                             _ => ()                                
                         }
-                        // dbg!(remote_status);
                     }
-                    NotificationMessage::PortValueCombinedmode(val) => {}
-
-                    // Setup feedback and errors
-                    NotificationMessage::PortInputFormatSingle(val) => {}
-                    NotificationMessage::PortInputFormatCombinedmode(val) => {}
-                    NotificationMessage::PortOutputCommandFeedback(val ) => {}
-                    NotificationMessage::GenericErrorMessages(val) => {}
-
                     _ => ()
                 }
             }
@@ -172,11 +201,10 @@ pub async fn remote_control(mut stream: PinnedStream, mutex: HubMutex, hub_name:
                 println!("Parse error: {}", e);
             }
         }
-
     }  
 }
 
-pub async fn motor_control(mut stream: PinnedStream, mutex: HubMutex, hub_name: String) {
+pub async fn motor_handler(mut stream: PinnedStream, mutex: HubMutex, hub_name: String) {
     use lego_powered_up::notifications::NotificationMessage;
 
     while let Some(data) = stream.next().await {

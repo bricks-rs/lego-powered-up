@@ -197,7 +197,8 @@ impl PoweredUp {
                 Ok(Box::new(hubs::technic_hub::TechnicHub::init(peripheral, lpf_char).await?))
             }
             HubType::RemoteControl => {
-                Ok(Box::new(hubs::remote::RemoteControl::init(peripheral, lpf_char).await?))
+                Ok(Box::new(hubs::remote::RemoteControl::init(
+                    peripheral, lpf_char, HubType::RemoteControl).await?))
             }
             HubType::MoveHub => {
                 Ok(Box::new(hubs::move_hub::MoveHub::init(peripheral, lpf_char).await?))
@@ -220,10 +221,12 @@ pub struct ConnectedHub {
     pub name: String,
     pub mutex: HubMutex,
     // pub stream: PinnedStream
+    // pub kind: HubType,
 }
 impl ConnectedHub {
     pub async fn setup_hub (created_hub: Box<dyn Hub>) -> ConnectedHub {    // Return result later
         let connected_hub = ConnectedHub {
+            // kind: created_hub.kind(),
             name: created_hub.name().await.unwrap(),                                                    // And here
             mutex: Arc::new(Mutex::new(created_hub)),
             // stream: created_hub.peripheral().notifications().await.unwrap()
@@ -254,6 +257,10 @@ impl ConnectedHub {
         connected_hub
     }
 
+    pub fn create_channel() -> () {
+        let (tx, mut rx) = tokio::sync::broadcast::channel::<u8>(3);
+    }
+
     pub async fn set_up_handler(mutex: HubMutex) -> (PinnedStream, HubMutex, String) {
         let mutex_to_handler = mutex.clone();
         let mut lock = mutex.lock().await;
@@ -262,21 +269,14 @@ impl ConnectedHub {
     
         (stream_to_handler, mutex_to_handler, name_to_handler)
     } 
-    
-    // Attempt with function pointer
-    // pub async fn spawn_handler(mutex: HubMutex, func: fn(stream: PinnedStream, mutex: HubMutex, hub_name: String)) -> tokio::task::JoinHandle() {
-    //     let mutex_to_handler = mutex.clone();
-    
-    //     let mut lock = mutex.lock().await;
-    //     let hub_name = lock.name().await.unwrap();
-    //     let stream: PinnedStream = lock.peripheral().notifications().await.unwrap(); 
-        
-    //     tokio::spawn(async move {
-    //         func(
-    //             stream, mutex_to_handler, hub_name).await;
-    //     })
-    // }
+
 }
+// pub struct HandlerSetup {
+//     hub_name: String,
+//     stream: PinnedStream,
+//     mutex: HubMutex, 
+//     tx: tokio::sync::broadcast::Sender<T>
+// }
 
 /// Properties by which to filter discovered hubs
 #[derive(Debug)]

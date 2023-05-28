@@ -208,7 +208,7 @@ impl RemoteButtons {
             peripheral,
             characteristic,
             port_id,
-            port: Port::RemoteA   // deprecated
+            port: Port::Deprecated   // deprecated
         }
     }
 }
@@ -587,6 +587,20 @@ impl Motor {
             characteristic,
             port,
             port_id,
+            status: MotorStatus::new(),
+        }
+    }
+
+    pub(crate) fn newnew(
+        peripheral: Peripheral,
+        characteristic: Characteristic,
+        port_id: u8,
+    ) -> Self {
+        Self {
+            peripheral,
+            characteristic,
+            port_id,
+            port: Port::Deprecated ,  // deprecated
             status: MotorStatus::new(),
         }
     }
