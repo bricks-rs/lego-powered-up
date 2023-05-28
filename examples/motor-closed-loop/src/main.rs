@@ -32,6 +32,9 @@ type HubMutex = Arc<Mutex<Box<dyn Hub>>>;
 use lego_powered_up::{devices::Device, error::Error};
 use tokio::sync::broadcast;
 
+// RC
+use lego_powered_up::hubs::remote::*;
+
 // Handle notifications
 use core::pin::Pin;
 use lego_powered_up::futures::stream::{Stream, StreamExt};
@@ -41,19 +44,7 @@ type PinnedStream = Pin<Box<dyn Stream<Item = ValueNotification> + Send>>;
 pub enum Tx {
     Remote()
 }
-#[derive(Debug, Copy, Clone)]
-pub enum RcButtonState {
-    Aup,
-    Aplus,
-    Ared,
-    Aminus,
-    Bup,
-    Bplus,
-    Bred,
-    Bminus,
-    Green,
-    GreenUp
-}
+
 #[derive(Debug, Copy, Clone)]
 pub enum MotorState{
     Speed(i8),
@@ -151,59 +142,7 @@ async fn set_led(mut led: Box<dyn Device>, red: u8, green: u8, blue: u8) -> Resu
     led.set_rgb(&[red, green, blue]).await
 }
 
-pub async fn rc_handler(mut stream: PinnedStream, mutex: HubMutex, 
-                        hub_name: String, tx: broadcast::Sender::<RcButtonState>) {
-    use lego_powered_up::notifications::*;
-    use lego_powered_up::notifications::NetworkCommand::ConnectionRequest;
-    while let Some(data) = stream.next().await {
-        let r = NotificationMessage::parse(&data.value);
-        match r {
-            Ok(n) => {
-                match n {
-                    NotificationMessage::HwNetworkCommands(cmd) => {
-                        match cmd {
-                            ConnectionRequest(state) => {
-                                match state {
-                                    ButtonState::Up => { tx.send(RcButtonState::Green); }
-                                    ButtonState::Released => { tx.send(RcButtonState::GreenUp); }
-                                    _ => ()
-                                }    
-                            }
-                            _ => ()
-                        }
-                    }
-                    NotificationMessage::PortValueSingle(val) => {
-                        match val.values[0] {
-                            0x0 => {
-                                match val.values[1] {
-                                    0 => { tx.send(RcButtonState::Aup); }
-                                    1 => { tx.send(RcButtonState::Aplus); }
-                                    127 => { tx.send(RcButtonState::Ared); }
-                                    255 => { tx.send(RcButtonState::Aminus); }
-                                    _  => ()
-                                }
-                            }
-                            0x1 => {
-                                match val.values[1] {
-                                    0 => { tx.send(RcButtonState::Bup); }
-                                    1 => { tx.send(RcButtonState::Bplus); }
-                                    127 => { tx.send(RcButtonState::Bred); }
-                                    255 => { tx.send(RcButtonState::Bminus); }
-                                    _  => ()
-                                }
-                            }
-                            _ => ()                                
-                        }
-                    }
-                    _ => ()
-                }
-            }
-            Err(e) => {
-                println!("Parse error: {}", e);
-            }
-        }
-    }  
-}
+
 
 pub async fn motor_handler(mut stream: PinnedStream, mutex: HubMutex, hub_name: String) {
     use lego_powered_up::notifications::NotificationMessage;

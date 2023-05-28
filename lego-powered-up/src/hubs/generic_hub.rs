@@ -114,15 +114,6 @@ impl Hub for GenericHub {
 
 }
 
-
-// # PORTS
-// PORT_A = 0x00        0
-// PORT_B = 0x01        1
-// PORT_LED = 0x34      52
-// PORT_VOLTAGE = 0x3B  59
-// PORT_RSSI = 0x3C     60
-
-
 impl GenericHub {
     /// Initialisation method
     pub async fn init(

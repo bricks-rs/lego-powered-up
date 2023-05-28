@@ -267,7 +267,7 @@ impl ConnectedHub {
             let mut lock = mutex_to_get_stream.lock().await;
             let stream_to_handler: PinnedStream = lock.peripheral().notifications().await.unwrap();    // Can use ? here then
             tokio::spawn(async move {
-                crate::hubs::handle_notification_stream(
+                crate::hubs::io_event::io_event_handler(
                     // created_stream, mutex_handle, &name).await;
                     stream_to_handler, mutex_to_handler, name_to_handler).await;
             });
