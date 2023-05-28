@@ -42,19 +42,7 @@ pub trait Device: Debug + Send + Sync {
         Ok(())
     }
 
-    // // Port information
-    // async fn request_port_info(&mut self, infotype: InformationType) -> Result<()> {
-    //     Err(Error::NotImplementedError(
-    //         "Not implemented for type".to_string(),
-    //     ))
-    // }
-    // async fn request_mode_info(&mut self, mode: u8, infotype: ModeInformationType) -> Result<()> {
-    //     Err(Error::NotImplementedError(
-    //         "Not implemented for type".to_string(),
-    //     ))
-    // }
-
-    // Hub internal devices
+    // Lights
     async fn set_rgb(&mut self, _rgb: &[u8; 3]) -> Result<()> {
         Err(Error::NotImplementedError(
             "Not implemented for type".to_string(),
@@ -68,6 +56,18 @@ pub trait Device: Debug + Send + Sync {
         ))
     }
     async fn remote_buttons_disable(&mut self) -> Result<()> {
+        Err(Error::NotImplementedError(
+            "Not implemented for type".to_string(),
+        ))
+    }
+
+    // Sensors
+    async fn color_sensor_enable(&mut self, mode: u8, delta: u32) -> Result<()> {
+        Err(Error::NotImplementedError(
+            "Not implemented for type".to_string(),
+        ))
+    }
+    async fn color_sensor_disable(&mut self) -> Result<()> {
         Err(Error::NotImplementedError(
             "Not implemented for type".to_string(),
         ))
@@ -120,7 +120,6 @@ pub trait Device: Debug + Send + Sync {
             "Not implemented for type".to_string(),
         ))
     }
-
     async fn motor_sensor_disable(&mut self) -> Result<()> {
         Err(Error::NotImplementedError(
             "Not implemented for type".to_string(),
@@ -131,15 +130,22 @@ pub trait Device: Debug + Send + Sync {
             "Not implemented for type".to_string(),
         ))
     }
+}
 
 
-
+pub struct VisionSensor {
+    // kind: IoTypeId
+    peripheral: Peripheral,
+    characteristic: Characteristic,
+    port_id: u8,
+    port: Port,
 }
 
 
 /// Struct representing a remote button cluster
 #[derive(Debug, Clone)]
 pub struct RemoteButtons {
+    // kind: IoTypeId
     peripheral: Peripheral,
     characteristic: Characteristic,
     port_id: u8,
@@ -151,31 +157,12 @@ impl Device for RemoteButtons {
     fn port(&self) -> Port {
         self.port
     }
-    
-
     fn peripheral(&self) -> &Peripheral {
         &self.peripheral
     }
     fn characteristic(&self) -> &Characteristic {
         &self.characteristic
     }
-    // async fn request_port_info(&mut self, infotype: InformationType) -> Result<()> {
-    //     let msg =
-    //     NotificationMessage::PortInformationRequest(InformationRequest {
-    //         port_id: self.port_id,
-    //         information_type: infotype,
-    //     });
-    // self.send(msg).await
-    // }
-    // async fn request_mode_info(&mut self, mode: u8, infotype: ModeInformationType) -> Result<()> {
-    //     let msg =
-    //     NotificationMessage::PortModeInformationRequest(ModeInformationRequest {
-    //         port_id: self.port_id,
-    //         mode,
-    //         information_type: infotype,
-    //     });
-    // self.send(msg).await
-    // }
     async fn remote_buttons_enable(&mut self, mode: u8, delta: u32) -> Result<()> {
         let mode_set_msg =
             NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
@@ -197,6 +184,7 @@ impl Device for RemoteButtons {
         self.send(mode_set_msg).await
     }
 }
+
 impl RemoteButtons {
     pub(crate) fn new(
         peripheral: Peripheral,
@@ -212,7 +200,6 @@ impl RemoteButtons {
         }
     }
 }
-
 
 
 /// Struct representing a Hub LED
@@ -231,13 +218,9 @@ impl Device for HubLED {
     fn port(&self) -> Port {
         Port::HubLed
     }
-
-
-
     fn peripheral(&self) -> &Peripheral {
         &self.peripheral
     }
-
     fn characteristic(&self) -> &Characteristic {
         &self.characteristic
     }
