@@ -64,6 +64,8 @@ impl Hub for GenericHub {
     //     ret
     // }
 
+    // Deprecated. Some earlier examples uses this, new examples should 
+    // use enable_from_port or enable_from_kind
     async fn port(&self, port_id: Port) -> Result<Box<dyn Device>> {
         let port =
             *self.properties.port_map.get(&port_id).ok_or_else(|| {
@@ -110,6 +112,70 @@ impl Hub for GenericHub {
             // write!(&mut e, "No device on port {}", &port_id);
             Err(Error::HubError(String::from("No device on port {&port_id}"))) 
         }
+    }
+
+    async fn enable_from_kind(&self, kind: IoTypeId) -> Result<Box<dyn Device>> {
+        let mut matches: Vec<&IoDevice> = Vec::new();
+        for val in self.connected_io.values() {
+            match val.kind {
+                kind => { matches.push(val) }
+                _ => ()
+            }
+        }
+        match matches.len() {
+            0 => {
+                Err(Error::NoneError(String::from("No device of kind")))
+            }
+            1 =>  {
+                let d = matches.first().unwrap(); 
+                match d.kind {
+                    IoTypeId::RemoteButtons => {
+                        Ok(
+                            Box::new(devices::RemoteButtons::newnew(
+                                        self.peripheral.clone(),
+                                        self.lpf_characteristic.clone(),
+                                        d.port,
+                                    )
+                                )
+                        )
+                    }
+                    IoTypeId::RgbLight => {
+                        Ok(
+                            Box::new(devices::HubLED::newnew(
+                                        self.peripheral.clone(),
+                                        self.lpf_characteristic.clone(),
+                                        d.port,
+                                    )
+                                )
+                        )   
+                    }
+                    IoTypeId::Motor |
+                    IoTypeId::ExternalMotorTacho |
+                    IoTypeId::InternalMotorTacho |
+                    IoTypeId::SystemTrainMotor |
+                    IoTypeId::TechnicLargeAngularMotor |
+                    IoTypeId::TechnicLargeLinearMotor |
+                    IoTypeId::TechnicMediumAngularMotor |
+                    IoTypeId::TechnicSmallAngularMotor |
+                    IoTypeId::TechnicXLargeLinearMotor  => {
+                        Ok(
+                            Box::new(devices::Motor::newnew(
+                                        self.peripheral.clone(),
+                                        self.lpf_characteristic.clone(),
+                                        d.port,
+                                    )
+                                )
+                        )   
+                    }
+                    _ => { Err(Error::NotImplementedError(String::from("Not implemtned"))) }
+                }
+            }
+            _ => { 
+                Err(Error::HubError(String::from("Several devices of kind, use enable_from_port"))) 
+            }
+        }
+        
+       
     }
 
 }
