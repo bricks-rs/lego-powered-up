@@ -1,11 +1,10 @@
-#![feature(byte_slice_trim_ascii)]
-
+#![allow(unused)]
 use btleplug::api::{
     Central, CentralEvent, Manager as _, Peripheral as _, PeripheralProperties,
     ScanFilter, //ValueNotification
 };
-use btleplug::platform::{Adapter, Manager, PeripheralId};
-
+use btleplug::platform::{Adapter, Manager, PeripheralId, Peripheral};
+use btleplug::api::{Characteristic, Peripheral as _, WriteType};
 
 use futures::{stream::StreamExt, Stream};
 use num_traits::FromPrimitive;
@@ -28,6 +27,8 @@ pub use hubs::Hub;
 
 pub struct PoweredUp {
     adapter: Adapter,
+    // peri: Peripheral,
+    // characteristic: Characteristic
 }
 
 impl PoweredUp {
@@ -217,21 +218,34 @@ type HubMutex = Arc<Mutex<Box<dyn Hub>>>;
 type PinnedStream = Pin<Box<dyn Stream<Item = ValueNotification> + Send>>;
 pub struct ConnectedHub {
     pub name: String,
-    pub mutex: HubMutex
+    pub mutex: HubMutex,
+    // pub stream: PinnedStream
 }
 impl ConnectedHub {
     pub async fn setup_hub (created_hub: Box<dyn Hub>) -> ConnectedHub {    // Return result later
-        let created_stream: PinnedStream = created_hub.peripheral().notifications().await.unwrap();    // Can use ? here then
         let connected_hub = ConnectedHub {
             name: created_hub.name().await.unwrap(),                                                    // And here
             mutex: Arc::new(Mutex::new(created_hub)),
+            // stream: created_hub.peripheral().notifications().await.unwrap()
         };
-        let mutex_handle = connected_hub.mutex.clone();
-        let name = connected_hub.name.clone();
-        tokio::spawn(async move {
-            crate::hubs::handle_notification_stream(
-                created_stream, mutex_handle, &name).await;
-        });
+        
+        
+        
+        // Set up handler
+        let name_to_handler = connected_hub.name.clone();
+        let mutex_to_handler = connected_hub.mutex.clone();
+        let mutex_to_get_stream = connected_hub.mutex.clone();
+        {
+            let mut lock = mutex_to_get_stream.lock().await;
+            let stream_to_handler: PinnedStream = lock.peripheral().notifications().await.unwrap();    // Can use ? here then
+            tokio::spawn(async move {
+                crate::hubs::handle_notification_stream(
+                    // created_stream, mutex_handle, &name).await;
+                    stream_to_handler, mutex_to_handler, name_to_handler).await;
+            });
+        }
+        
+        // Subscribe
         {
             let lock = connected_hub.mutex.lock().await;
             lock.peripheral().subscribe(&lock.characteristic()).await.unwrap();
@@ -239,6 +253,29 @@ impl ConnectedHub {
 
         connected_hub
     }
+
+    pub async fn set_up_handler(mutex: HubMutex) -> (PinnedStream, HubMutex, String) {
+        let mutex_to_handler = mutex.clone();
+        let mut lock = mutex.lock().await;
+        let name_to_handler = lock.name().await.unwrap();
+        let stream_to_handler: PinnedStream = lock.peripheral().notifications().await.unwrap();     
+    
+        (stream_to_handler, mutex_to_handler, name_to_handler)
+    } 
+    
+    // Attempt with function pointer
+    // pub async fn spawn_handler(mutex: HubMutex, func: fn(stream: PinnedStream, mutex: HubMutex, hub_name: String)) -> tokio::task::JoinHandle() {
+    //     let mutex_to_handler = mutex.clone();
+    
+    //     let mut lock = mutex.lock().await;
+    //     let hub_name = lock.name().await.unwrap();
+    //     let stream: PinnedStream = lock.peripheral().notifications().await.unwrap(); 
+        
+    //     tokio::spawn(async move {
+    //         func(
+    //             stream, mutex_to_handler, hub_name).await;
+    //     })
+    // }
 }
 
 /// Properties by which to filter discovered hubs
