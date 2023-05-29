@@ -121,7 +121,7 @@ pub async fn ui(mutex: HubMutex) -> () {
                     let mut lock = mutex.lock().await;
                     let o = lock.connected_io().get(&num);
                     match o {
-                        Some(device) => {dbg!(device);}
+                        Some(device) => { println!("{:#?}", device) }  //{dbg!(device);}
                         None => {println!("Device not found");}
                     }
                 }

@@ -241,9 +241,6 @@ impl fmt::Display for IoDevice {
         
         write!(f, "{:#?} on port {} ({:#x}) with {} modes: {:#?}", 
         self.kind, self.port, self.port, self.mode_count, names)
-        // self.kind, self.port, self.mode_count, self.modes.values().map(|x| x.name.as_str())) 
-        // self.kind, self.port, self.mode_count, self.modes.values().map(|x| x.name.as_str())) 
-    
     }
 }
 
