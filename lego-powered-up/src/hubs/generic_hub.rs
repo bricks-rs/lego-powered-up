@@ -94,32 +94,25 @@ impl Hub for GenericHub {
     //TODO: Put actual port_id / kind in error msgs
     async fn get_from_port(&self, port_id: u8) -> Result<IoDevice> {
         match self.connected_io.get(&port_id) {
-            Some(connected_device) => { Ok(connected_device.clone()) }
-            None => { Err(Error::HubError(String::from("No device on port {port_id}"))) }
-        }
-    }
-    async fn get_from_kind(&self, kind: IoTypeId) -> Result<IoDevice> {
-        let mut matches: Vec<&IoDevice> = Vec::new();
-        for val in self.connected_io.values() {
-            match val.kind {
-                kind => { matches.push(val) }
-                _ => ()
+                Some(connected_device) => { Ok(connected_device.clone()) }
+                None => { Err(Error::HubError(String::from("No device on port {port_id}"))) }
             }
-        }
-        match matches.len() {
+    }
+    async fn get_from_kind(&self, get_kind: IoTypeId) -> Result<IoDevice> {
+        let mut found: Vec<&IoDevice> = self.connected_io.values().filter(|&x| x.kind == get_kind).collect();
+        match found.len() {
             0 => {
                 Err(Error::NoneError(String::from("No device of kind {kind}")))   
             }
             1 =>  {
-                let device_ref = *matches.first().unwrap();
-                Ok(device_ref.clone()) 
-            }
-            _ => { 
-                Err(Error::HubError(String::from("Found {kind} on {list of ports}, use enable_from_port"))) 
-            }
+            let device_ref = *found.first().unwrap();
+            Ok(device_ref.clone()) 
+        }
+        _ => { 
+            Err(Error::HubError(String::from("Found {kind} on {list of ports}, use enable_from_port"))) 
         }
     }
-
+}
   
 }
 

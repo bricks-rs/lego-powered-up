@@ -69,19 +69,22 @@ async fn main() -> anyhow::Result<()> {
         let created_hub = pu.create_hub(&dh).await?;
         h.push(ConnectedHub::setup_hub(created_hub).await)
     }
+    tokiosleep(Duration::from_secs(1)).await;  //Wait for attached devices to be collected
+
 
     let hub: ConnectedHub = h.remove(0);
-    tokiosleep(Duration::from_secs(3));
+    
 
     let mut hubled: IoDevice;
     {
         let lock = hub.mutex.lock().await;
-        // hubled = lock.get_from_kind(IoTypeId::RgbLight).await?;
-        hubled = lock.get_from_port(0x34).await?;
+        hubled = lock.get_from_kind(IoTypeId::HubLed).await?;
+        // hubled = lock.get_from_port(0x34).await?;
     }
-    dbg!(&hubled);
-    hubled.set_hubled_mode(HubLedMode::Colour).await;
-    hubled.set_hubled_color(Color::Cyan).await;
+    // hubled.set_hubled_mode(HubLedMode::Colour).await;
+    // hubled.set_hubled_color(Color::Cyan).await;
+    hubled.set_hubled_mode(HubLedMode::Rgb).await;
+    hubled.set_hubled_rgb(&[0,0,100]).await;
 
 
     // Start ui
