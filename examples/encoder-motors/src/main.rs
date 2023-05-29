@@ -82,7 +82,7 @@ async fn main() -> anyhow::Result<()> {
     println!("wait 5 s");
     tokio::time::sleep(Duration::from_secs(5)).await;
 
-    motor_b.motor_combined_sensor_enable(MotorSensorMode::Speed, 20, 180).await?;
+    // motor_b.motor_combined_sensor_enable(MotorSensorMode::Speed, 20, 180).await?;
 
     println!("wait 5 s");
     tokio::time::sleep(Duration::from_secs(5)).await;

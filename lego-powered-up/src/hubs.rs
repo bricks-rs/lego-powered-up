@@ -120,10 +120,10 @@ pub trait Hub: Debug + Send + Sync {
     // fn process_io_event(&mut self, _evt: AttachedIo);
 
     async fn port(&self, port_id: Port) -> Result<Box<dyn Device>>;             //Deprecated
-    async fn get_from_port(&self, port_id: u8) -> Result<Box<dyn Device>>;
-    async fn get_from_kind(&self, kind: IoTypeId) -> Result<Box<dyn Device>>;
 
-    async fn get_from_port2(&self, port_id: u8) -> Result<&IoDevice>;    
+    async fn get_from_port(&self, port_id: u8) -> Result<IoDevice>;   
+    async fn get_from_kind(&self, kind: IoTypeId) -> Result<IoDevice>;   
+
 }
 
 pub type VersionNumber = u8;

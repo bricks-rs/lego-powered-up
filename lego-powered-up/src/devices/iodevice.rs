@@ -16,10 +16,11 @@ use crate::notifications::{ValueFormatType, DatasetType, MappingValue};
 use crate::devices::remote::RcDevice;
 use crate::devices::sensor::*;
 use crate::devices::motor::*;
+use crate::devices::light::*;
 
 type ModeId = u8;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct IoDevice {
     pub kind: IoTypeId,
     pub port: u8,
@@ -29,14 +30,14 @@ pub struct IoDevice {
     pub valid_combos: Vec<Vec<u8>>,
     pub handles: Handles
 }
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Handles {
    pub p: Option<btleplug::platform::Peripheral>,
    pub c: Option<btleplug::api::Characteristic>,
    pub tx: Vec<tokio::sync::mpsc::Sender<u8>> // List of channels to send to
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct PortMode {
     pub kind: ModeKind,
     pub name: String,                   // Transmitted from hub as [u8; 11]
@@ -50,7 +51,7 @@ pub struct PortMode {
     // pub sensor_cabability: [u8; 6],  // Sensor capabilities as bits. No help from docs how to interpret, just ignore it for now.
     pub value_format: ValueFormatType,
 }
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct ValueFormat {
     pub dataset_count: u8,
     pub dataset_type: DatasetType,
@@ -264,7 +265,7 @@ impl PortMode {
 //     Float = 0b11,
 // }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub enum ModeKind {
     #[default]
     Unknown,
@@ -273,7 +274,7 @@ pub enum ModeKind {
     Hidden
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub enum Capability {
     // Transmitted as u8, upper nibble not used
     #[default]
@@ -284,7 +285,7 @@ pub enum Capability {
     AcceptData = 0b0001,              // Output (seen from Hub)
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub enum Mapping {
     #[default]
     Unknown,
@@ -344,6 +345,17 @@ impl EncoderMotor for IoDevice {
             IoTypeId::TechnicLargeLinearMotor |
             IoTypeId::TechnicXLargeLinearMotor |
             IoTypeId::InternalMotorTacho => self.handles.p.clone(),
+            _ => None,
+        } 
+    } 
+    fn c(&self) -> Option<Characteristic> { self.handles.c.clone() } 
+    fn port(&self) -> u8 { self.port }
+}
+
+impl HubLed for IoDevice {
+    fn p(&self) -> Option<Peripheral> {
+        match self.kind {
+            IoTypeId::RgbLight => self.handles.p.clone(),
             _ => None,
         } 
     } 

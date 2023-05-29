@@ -91,37 +91,14 @@ impl Hub for GenericHub {
         })
     }
 
-    async fn get_from_port(&self, port_id: u8) -> Result<Box<dyn Device>> {
-        if let Some(connected_device) = self.connected_io.get(&port_id) {
-            match connected_device.kind {
-                IoTypeId::RemoteButtons => {
-                    Ok(
-                        Box::new(devices::RemoteButtons::newnew(
-                                    self.peripheral.clone(),
-                                    self.lpf_characteristic.clone(),
-                                    port_id,
-                                )
-                            )
-                    )
-                }
-                _ => { Err(Error::NotImplementedError(String::from("Not implemtned"))) }
-                
-            }
-        } else {
-            // let mut e = String::new();
-            // write!(&mut e, "No device on port {}", &port_id);
-            Err(Error::HubError(String::from("No device on port {&port_id}"))) 
-        }
-    }
-
-    async fn get_from_port2(&self, port_id: u8) -> Result<&IoDevice> {
+    //TODO: Put actual port_id / kind in error msgs
+    async fn get_from_port(&self, port_id: u8) -> Result<IoDevice> {
         match self.connected_io.get(&port_id) {
-            Some(connected_device) => { Ok(connected_device) }
+            Some(connected_device) => { Ok(connected_device.clone()) }
             None => { Err(Error::HubError(String::from("No device on port {port_id}"))) }
         }
     }
-
-    async fn get_from_kind(&self, kind: IoTypeId) -> Result<Box<dyn Device>> {
+    async fn get_from_kind(&self, kind: IoTypeId) -> Result<IoDevice> {
         let mut matches: Vec<&IoDevice> = Vec::new();
         for val in self.connected_io.values() {
             match val.kind {
@@ -131,60 +108,19 @@ impl Hub for GenericHub {
         }
         match matches.len() {
             0 => {
-                Err(Error::NoneError(String::from("No device of kind")))
+                Err(Error::NoneError(String::from("No device of kind {kind}")))   
             }
             1 =>  {
-                let d = matches.first().unwrap(); 
-                match d.kind {
-                    IoTypeId::RemoteButtons => {
-                        Ok(
-                            Box::new(devices::RemoteButtons::newnew(
-                                        self.peripheral.clone(),
-                                        self.lpf_characteristic.clone(),
-                                        d.port,
-                                    )
-                                )
-                        )
-                    }
-                    IoTypeId::RgbLight => {
-                        Ok(
-                            Box::new(devices::HubLED::newnew(
-                                        self.peripheral.clone(),
-                                        self.lpf_characteristic.clone(),
-                                        d.port,
-                                    )
-                                )
-                        )   
-                    }
-                    IoTypeId::Motor |
-                    IoTypeId::ExternalMotorTacho |
-                    IoTypeId::InternalMotorTacho |
-                    IoTypeId::SystemTrainMotor |
-                    IoTypeId::TechnicLargeAngularMotor |
-                    IoTypeId::TechnicLargeLinearMotor |
-                    IoTypeId::TechnicMediumAngularMotor |
-                    IoTypeId::TechnicSmallAngularMotor |
-                    IoTypeId::TechnicXLargeLinearMotor  => {
-                        Ok(
-                            Box::new(devices::Motor::newnew(
-                                        self.peripheral.clone(),
-                                        self.lpf_characteristic.clone(),
-                                        d.port,
-                                    )
-                                )
-                        )   
-                    }
-                    _ => { Err(Error::NotImplementedError(String::from("Not implemtned"))) }
-                }
+                let device_ref = *matches.first().unwrap();
+                Ok(device_ref.clone()) 
             }
             _ => { 
-                Err(Error::HubError(String::from("Several devices of kind, use enable_from_port"))) 
+                Err(Error::HubError(String::from("Found {kind} on {list of ports}, use enable_from_port"))) 
             }
         }
-        
-       
     }
 
+  
 }
 
 impl GenericHub {
