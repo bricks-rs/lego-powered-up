@@ -282,7 +282,7 @@ impl PortMode {
 //     Float = 0b11,
 // }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Copy, Clone)]
 pub enum ModeKind {
     #[default]
     Unknown,
@@ -291,7 +291,7 @@ pub enum ModeKind {
     Hidden
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Copy, Clone)]
 pub enum Capability {
     // Transmitted as u8, upper nibble not used
     #[default]
@@ -302,7 +302,7 @@ pub enum Capability {
     AcceptData = 0b0001,              // Output (seen from Hub)
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Copy, Clone)]
 pub enum Mapping {
     #[default]
     Unknown,
