@@ -94,7 +94,16 @@ impl Hub for GenericHub {
     //TODO: Put actual port_id / kind in error msgs
     async fn get_from_port(&self, port_id: u8) -> Result<IoDevice> {
         match self.connected_io.get(&port_id) {
-                Some(connected_device) => { Ok(connected_device.clone()) }
+                Some(connected_device) => { 
+                    // Don't include handles:
+                    // Ok(connected_device.clone())
+
+                    // Include handles:
+                    let mut d = connected_device.clone();
+                    d.handles.p = Some(self.peripheral().clone());
+                    d.handles.c = Some(self.characteristic().clone());
+                    Ok(d)
+                 }
                 None => { Err(Error::HubError(String::from("No device on port {port_id}"))) }
             }
     }
@@ -105,11 +114,21 @@ impl Hub for GenericHub {
                 Err(Error::NoneError(String::from("No device of kind {kind}")))   
             }
             1 =>  {
-            let device_ref = *found.first().unwrap();
-            Ok(device_ref.clone()) 
+            // Don't include handles:
+            // let mut device_deref = *found.first().unwrap();
+            // Ok(device_deref.clone())
+
+            // Include handles:
+            let device_deref = *found.first().unwrap();
+            let mut d = device_deref.clone();
+            d.handles.p = Some(self.peripheral().clone());
+            d.handles.c = Some(self.characteristic().clone());
+            Ok(d) 
         }
         _ => { 
-            Err(Error::HubError(String::from("Found {kind} on {list of ports}, use enable_from_port"))) 
+            eprintln!("Found {:#?} {:#?} on {:?}, use enable_from_port()", found.len(), get_kind, 
+                found.iter().map(|x|x.port).collect::<Vec<_>>());
+            Err(Error::HubError(String::from("Found {count} {kind} on {list of ports}, use enable_from_port()"))) 
         }
     }
 }

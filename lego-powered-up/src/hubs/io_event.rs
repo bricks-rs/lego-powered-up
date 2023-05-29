@@ -33,11 +33,12 @@ pub async fn io_event_handler(mut stream: PinnedStream, mutex: HubMutex, hub_nam
                                             let p = hub.peripheral().clone();
                                             let c = hub.characteristic().clone();
                                             hub.attach_io(
-                                                IoDevice::new_with_handles(
-                                                    io_type_id, port_id, p, c));
+                                                IoDevice::new(
+                                                            io_type_id, port_id));
                                             // hub.attach_io(
-                                            //     IoDevice::new(
-                                            //                 io_type_id, port_id));
+                                            //     IoDevice::new_with_handles(
+                                            //         io_type_id, port_id, p, c));
+                                            
                                             hub.request_port_info(port_id, InformationType::ModeInfo).await;
                                             hub.request_port_info(port_id, InformationType::PossibleModeCombinations).await;
                                         }
