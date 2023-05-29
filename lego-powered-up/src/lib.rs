@@ -210,7 +210,7 @@ impl PoweredUp {
                     peripheral, lpf_char, hub.hub_type).await?))
             }
             // These are untested, but if they support the same "Lego Wireless protocol 3.0"
-            // then they should probably work with the generic implementation?
+            // then they should probably work?
             HubType::Wedo2SmartHub |
             HubType::Hub |
             HubType::DuploTrainBase |

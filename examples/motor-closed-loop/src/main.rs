@@ -41,6 +41,8 @@ use lego_powered_up::futures::stream::{Stream, StreamExt};
 use lego_powered_up::btleplug::api::ValueNotification;
 type PinnedStream = Pin<Box<dyn Stream<Item = ValueNotification> + Send>>;
 
+use lego_powered_up::devices::remote::RcDevice;
+
 pub enum Tx {
     Remote()
 }
@@ -86,15 +88,21 @@ async fn main() -> anyhow::Result<()> {
     // Set up RC input 
     let setup = ConnectedHub::set_up_handler(rc_hub.mutex.clone()).await;
     let (rc_tx, mut rc_rx) = broadcast::channel::<RcButtonState>(3);
-    let rc_tx_spawn = rc_tx.clone();
+    let rc_tx_clone = rc_tx.clone();
     let remote_handler1 = tokio::spawn(async move { 
-        rc_handler(setup.0, setup.1, setup.2, rc_tx_spawn).await; 
+        rc_handler(setup.0, setup.1, setup.2, rc_tx_clone).await; 
     }); 
     {
         let lock = rc_hub.mutex.lock().await;
-        let mut remote_a = lock.enable_from_port(0x00).await?;
-        remote_a.remote_buttons_enable(1, 1).await?;    // mode 0x1, delta 1
-        let mut remote_b = lock.enable_from_port(0x01).await?;
+        // let mut remote_a = lock.get_from_port(0x00).await?;
+        // remote_a.remote_buttons_enable(1, 1).await?;    // mode 0x1, delta 1
+
+        let mut remote_a = lock.get_from_port2(0x00).await?;
+        remote_a.remote_buttons_enable(1, 1).await?;
+
+        
+
+        let mut remote_b = lock.get_from_port(0x01).await?;
         remote_b.remote_buttons_enable(1, 1).await?;    // mode 0x1, delta 1
     }    
 

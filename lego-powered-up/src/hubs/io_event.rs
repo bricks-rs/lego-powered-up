@@ -28,10 +28,13 @@ pub async fn io_event_handler(mut stream: PinnedStream, mutex: HubMutex, hub_nam
                                 let port_id = port;
                                 match event {
                                     IoAttachEvent::AttachedIo{io_type_id, hw_rev, fw_rev} => {
-                                        let aio = IoDevice::new(io_type_id, port_id);
                                         {
                                             let mut hub = mutex.lock().await;
-                                            hub.attach_io(aio);
+                                            let p = hub.peripheral().clone();
+                                            let c = hub.characteristic().clone();
+                                            hub.attach_io(
+                                                IoDevice::new(
+                                                    io_type_id, port_id, p, c));
                                             hub.request_port_info(port_id, InformationType::ModeInfo).await;
                                             hub.request_port_info(port_id, InformationType::PossibleModeCombinations).await;
                                         }

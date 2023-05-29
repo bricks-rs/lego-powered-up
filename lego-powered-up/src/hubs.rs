@@ -120,8 +120,10 @@ pub trait Hub: Debug + Send + Sync {
     // fn process_io_event(&mut self, _evt: AttachedIo);
 
     async fn port(&self, port_id: Port) -> Result<Box<dyn Device>>;             //Deprecated
-    async fn enable_from_port(&self, port_id: u8) -> Result<Box<dyn Device>>;
-    async fn enable_from_kind(&self, kind: IoTypeId) -> Result<Box<dyn Device>>;
+    async fn get_from_port(&self, port_id: u8) -> Result<Box<dyn Device>>;
+    async fn get_from_kind(&self, kind: IoTypeId) -> Result<Box<dyn Device>>;
+
+    async fn get_from_port2(&self, port_id: u8) -> Result<&IoDevice>;    
 }
 
 pub type VersionNumber = u8;
@@ -212,3 +214,9 @@ pub mod remote;
 pub mod generic_hub;
 pub mod io_event;
 
+pub async fn send(p: Peripheral, c: Characteristic, msg: NotificationMessage) -> Result<()> {
+    let buf = msg.serialise();
+        p.write(&c, &buf, WriteType::WithoutResponse)
+        .await?;
+    Ok(())
+}

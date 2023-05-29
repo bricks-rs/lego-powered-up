@@ -91,7 +91,7 @@ impl Hub for GenericHub {
         })
     }
 
-    async fn enable_from_port(&self, port_id: u8) -> Result<Box<dyn Device>> {
+    async fn get_from_port(&self, port_id: u8) -> Result<Box<dyn Device>> {
         if let Some(connected_device) = self.connected_io.get(&port_id) {
             match connected_device.kind {
                 IoTypeId::RemoteButtons => {
@@ -114,7 +114,14 @@ impl Hub for GenericHub {
         }
     }
 
-    async fn enable_from_kind(&self, kind: IoTypeId) -> Result<Box<dyn Device>> {
+    async fn get_from_port2(&self, port_id: u8) -> Result<&IoDevice> {
+        match self.connected_io.get(&port_id) {
+            Some(connected_device) => { Ok(connected_device) }
+            None => { Err(Error::HubError(String::from("No device on port {port_id}"))) }
+        }
+    }
+
+    async fn get_from_kind(&self, kind: IoTypeId) -> Result<Box<dyn Device>> {
         let mut matches: Vec<&IoDevice> = Vec::new();
         for val in self.connected_io.values() {
             match val.kind {

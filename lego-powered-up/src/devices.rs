@@ -23,6 +23,9 @@ use crate::notifications::{InputSetupSingle, PortOutputSubcommand, WriteDirectMo
 pub use crate::consts::*;
 
 pub mod iodevice;
+pub mod remote;
+pub mod sensor;
+pub mod motor;
 
 /// Trait that any d
 /// evice may implement. Having a single trait covering

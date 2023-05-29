@@ -77,7 +77,7 @@ async fn main() -> anyhow::Result<()> {
 
 
 
-    let mut motor_b = hub1.enable_from_port(0x02).await?;
+    let mut motor_b = hub1.get_from_port(0x02).await?;
 
     println!("wait 5 s");
     tokio::time::sleep(Duration::from_secs(5)).await;

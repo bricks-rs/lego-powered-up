@@ -230,8 +230,7 @@ pub enum IoAttachEvent {
 }
 
 impl IoAttachEvent {
-    // NOTE
-    // Parser panicks with "NoneError("Cannot convert 'None'")"
+    // Note: Returns "NoneError("Cannot convert 'None'")"
     // if incoming IoTypeId-value is not in enum IoTypeId.
     pub fn parse<'a>(mut msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
         let event_type = ok!(Event::from_u8(next!(msg)));

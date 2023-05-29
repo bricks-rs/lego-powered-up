@@ -8,8 +8,15 @@
 use std::collections::{BTreeMap};
 use std::fmt;
 
+use btleplug::platform::{Adapter, Manager, PeripheralId, Peripheral};
+use btleplug::api::{Characteristic, Peripheral as _, WriteType};
+
 use crate::consts::IoTypeId;
 use crate::notifications::{ValueFormatType, DatasetType, MappingValue};
+use crate::devices::remote::RcDevice;
+use crate::devices::sensor::*;
+use crate::devices::motor::*;
+
 type ModeId = u8;
 
 #[derive(Debug, Default)]
@@ -20,7 +27,15 @@ pub struct IoDevice {
     pub mode_count: u8,
     pub modes: BTreeMap<ModeId, PortMode>,
     pub valid_combos: Vec<Vec<u8>>,
+    pub handles: Handles
 }
+#[derive(Debug, Default)]
+pub struct Handles {
+   pub p: Option<btleplug::platform::Peripheral>,
+   pub c: Option<btleplug::api::Characteristic>,
+   pub tx: Vec<tokio::sync::mpsc::Sender<u8>> // List of channels to send to
+}
+
 #[derive(Debug, Default)]
 pub struct PortMode {
     pub kind: ModeKind,
@@ -44,14 +59,22 @@ pub struct ValueFormat {
 }
 
 impl IoDevice {
-    pub fn new(kind: IoTypeId, port: u8) -> Self {
+    pub fn new(kind: IoTypeId, port: u8, 
+               peripheral: btleplug::platform::Peripheral, 
+               characteristic: btleplug::api::Characteristic ) -> Self {
+        let handles = Handles {
+            p: Some(peripheral),
+            c: Some(characteristic),
+            tx: Vec::new()
+        };
         Self {
             kind,
             port,
             mode_count: Default::default(),
             capabilities: Default::default(),
             valid_combos: Default::default(),
-            modes: Default::default()
+            modes: Default::default(),
+            handles
         }
     }
     pub fn set_mode_count(&mut self, mode_count: u8) -> () {
@@ -280,3 +303,50 @@ pub enum Mapping {
 // The roles are: The host of the sensor (even a simple and dumb black box)
 // can then decide, what to do with the sensor without any setup (default
 // mode 0 (zero). Using the LSB first (highest priority).
+
+
+impl RcDevice for IoDevice {
+    fn p(&self) -> Option<Peripheral> {
+        match self.kind {
+            IoTypeId::RemoteButtons => self.handles.p.clone(),
+            _ => None,
+        } 
+    } 
+    fn c(&self) -> Option<Characteristic> { self.handles.c.clone() } 
+    fn port(&self) -> u8 { self.port }
+}
+impl SingleValueSensor for IoDevice {
+    fn p(&self) -> Option<Peripheral> {
+        match self.kind {
+            IoTypeId::TechnicHubTemperatureSensor |
+            IoTypeId::Current |
+            IoTypeId::Rssi |
+            IoTypeId::Voltage  => self.handles.p.clone(),
+            _ => None,
+        } 
+    } 
+    fn c(&self) -> Option<Characteristic> { self.handles.c.clone() } 
+    fn port(&self) -> u8 { self.port }
+}
+impl VisionSensor for IoDevice {
+    fn p(&self) -> Option<Peripheral> {
+        match self.kind {
+            IoTypeId::VisionSensor => self.handles.p.clone(),
+            _ => None,
+        } 
+    } 
+    fn c(&self) -> Option<Characteristic> { self.handles.c.clone() } 
+    fn port(&self) -> u8 { self.port }
+}
+impl EncoderMotor for IoDevice {
+    fn p(&self) -> Option<Peripheral> {
+        match self.kind {
+            IoTypeId::TechnicLargeLinearMotor |
+            IoTypeId::TechnicXLargeLinearMotor |
+            IoTypeId::InternalMotorTacho => self.handles.p.clone(),
+            _ => None,
+        } 
+    } 
+    fn c(&self) -> Option<Characteristic> { self.handles.c.clone() } 
+    fn port(&self) -> u8 { self.port }
+}
