@@ -60,7 +60,7 @@ pub struct ValueFormat {
 }
 
 impl IoDevice {
-    pub fn new(kind: IoTypeId, port: u8, 
+    pub fn new_with_handles(kind: IoTypeId, port: u8, 
                peripheral: btleplug::platform::Peripheral, 
                characteristic: btleplug::api::Characteristic ) -> Self {
         let handles = Handles {
@@ -78,6 +78,23 @@ impl IoDevice {
             handles
         }
     }
+    pub fn new(kind: IoTypeId, port: u8) -> Self {
+            // let handles = Handles {
+            //     p: Some(peripheral),
+            //     c: Some(characteristic),
+            //     tx: Vec::new()
+            // };
+            Self {
+                kind,
+                port,
+                mode_count: Default::default(),
+                capabilities: Default::default(),
+                valid_combos: Default::default(),
+                modes: Default::default(),
+                handles: Default::default()
+            }
+        }
+
     pub fn set_mode_count(&mut self, mode_count: u8) -> () {
         self.mode_count = mode_count;
     }
@@ -317,6 +334,7 @@ impl RcDevice for IoDevice {
     fn port(&self) -> u8 { self.port }
 }
 impl SingleValueSensor for IoDevice {
+    // #[non_exhaustive]
     fn p(&self) -> Option<Peripheral> {
         match self.kind {
             IoTypeId::TechnicHubTemperatureSensor |
@@ -355,7 +373,7 @@ impl EncoderMotor for IoDevice {
 impl HubLed for IoDevice {
     fn p(&self) -> Option<Peripheral> {
         match self.kind {
-            IoTypeId::RgbLight => self.handles.p.clone(),
+            IoTypeId::HubLed => self.handles.p.clone(),
             _ => None,
         } 
     } 
