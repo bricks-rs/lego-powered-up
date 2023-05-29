@@ -22,6 +22,7 @@ pub mod devices;
 pub mod error;
 pub mod hubs;
 pub mod notifications;
+mod tests;
 
 pub use btleplug;
 pub use error::{Error, OptionContext, Result};
