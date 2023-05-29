@@ -81,10 +81,10 @@ async fn main() -> anyhow::Result<()> {
         hubled = lock.get_from_kind(IoTypeId::HubLed).await?;
         // hubled = lock.get_from_port(0x34).await?;
     }
-    // hubled.set_hubled_mode(HubLedMode::Colour).await;
-    // hubled.set_hubled_color(Color::Cyan).await;
-    hubled.set_hubled_mode(HubLedMode::Rgb).await;
-    hubled.set_hubled_rgb(&[0,0,100]).await;
+    hubled.set_hubled_mode(HubLedMode::Colour).await;
+    hubled.set_hubled_color(Color::Cyan).await;
+    // hubled.set_hubled_mode(HubLedMode::Rgb).await;
+    // hubled.set_hubled_rgb(&[140,0,100]).await;
 
 
     // Start ui

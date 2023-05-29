@@ -1831,6 +1831,20 @@ impl WriteDirectModeDataPayload {
                     *blue,
                 ]
             }
+            SetRgbColorNo(c)=> {
+                let startup_and_completion =
+                    meta.startup_info.serialise(&meta.completion_info);
+                vec![
+                    0,
+                    0, // hub id
+                    MessageType::PortOutputCommand as u8,
+                    meta.port_id,
+                    startup_and_completion,
+                    0x51, // WriteDirect
+                    HubLedMode::Colour as u8,
+                    *c as u8
+                ]
+            }
             StartPower(p) => {
                 let startup_and_completion =
                     meta.startup_info.serialise(&meta.completion_info);
