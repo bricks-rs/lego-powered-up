@@ -589,7 +589,7 @@ pub enum IoTypeId {
     Voltage = 0x14,                         //20
     Current = 0x15,                         //21
     PiezoToneSound = 0x16,                  //22
-    RgbLight = 0x17,                        //23
+    HubLed = 0x17,                        //23
 
     ExternalTiltSensor = 0x22,              //34
     MotionSensor = 0x23,                    //35
