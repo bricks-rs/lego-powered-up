@@ -6,23 +6,12 @@ use std::time::Duration;
 use lego_powered_up::devices::iodevice::IoDevice;
 use tokio::time::sleep as tokiosleep;
 
-
-
-// use lego_powered_up::{PoweredUp, Hub, HubFilter, devices::Device, error::Error, ConnectedHub};
-// use lego_powered_up::notifications::NotificationMessage;
-// use lego_powered_up::notifications::NetworkCommand::ConnectionRequest;
-// use lego_powered_up::notifications::*;
-// use lego_powered_up::consts::*;
-// use lego_powered_up::devices::iodevice::IoDevice;
-
-// use lego_powered_up::btleplug::api::{Peripheral, ValueNotification};
-
-// use lego_powered_up::{futures::{future, select, stream::{StreamExt, FuturesUnordered}};
-
-
-
 // Powered up
 use lego_powered_up::{PoweredUp, Hub, HubFilter, ConnectedHub,}; 
+use lego_powered_up::consts::{IoTypeId, LEGO_COLORS};
+use lego_powered_up::devices::remote::RcDevice;
+use lego_powered_up::devices::{light::*};
+
 
 // Access hub 
 use std::sync::{Arc};
@@ -41,14 +30,6 @@ use core::pin::Pin;
 use lego_powered_up::futures::stream::{Stream, StreamExt};
 use lego_powered_up::btleplug::api::ValueNotification;
 type PinnedStream = Pin<Box<dyn Stream<Item = ValueNotification> + Send>>;
-
-use lego_powered_up::consts::IoTypeId;
-use lego_powered_up::devices::remote::RcDevice;
-use lego_powered_up::devices::light::*;
-
-pub enum Tx {
-    Remote()
-}
 
 
 
@@ -70,24 +51,37 @@ async fn main() -> anyhow::Result<()> {
         h.push(ConnectedHub::setup_hub(created_hub).await)
     }
     tokiosleep(Duration::from_secs(1)).await;  //Wait for attached devices to be collected
-
-
     let hub: ConnectedHub = h.remove(0);
     
-
     let mut hubled: IoDevice;
     {
         let lock = hub.mutex.lock().await;
         hubled = lock.get_from_kind(IoTypeId::HubLed).await?;
-        // hubled = lock.get_from_port(0x34).await?;
     }
-    hubled.set_hubled_mode(HubLedMode::Colour).await;
-    hubled.set_hubled_color(Color::Cyan).await;
-    // hubled.set_hubled_mode(HubLedMode::Rgb).await;
-    // hubled.set_hubled_rgb(&[140,0,100]).await;
+    tokio::spawn(async move { 
+        // LEGO colors
+        hubled.set_hubled_mode(HubLedMode::Colour).await;
+        for c in LEGO_COLORS {
+                hubled.set_hubled_color(c).await;
+                tokiosleep(Duration::from_millis(500)).await;
+        }
+        tokiosleep(Duration::from_millis(1000)).await;
 
+        // Rainbow
+        hubled.set_hubled_mode(HubLedMode::Rgb).await;
+        let mut rgb: [u8; 3] = [0; 3];
+        loop {
+            for angle in 0..360 {
+                rgb[0] = RAINBOW_TABLE[(angle+120)%360];
+                rgb[1] = RAINBOW_TABLE[angle];
+                rgb[2] = RAINBOW_TABLE[(angle+240)%360];
+                hubled.set_hubled_rgb(&rgb).await;    
+                tokiosleep(Duration::from_millis(30)).await;
+            }
+        }
+    });
 
-    // Start ui
+    // Start attached io ui
     let mutex = hub.mutex.clone();
     ui(mutex).await;
 
@@ -99,14 +93,6 @@ async fn main() -> anyhow::Result<()> {
 
     Ok(())
 }
-
-async fn set_led(mut led: Box<dyn Device>, red: u8, green: u8, blue: u8) -> Result<(), Error> {
-    led.set_rgb(&[red, green, blue]).await
-}
-
-
-
-
 
 
 pub async fn ui(mutex: HubMutex) -> () {
@@ -146,3 +132,52 @@ pub async fn ui(mutex: HubMutex) -> () {
         }
     }
 }
+
+
+const RAINBOW_TABLE: [u8; 360] = [
+    0,   0,   0,   0,   0,   1,   1,   2, 
+    2,   3,   4,   5,   6,   7,   8,   9, 
+   11,  12,  13,  15,  17,  18,  20,  22, 
+   24,  26,  28,  30,  32,  35,  37,  39, 
+   42,  44,  47,  49,  52,  55,  58,  60, 
+   63,  66,  69,  72,  75,  78,  81,  85, 
+   88,  91,  94,  97, 101, 104, 107, 111, 
+  114, 117, 121, 124, 127, 131, 134, 137, 
+  141, 144, 147, 150, 154, 157, 160, 163, 
+  167, 170, 173, 176, 179, 182, 185, 188, 
+  191, 194, 197, 200, 202, 205, 208, 210, 
+  213, 215, 217, 220, 222, 224, 226, 229, 
+  231, 232, 234, 236, 238, 239, 241, 242, 
+  244, 245, 246, 248, 249, 250, 251, 251, 
+  252, 253, 253, 254, 254, 255, 255, 255, 
+  255, 255, 255, 255, 254, 254, 253, 253, 
+  252, 251, 251, 250, 249, 248, 246, 245, 
+  244, 242, 241, 239, 238, 236, 234, 232, 
+  231, 229, 226, 224, 222, 220, 217, 215, 
+  213, 210, 208, 205, 202, 200, 197, 194, 
+  191, 188, 185, 182, 179, 176, 173, 170, 
+  167, 163, 160, 157, 154, 150, 147, 144, 
+  141, 137, 134, 131, 127, 124, 121, 117, 
+  114, 111, 107, 104, 101,  97,  94,  91, 
+   88,  85,  81,  78,  75,  72,  69,  66, 
+   63,  60,  58,  55,  52,  49,  47,  44, 
+   42,  39,  37,  35,  32,  30,  28,  26, 
+   24,  22,  20,  18,  17,  15,  13,  12, 
+   11,   9,   8,   7,   6,   5,   4,   3, 
+    2,   2,   1,   1,   0,   0,   0,   0, 
+    0,   0,   0,   0,   0,   0,   0,   0, 
+    0,   0,   0,   0,   0,   0,   0,   0, 
+    0,   0,   0,   0,   0,   0,   0,   0, 
+    0,   0,   0,   0,   0,   0,   0,   0, 
+    0,   0,   0,   0,   0,   0,   0,   0, 
+    0,   0,   0,   0,   0,   0,   0,   0, 
+    0,   0,   0,   0,   0,   0,   0,   0, 
+    0,   0,   0,   0,   0,   0,   0,   0, 
+    0,   0,   0,   0,   0,   0,   0,   0, 
+    0,   0,   0,   0,   0,   0,   0,   0, 
+    0,   0,   0,   0,   0,   0,   0,   0, 
+    0,   0,   0,   0,   0,   0,   0,   0, 
+    0,   0,   0,   0,   0,   0,   0,   0, 
+    0,   0,   0,   0,   0,   0,   0,   0, 
+    0,   0,   0,   0,   0,   0,   0,   0
+];

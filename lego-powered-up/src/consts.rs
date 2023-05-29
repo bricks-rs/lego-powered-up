@@ -78,7 +78,7 @@ pub enum Color {
     None = 255,
 }
 
-const LEGO_COLORS: [Color; 11] = [
+pub const LEGO_COLORS: [Color; 11] = [
     Color::Pink, 
     Color::Purple,
     Color::Blue,
