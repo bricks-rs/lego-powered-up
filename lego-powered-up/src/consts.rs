@@ -45,74 +45,6 @@ impl Display for HubType {
     }
 }
 
-/// ```ignore
-/// @typedef DeviceType
-/// @property {number} UNKNOWN 0
-/// @property {number} SIMPLE_MEDIUM_LINEAR_MOTOR 1
-/// @property {number} TRAIN_MOTOR 2
-/// @property {number} LED_LIGHTS 8
-/// @property {number} VOLTAGE 20
-/// @property {number} CURRENT 21
-/// @property {number} PIEZO_TONE 22
-/// @property {number} RGB_LIGHT 23
-/// @property {number} WEDO2_TILT 34
-/// @property {number} WEDO2_DISTANCE 35
-/// @property {number} COLOR_DISTANCE_SENSOR 37
-/// @property {number} MEDIUM_LINEAR_MOTOR 38
-/// @property {number} MOVE_HUB_MEDIUM_LINEAR_MOTOR 39
-/// @property {number} BOOST_TILT 40
-/// @property {number} DUPLO_TRAIN_BASE_MOTOR 41
-/// @property {number} DUPLO_TRAIN_BASE_SPEAKER 42
-/// @property {number} DUPLO_TRAIN_BASE_COLOR 43
-/// @property {number} DUPLO_TRAIN_BASE_SPEEDOMETER 44
-/// @property {number} CONTROL_PLUS_LARGE_MOTOR 46
-/// @property {number} CONTROL_PLUS_XLARGE_MOTOR 47
-/// @property {number} POWERED_UP_REMOTE_BUTTON 55
-/// @property {number} RSSI 56
-/// @property {number} CONTROL_PLUS_ACCELEROMETER 58
-/// @property {number} CONTROL_PLUS_TILT 59
-/// ```
-#[repr(u8)]
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum DeviceType {
-    Unknown = 0,
-    SimpleMediumLinearMotor = 1,
-    TrainMotor = 2,
-    Light = 8,
-    VoltageSensor = 20,
-    CurrentSensor = 21,
-    PiezoBuzzer = 22,
-    HubLed = 23,
-    TiltSensor = 34,
-    MotionSensor = 35,
-    ColorDistanceSensor = 37,
-    MediumLinearMotor = 38,
-    MoveHubMediumLinearMotor = 39,
-    MoveHubTiltSensor = 40,
-    DuploTrainBaseMotor = 41,
-    DuploTrainBaseSpeaker = 42,
-    DuploTrainBaseColorSensor = 43,
-    DuploTrainBaseSpeedometer = 44,
-    TechnicLargeLinearMotor = 46, // Technic Control+
-    TechnicXlargeLinearMotor = 47, // Technic Control+
-    TechnicMediumAngularMotor = 48, // Spike Prime
-    TechnicLargeAngularMotor = 49, // Spike Prime
-    TechnicMediumHubGestSensor = 54,
-    RemoteControlButton = 55,
-    RemoteControlRssi = 56,
-    TechnicMediumHubAccelerometer = 57,
-    TechnicMediumHubGyroSensor = 58,
-    TechnicMediumHubTiltSensor = 59,
-    TechnicMediumHubTemperatureSensor = 60,
-    TechnicColorSensor = 61,    // Spike Prime
-    TechnicDistanceSensor = 62, // Spike Prime
-    TechnicForceSensor = 63,    // Spike Prime
-    MarioAccelerometer = 71,
-    MarioBarcodeSensor = 73,
-    MarioPantsSensor = 74,
-    TechnicMediumAngularMotorGrey = 75, // Mindstorms
-    TechnicLargeAngularMotorGrey = 76,  // Technic Control+
-}
 
 /// ```ignore
 /// @typedef Color
@@ -145,6 +77,20 @@ pub enum Color {
     White = 10,
     None = 255,
 }
+
+const LEGO_COLORS: [Color; 11] = [
+    Color::Pink, 
+    Color::Purple,
+    Color::Blue,
+    Color::LightBlue,
+    Color::Cyan,
+    Color::Green,
+    Color::Yellow,
+    Color::Orange,
+    Color::Red,
+    Color::White,
+    Color::Black
+];
 
 // @typedef ButtonState
 // @property {number} PRESSED 0
@@ -574,6 +520,35 @@ pub enum InputSetupCombinedSubcommandValue {
     ResetSensor = 0x06,
 }
 
+/// ```ignore
+/// @typedef DeviceType
+/// @property {number} UNKNOWN 0
+/// @property {number} SIMPLE_MEDIUM_LINEAR_MOTOR 1
+/// @property {number} TRAIN_MOTOR 2
+/// @property {number} LED_LIGHTS 8
+/// @property {number} VOLTAGE 20
+/// @property {number} CURRENT 21
+/// @property {number} PIEZO_TONE 22
+/// @property {number} RGB_LIGHT 23
+/// @property {number} WEDO2_TILT 34
+/// @property {number} WEDO2_DISTANCE 35
+/// @property {number} COLOR_DISTANCE_SENSOR 37
+/// @property {number} MEDIUM_LINEAR_MOTOR 38
+/// @property {number} MOVE_HUB_MEDIUM_LINEAR_MOTOR 39
+/// @property {number} BOOST_TILT 40
+/// @property {number} DUPLO_TRAIN_BASE_MOTOR 41
+/// @property {number} DUPLO_TRAIN_BASE_SPEAKER 42
+/// @property {number} DUPLO_TRAIN_BASE_COLOR 43
+/// @property {number} DUPLO_TRAIN_BASE_SPEEDOMETER 44
+/// @property {number} CONTROL_PLUS_LARGE_MOTOR 46
+/// @property {number} CONTROL_PLUS_XLARGE_MOTOR 47
+/// @property {number} POWERED_UP_REMOTE_BUTTON 55
+/// @property {number} RSSI 56
+/// @property {number} CONTROL_PLUS_ACCELEROMETER 58
+/// @property {number} CONTROL_PLUS_TILT 59
+/// ```
+
+
 // Added more IDs, some observed and some from 
 // https://github.com/nathankellenicki/node-poweredup/blob/master/src/consts.ts 
 #[repr(u8)]
@@ -627,29 +602,6 @@ pub enum IoTypeId {
     TechnicLargeAngularMotorGrey = 76,      //76     // Technic Control+
 }
 
-// #[repr(u16)]
-// #[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive)]
-// pub enum IoTypeId {
-//     Motor = 0x0001,
-//     SystemTrainMotor = 0x0002,
-//     Button = 0x0005,
-//     LedLight = 0x0008,
-//     Voltage = 0x0014,
-//     Current = 0x0015,
-//     PiezoToneSound = 0x0016,
-//     RgbLight = 0x0017,
-//     ExternalTiltSensor = 0x0022,
-//     MotionSensor = 0x0023,
-//     VisionSensor = 0x0025,
-//     ExternalMotor = 0x0026,
-//     InternalMotor = 0x0027,
-//     InternalTilt = 0x0028,
-//     TechnicHubGestSensor = 0x0036,
-//     TechnicHubAccelerometer = 0x0039,
-//     TechnicHubGyroSensor = 0x003a,
-//     TechnicHubTiltSensor = 0x003b,
-//     TechnicHubTemperatureSensor = 0x003c
-// }
 
 pub enum MotorSensorMode {
     // Valid combinations: 1+2+3  (Speed, Pos, Apos)
@@ -684,3 +636,5 @@ pub enum VisionSensorMode {
 //     pub const INPUT: u8 = 0b0010;
 //     pub const OUTPUT: u8 = 0b0001;
 // }
+
+
