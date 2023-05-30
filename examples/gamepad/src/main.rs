@@ -128,9 +128,9 @@ async fn main() -> anyhow::Result<()> {
                             }
                         }
                         NotificationMessage::PortValueSingle(val) => {
-                            match val.values[0] {
+                            match val.port_id {
                                 0x0 => {
-                                    match val.values[1] {
+                                    match val.data[0] {
                                         0 => {
                                             remote_status.a_plus = false;
                                             remote_status.a_red = false; 
@@ -153,7 +153,7 @@ async fn main() -> anyhow::Result<()> {
                                     }
                                 }
                                 0x1 => {
-                                    match val.values[1] {
+                                    match val.data[0] {
                                         0 => {
                                             remote_status.b_plus = false;
                                             remote_status.b_red = false; 
