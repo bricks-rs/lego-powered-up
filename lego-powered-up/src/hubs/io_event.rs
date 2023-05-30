@@ -1,21 +1,75 @@
 
 use core::pin::Pin;
+use std::collections::HashMap;
+use crate::consts::MessageType;
 use crate::futures::stream::{Stream, StreamExt};
 use crate::btleplug::api::ValueNotification;
 
 use std::sync::{Arc};
 use tokio::sync::Mutex;
 use tokio::sync::broadcast;
+use crate::error;
+use crate::error::{Error, Result};
 
 type HubMutex = Arc<Mutex<Box<dyn crate::Hub>>>;
 type PinnedStream = Pin<Box<dyn Stream<Item = ValueNotification> + Send>>;
 
-use crate::notifications::*;
+use crate::{notifications::*};
 use crate::devices::iodevice::*;
+use std::fmt::Debug;
 
-pub async fn io_event_handler(mut stream: PinnedStream, mutex: HubMutex, hub_name: String) {
+  // // Musings on notfication-message parsing and handling
+        // I realized that the design where there is a handler like this for each enabled port (where an iodevice has been
+        // req'd / cloned from hub and a handler started) means sending each message thru NotificationMessage::parse once 
+        // for every task. Better to split out by messagetype => broadcast-channel. (Setting up handler with dedicated parsing is fine is the need 
+        // is felt for an application.) 
+        //
+        // So: Somewhere (in hub?) a hashmap (in struct for methods) that maps Notification-message type to a a sender/receiver pair).
+        // Then a main handler (for each hub-stream) get a clone of that? Or just the senders? 
+        // I'll start with this function as main handler (let it also handle hub-related messages for now.) 
+        //
+        // Those messagetypes that have a port in their value could be further split to avoid multiple processing of those.
+        // Perhaps not the config/information ones but PortValueSingle, PortValueCombined and PortOutputCommandFeedback have
+        // the potential to be numerous. 
+        // Although this needs config information. Lets 
+        // Alt. 1: Create subtasks to receive each of the 3 to a channel by port. Problem: Would need to spawn/create sender when port enabled (or configured)
+        // Vs. the messagetypes being known at compile time.
+        // Alt. 2: Main handler has senders for each of the 3 by port. Again this would need to be dynamic. 
+        // We'll start by splitting out those three to to senders i think.  
+
+
+// There's surely a better way to do this with generics
+#[derive(Debug, Default, Clone)]
+pub struct ChannelNotification {
+    pub portvaluesingle: Option<PortValueSingleFormat>,
+    pub portvaluescombined: Option<PortValueCombinedFormat>,
+    pub portoutputcommandfeedback: Option<PortOutputCommandFeedbackFormat>
+}
+
+pub async fn io_event_handler(mut stream: PinnedStream, mutex: HubMutex, hub_name: String, 
+                            mut tx: HashMap<MessageType, broadcast::Sender<ChannelNotification>>) 
+                            -> Result<()> {
+
+    // if let Some(portvaluesingle_sender) = tx.remove(&MessageType::PortValueSingle) &
+    //    let Some(portvaluescombined_sender) = tx.remove(&MessageType::PortValueCombined) &
+    //    let Some(portoutputcommandfeedback_sender) = tx.remove(&MessageType::PortOutputCommandFeedback) {}
+    // if-let chains not available: https://github.com/rust-lang/rust/issues/53667
+    
+    let portvaluesingle_sender = match tx.remove(&MessageType::PortValueSingle) {
+        Some(x) => x,
+        None => return Err(Error::NoneError((String::from("No portvaluesingle_sender"))))
+    };
+    let portvaluecombined_sender = match tx.remove(&MessageType::PortValueCombined) {
+        Some(x) => x,
+        None => return Err(Error::NoneError((String::from("No portvaluescombined_sender"))))
+    };
+    let portoutputcommandfeedback_sender = match tx.remove(&MessageType::PortOutputCommandFeedback) {
+        Some(x) => x,
+        None => return Err(Error::NoneError((String::from("No portoutputcommandfeedback_sender"))))
+    };
+    
     while let Some(data) = stream.next().await {
-        // println!("Received data from {:?} [{:?}]: {:?}", hub_name, data.uuid, data.value);
+        // println!("Received data from {:?} [{:?}]: {:?}", hub_name, data.uuid, data.value);  // Dev use
 
         let r = NotificationMessage::parse(&data.value);
         match r {
@@ -137,20 +191,33 @@ pub async fn io_event_handler(mut stream: PinnedStream, mutex: HubMutex, hub_nam
                     NotificationMessage::HwNetworkCommands(val) => {}
                     NotificationMessage::FwLockStatus(val) => {}
 
-                    NotificationMessage::PortValueSingle(val) => {}
-                    NotificationMessage::PortValueCombinedmode(val) => {}
+                    NotificationMessage::PortValueSingle(val) => {
+                        portvaluesingle_sender.send(ChannelNotification { portvaluesingle: (Some(val)), 
+                                                                          portvaluescombined: (None),
+                                                                          portoutputcommandfeedback: (None) });
+                    }
+                    NotificationMessage::PortValueCombined(val) => {
+                        portvaluecombined_sender.send(ChannelNotification { portvaluesingle: (None), 
+                                                                          portvaluescombined: (Some(val)),
+                                                                          portoutputcommandfeedback: (None) });
+                    }
                     NotificationMessage::PortInputFormatSingle(val) => {}
                     NotificationMessage::PortInputFormatCombinedmode(val) => {}
                     NotificationMessage::PortOutputCommandFeedback(val ) => {}
-
+                    NotificationMessage::PortOutputCommandFeedback(val) => {
+                        portoutputcommandfeedback_sender.send(ChannelNotification { portvaluesingle: (None), 
+                                                                          portvaluescombined: (None),
+                                                                          portoutputcommandfeedback: (Some(val)) });
+                    }
 
                     _ => ()
                 }
             }
             Err(e) => {
-                println!("Parse error: {}", e);
+                eprintln!("Parse error: {}", e);
             }
         }
 
-    }  
+    }
+    Ok(())  
 }

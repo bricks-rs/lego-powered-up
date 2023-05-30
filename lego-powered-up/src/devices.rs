@@ -203,18 +203,18 @@ impl RemoteButtons {
         }
     }
 
-    pub(crate) fn newnew(
-        peripheral: Peripheral,
-        characteristic: Characteristic,
-        port_id: u8,
-    ) -> Self {
-        Self {
-            peripheral,
-            characteristic,
-            port_id,
-            port: Port::Deprecated   // deprecated
-        }
-    }
+    // pub(crate) fn newnew(
+    //     peripheral: Peripheral,
+    //     characteristic: Characteristic,
+    //     port_id: u8,
+    // ) -> Self {
+    //     Self {
+    //         peripheral,
+    //         characteristic,
+    //         port_id,
+    //         port: Port::Deprecated   // deprecated
+    //     }
+    // }
 }
 
 
@@ -288,16 +288,16 @@ impl HubLED {
         }
     }
 
-    pub(crate) fn newnew(peripheral: Peripheral, characteristic: Characteristic, port_id: u8,) -> Self {
-        let mode = HubLedMode::Rgb;
-        Self {
-            rgb: [0; 3],
-            _mode: mode,
-            characteristic,
-            peripheral,
-            port_id,
-        }
-    }
+    // pub(crate) fn newnew(peripheral: Peripheral, characteristic: Characteristic, port_id: u8,) -> Self {
+    //     let mode = HubLedMode::Rgb;
+    //     Self {
+    //         rgb: [0; 3],
+    //         _mode: mode,
+    //         characteristic,
+    //         peripheral,
+    //         port_id,
+    //     }
+    // }
 }
 
 /// Struct representing a motor
@@ -595,19 +595,19 @@ impl Motor {
         }
     }
 
-    pub(crate) fn newnew(
-        peripheral: Peripheral,
-        characteristic: Characteristic,
-        port_id: u8,
-    ) -> Self {
-        Self {
-            peripheral,
-            characteristic,
-            port_id,
-            port: Port::Deprecated ,  // deprecated
-            status: MotorStatus::new(),
-        }
-    }
+    // pub(crate) fn newnew(
+    //     peripheral: Peripheral,
+    //     characteristic: Characteristic,
+    //     port_id: u8,
+    // ) -> Self {
+    //     Self {
+    //         peripheral,
+    //         characteristic,
+    //         port_id,
+    //         port: Port::Deprecated ,  // deprecated
+    //         status: MotorStatus::new(),
+    //     }
+    // }
 }
 
 

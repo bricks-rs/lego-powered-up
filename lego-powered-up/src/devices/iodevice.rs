@@ -34,7 +34,8 @@ pub struct IoDevice {
 pub struct Handles {
    pub p: Option<btleplug::platform::Peripheral>,
    pub c: Option<btleplug::api::Characteristic>,
-   pub tx: Vec<tokio::sync::mpsc::Sender<u8>> // List of channels to send to
+   pub tx: Vec<tokio::sync::mpsc::Sender<u8>>,       // Send channels
+   //  pub rx: Vec<tokio::sync::mpsc::Receiver<u8>>  // Receive channels
 }
 
 #[derive(Debug, Default, Clone)]
@@ -66,7 +67,8 @@ impl IoDevice {
         let handles = Handles {
             p: Some(peripheral),
             c: Some(characteristic),
-            tx: Vec::new()
+            tx: Vec::new(),
+            // rx: Vec::new(),
         };
         Self {
             kind,

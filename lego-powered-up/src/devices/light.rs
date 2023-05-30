@@ -84,3 +84,7 @@ pub enum HubLedMode {
     /// Colour may be set to any 12-bit RGB value
     Rgb = 0x01,
 }
+
+#[async_trait]
+pub trait HeadLights: Debug + Send + Sync {
+}

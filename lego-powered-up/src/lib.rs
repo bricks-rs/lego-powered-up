@@ -6,9 +6,16 @@ use btleplug::api::{
 use btleplug::platform::{Adapter, Manager, PeripheralId, Peripheral};
 use btleplug::api::{Characteristic, Peripheral as _, WriteType};
 
+use async_trait::async_trait;
+use devices::{IoTypeId, MessageType};
+use devices::iodevice::IoDevice;
+use devices::sensor::SingleValueSensor;
 use futures::{stream::StreamExt, Stream};
+use notifications::PortValueSingleFormat;
 use num_traits::FromPrimitive;
 
+use std::collections::HashMap;
+use std::fmt::Debug;
 use core::pin::Pin;
 use std::sync::{Arc};    
 use tokio::sync::Mutex;
@@ -31,9 +38,11 @@ pub use futures;
 use consts::{BLEManufacturerData, HubType};
 pub use hubs::Hub;
 
-
+use tokio::sync::broadcast::{self, Receiver};
+use crate::notifications::NotificationMessage;
 type HubMutex = Arc<Mutex<Box<dyn Hub>>>;
 type PinnedStream = Pin<Box<dyn Stream<Item = ValueNotification> + Send>>;
+use crate::hubs::io_event::ChannelNotification;
 
 pub struct PoweredUp {
     adapter: Adapter,
@@ -235,34 +244,38 @@ pub struct ConnectedHub {
     pub mutex: HubMutex,
     // pub stream: PinnedStream
     pub kind: HubType,
+    pub msg_channels: HashMap<MessageType, broadcast::Sender<ChannelNotification>>, 
+
 }
 impl ConnectedHub {
     pub async fn setup_hub (created_hub: Box<dyn Hub>) -> ConnectedHub {    // Return result later
-        let connected_hub = ConnectedHub {
-            // kind: created_hub.kind(),
+        let mut connected_hub = ConnectedHub {
             kind: created_hub.kind(),
             name: created_hub.name().await.unwrap(),                                                    // And here
             mutex: Arc::new(Mutex::new(created_hub)),
             // stream: created_hub.peripheral().notifications().await.unwrap()
+            msg_channels: HashMap::new(),
         };
         
-        
-        
-        // Set up handler
+        // Set up hub handlers
+        //      Attached IO
         let name_to_handler = connected_hub.name.clone();
         let mutex_to_handler = connected_hub.mutex.clone();
-        let mutex_to_get_stream = connected_hub.mutex.clone();
+        let created_channels = ConnectedHub::create_channels();
+        connected_hub.msg_channels = created_channels.0;
         {
-            let mut lock = mutex_to_get_stream.lock().await;
+            let mut lock = &connected_hub.mutex.lock().await;
             let stream_to_handler: PinnedStream = lock.peripheral().notifications().await.unwrap();    // Can use ? here then
             tokio::spawn(async move {
                 crate::hubs::io_event::io_event_handler(
                     // created_stream, mutex_handle, &name).await;
-                    stream_to_handler, mutex_to_handler, name_to_handler).await;
+                    stream_to_handler, mutex_to_handler, name_to_handler,
+                created_channels.1).await;
             });
         }
+        //  TODO    Hub alerts etc.
         
-        // Subscribe
+        // Subscribe to btleplug peripheral
         {
             let lock = connected_hub.mutex.lock().await;
             lock.peripheral().subscribe(&lock.characteristic()).await.unwrap();
@@ -270,10 +283,26 @@ impl ConnectedHub {
 
         connected_hub
     }
+    
+    pub fn create_channels() -> ( (HashMap<MessageType, broadcast::Sender<ChannelNotification>>,
+        HashMap<MessageType, broadcast::Sender<ChannelNotification>>)  ) {
+        // let mut pairs: HashMap<MessageType, (broadcast::Sender<NotificationMessage>, broadcast::Receiver<NotificationMessage>)> =
+        //     HashMap::new();
+        // pairs.insert(MessageType::PortValueSingle, broadcast::channel::<NotificationMessage>(3));
+        // pairs.insert(MessageType::PortValueSingle, broadcast::channel::<NotificationMessage>(3));
+        // pairs.insert(MessageType::PortValueSingle, broadcast::channel::<NotificationMessage>(3));
 
-    // pub fn create_channel() -> () {
-    //     let (tx, mut rx) = tokio::sync::broadcast::channel::<u8>(3);
-    // }
+        let mut senders: HashMap<MessageType, broadcast::Sender<ChannelNotification>> =
+            HashMap::new();
+        senders.insert(MessageType::PortValueSingle, broadcast::channel::<ChannelNotification>(3).0);
+        senders.insert(MessageType::PortValueSingle, broadcast::channel::<ChannelNotification>(3).0);
+        senders.insert(MessageType::PortValueSingle, broadcast::channel::<ChannelNotification>(3).0);
+
+        let mut clones: HashMap<MessageType, broadcast::Sender<ChannelNotification>> =
+            senders.iter().map(|(k, v)|(*k, v.clone())).collect();
+        
+        (senders, clones)
+    }
 
     // Return Result
     pub async fn set_up_handler(mutex: HubMutex) -> (PinnedStream, HubMutex, String) {
@@ -284,6 +313,14 @@ impl ConnectedHub {
     
         (stream_to_handler, mutex_to_handler, name_to_handler)
     } 
+
+    pub async fn single_value_handler(&self, io_kind: IoTypeId) -> Result<()> {
+        let mut lock = self.mutex.lock().await;
+        let mut device = lock.get_from_kind(io_kind).await?;
+        device.single_value_sensor_enable(0x00, 1);
+
+        Ok(())
+    }
 
 }
 // pub struct HandlerSetup {
@@ -355,3 +392,88 @@ async fn identify_hub(props: &PeripheralProperties) -> Result<Option<HubType>> {
     }
     Ok(None)
 }
+
+// async fn set
+
+#[async_trait]
+pub trait NotificationHandler: Debug + Send {  //+ Sync {
+
+}
+
+// Main handler does passthru
+// pub async fn single_value_handler_passthru(mut stream: PinnedStream, 
+//                                   device: &IoDevice, 
+//                                   tx: tokio::sync::broadcast::Sender<(u8, IoTypeId, u8)>) {
+//     use crate::notifications::NotificationMessage;
+//     // let (rc_tx, mut rc_rx) = broadcast::channel::<RcButtonState>(3);
+//     while let Some(data) = stream.next().await {
+//         // println!("Received data from {:?} [{:?}]: {:?}", hub_name, data.uuid, data.value);
+
+//         let r = NotificationMessage::parse(&data.value);
+//         match r {
+//             Ok(n) => {
+//                 // dbg!(&n);
+//                 match n {
+//                     // Active feedback
+//                     NotificationMessage::PortValueSingle(val) => {
+//                         match val.values[0] {
+//                             0x0 => {
+//                                 tx.send( (device.port, device.kind, val.values[1]) );
+//                             }
+//                             0x1 => {
+//                             }
+//                             _ => ()                                
+//                         }
+//                     }
+//                     NotificationMessage::PortValueCombined(val) => {
+
+//                     }
+//                     _ => ()
+//                 }
+//             }
+//             Err(e) => {
+//                 println!("Parse error: {}", e);
+//             }
+//         }
+
+//     }  
+// }
+
+// This handler should handle a channel from main handler instead
+// pub async fn single_value_handler(mut stream: PinnedStream, 
+//                                   device: &IoDevice, 
+//                                   tx: tokio::sync::broadcast::Sender<(u8, IoTypeId, u8)>) {
+//     use crate::notifications::NotificationMessage;
+//     // let (rc_tx, mut rc_rx) = broadcast::channel::<RcButtonState>(3);
+//     while let Some(data) = stream.next().await {
+//         // println!("Received data from {:?} [{:?}]: {:?}", hub_name, data.uuid, data.value);
+
+//         let r = NotificationMessage::parse(&data.value);
+//         match r {
+//             Ok(n) => {
+//                 // dbg!(&n);
+//                 match n {
+//                     // Active feedback
+//                     NotificationMessage::PortValueSingle(val) => {
+//                         match val.values[0] {
+//                             0x0 => {
+//                                 tx.send( (device.port, device.kind, val.values[1]) );
+//                             }
+//                             0x1 => {
+//                             }
+//                             _ => ()                                
+//                         }
+//                     }
+//                     NotificationMessage::PortValueCombined(val) => {
+
+//                     }
+//                     _ => ()
+//                 }
+//             }
+//             Err(e) => {
+//                 eprintln!("Parse error: {}", e);
+//             }
+//         }
+
+//     }  
+// }

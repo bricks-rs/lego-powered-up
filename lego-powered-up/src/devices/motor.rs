@@ -35,7 +35,7 @@ pub trait EncoderMotor: Debug + Send + Sync {
             });
         let p = match self.p() {
             Some(p) => p,
-            None => return Err(Error::NoneError((String::from("Not an Encoder Motor"))))
+            None => return Err(Error::HubError((String::from("Not an Encoder Motor"))))
         };
         crate::hubs::send(p, self.c().unwrap(), mode_set_msg).await
     }
@@ -55,7 +55,7 @@ pub async fn motor_handler(mut stream: PinnedStream, mutex: HubMutex, hub_name: 
                     NotificationMessage::PortValueSingle(val) => {
 
                     }
-                    NotificationMessage::PortValueCombinedmode(val) => {}
+                    NotificationMessage::PortValueCombined(val) => {}
 
                     // Setup feedback and errors
                     NotificationMessage::PortInputFormatSingle(val) => {}

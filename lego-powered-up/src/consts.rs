@@ -6,7 +6,7 @@
 //! types
 
 use num_derive::FromPrimitive;
-use std::fmt::{self, Display};
+use std::{fmt::{self, Display}, hash};
 
 /// ```ignore
 /// @typedef HubType
@@ -213,7 +213,7 @@ pub mod blecharacteristic {
 /// @description <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#message-types>
 /// ```
 #[repr(u8)]
-#[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive, Hash)]
 pub enum MessageType {
     HubProperties = 0x01,
     HubActions = 0x02,
@@ -228,13 +228,13 @@ pub enum MessageType {
     PortInformationRequest = 0x21,
     PortModeInformationRequest = 0x22,
     PortInputFormatSetupSingle = 0x41,
-    PortInputFormatSetupCombinedmode = 0x42,
+    PortInputFormatSetupCombined = 0x42,
     PortInformation = 0x43,
     PortModeInformation = 0x44,
     PortValueSingle = 0x45,
-    PortValueCombinedmode = 0x46,
+    PortValueCombined = 0x46,
     PortInputFormatSingle = 0x47,
-    PortInputFormatCombinedmode = 0x48,
+    PortInputFormatCombined = 0x48,
     VirtualPortSetup = 0x61,
     PortOutputCommand = 0x81,
     PortOutputCommandFeedback = 0x82,

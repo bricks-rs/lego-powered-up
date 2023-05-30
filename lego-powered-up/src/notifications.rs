@@ -678,7 +678,7 @@ impl InputSetupCombined {
                     // Header
                     0, // len
                     0, // hub id - always set to 0
-                    MessageType::PortInputFormatSetupCombinedmode as u8,
+                    MessageType::PortInputFormatSetupCombined as u8,
                     // Command
                     self.port_id,
                     InputSetupCombinedSubcommandValue::SetModeanddatasetCombinations as u8,
@@ -704,7 +704,7 @@ impl InputSetupCombined {
                     // Header
                     0, // len
                     0, // hub id - always set to 0
-                    MessageType::PortInputFormatSetupCombinedmode as u8,
+                    MessageType::PortInputFormatSetupCombined as u8,
                     // Command
                     self.port_id,
                     InputSetupCombinedSubcommandValue::LockLpf2DeviceForSetup as u8,
@@ -715,7 +715,7 @@ impl InputSetupCombined {
                     // Header
                     0, // len
                     0, // hub id - always set to 0
-                    MessageType::PortInputFormatSetupCombinedmode as u8,
+                    MessageType::PortInputFormatSetupCombined as u8,
                     // Command
                     self.port_id,
                     InputSetupCombinedSubcommandValue::UnlockAndStartMultiEnabled as u8,
@@ -726,7 +726,7 @@ impl InputSetupCombined {
                     // Header
                     0, // len
                     0, // hub id - always set to 0
-                    MessageType::PortInputFormatSetupCombinedmode as u8,
+                    MessageType::PortInputFormatSetupCombined as u8,
                     // Command
                     self.port_id,
                     InputSetupCombinedSubcommandValue::UnlockAndStartMultiDisabled as u8,
@@ -737,7 +737,7 @@ impl InputSetupCombined {
                     // Header
                     0, // len
                     0, // hub id - always set to 0
-                    MessageType::PortInputFormatSetupCombinedmode as u8,
+                    MessageType::PortInputFormatSetupCombined as u8,
                     // Command
                     self.port_id,
                     InputSetupCombinedSubcommandValue::NotUsed as u8,
@@ -748,7 +748,7 @@ impl InputSetupCombined {
                     // Header
                     0, // len
                     0, // hub id - always set to 0
-                    MessageType::PortInputFormatSetupCombinedmode as u8,
+                    MessageType::PortInputFormatSetupCombined as u8,
                     // Command
                     self.port_id,
                     InputSetupCombinedSubcommandValue::ResetSensor as u8,
@@ -1041,13 +1041,17 @@ pub enum TypedValue {
 /// based on a separate port type mapping
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PortValueSingleFormat {
-    pub values: Vec<u8>,
+    pub port_id: u8,
+    pub data: Vec<u8>,
 }
 
 impl PortValueSingleFormat {
-    pub fn parse<'a>(msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
-        let values = msg.cloned().collect();
-        Ok(PortValueSingleFormat { values })
+    pub fn parse<'a>(mut msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
+        // let values = msg.cloned().collect();
+        // Ok(PortValueSingleFormat { values })
+        let port_id = next!(msg);
+        let data = msg.cloned().collect();
+        Ok(Self { port_id, data })
     }
 
     pub fn process(&self, _type_mapping: ()) -> HashMap<u8, TypedValue> {
@@ -1060,8 +1064,8 @@ impl PortValueSingleFormat {
 /// raw data and leave parsing it for later.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PortValueCombinedFormat {
-    port_id: u8,
-    data: Vec<u8>,
+    pub port_id: u8,
+    pub data: Vec<u8>,
 }
 
 impl PortValueCombinedFormat {

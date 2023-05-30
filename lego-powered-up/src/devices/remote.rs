@@ -5,6 +5,32 @@ use crate::notifications::NotificationMessage;
 use crate::notifications::InputSetupSingle;
 use btleplug::api::{Characteristic, Peripheral as _, WriteType};
 use btleplug::platform::Peripheral;
+use core::pin::Pin;
+use crate::futures::stream::{Stream, StreamExt};
+use crate::btleplug::api::ValueNotification;
+use std::sync::{Arc};
+use tokio::sync::Mutex;
+use tokio::sync::broadcast;
+use tokio::sync::mpsc;
+type HubMutex = Arc<Mutex<Box<dyn crate::Hub>>>;
+type PinnedStream = Pin<Box<dyn Stream<Item = ValueNotification> + Send>>;
+use crate::{notifications::*, NotificationHandler};
+use crate::notifications::NetworkCommand::ConnectionRequest;
+// type HandlerMutex = Arc<Mutex<Box<dyn NotificationHandler>>>;
+
+#[derive(Debug, Copy, Clone)]
+pub enum RcButtonState {
+    Aup,
+    Aplus,
+    Ared,
+    Aminus,
+    Bup,
+    Bplus,
+    Bred,
+    Bminus,
+    Green,
+    GreenUp
+}
 
 #[async_trait]
 pub trait RcDevice: Debug + Send + Sync {
@@ -25,5 +51,92 @@ pub trait RcDevice: Debug + Send + Sync {
             None => return Err(Error::NoneError((String::from("Not a rc button device"))))
         };
         crate::hubs::send(p, self.c().unwrap(), mode_set_msg).await
+    }
+}
+
+
+
+// #[derive(Default )]
+pub struct RcHandler {
+    stream: PinnedStream,
+    // hub_mutex: HubMutex,
+    // hub_name: String,
+    self_mutex: Option<Arc<Mutex<Box<RcHandler>>>>,
+    tx: mpsc::Sender<RcButtonState>,
+    rx: Option<mpsc::Receiver<RcButtonState>>
+}
+
+// impl NotificationHandler for RcHandler {
+// }
+
+impl RcHandler {
+    pub fn new(stream: PinnedStream,
+                tx: mpsc::Sender<RcButtonState> 
+                // hub_mutex: HubMutex, 
+                // hub_name: String
+            ) -> Self {
+        Self {
+            stream,
+            // hub_mutex,
+            // hub_name,
+            self_mutex: None,
+            tx,
+            rx: None
+        }
+    }
+
+
+
+
+    pub async fn process(&mut self) -> () {
+            while let Some(data) = self.stream.next().await {
+                println!("RcHandler received data from {:?} [{:?}]: {:?}", "hub name", data.uuid, data.value);
+                let r = NotificationMessage::parse(&data.value);
+                match r {
+                    Ok(n) => {
+                        match n {
+                            NotificationMessage::HwNetworkCommands(cmd) => {
+                                match cmd {
+                                    ConnectionRequest(state) => {
+                                        match state {
+                                            ButtonState::Up => { self.tx.send(RcButtonState::Green); }
+                                            ButtonState::Released => { self.tx.send(RcButtonState::GreenUp); }
+                                            _ => ()
+                                        }    
+                                    }
+                                    _ => ()
+                                }
+                            }
+                            NotificationMessage::PortValueSingle(val) => {
+                                match val.port_id {
+                                    0x0 => {
+                                        match val.data[0] {
+                                            0 => { self.tx.send(RcButtonState::Aup); }
+                                            1 => { self.tx.send(RcButtonState::Aplus); }
+                                            127 => { self.tx.send(RcButtonState::Ared); }
+                                            255 => { self.tx.send(RcButtonState::Aminus); }
+                                            _  => ()
+                                        }
+                                    }
+                                    0x1 => {
+                                        match val.data[0] {
+                                            0 => { self.tx.send(RcButtonState::Bup); }
+                                            1 => { self.tx.send(RcButtonState::Bplus); }
+                                            127 => { self.tx.send(RcButtonState::Bred); }
+                                            255 => { self.tx.send(RcButtonState::Bminus); }
+                                            _  => ()
+                                        }
+                                    }
+                                    _ => ()                                
+                                }
+                            }
+                        _ => ()
+                        }
+                    }
+                        Err(e) => {
+                            println!("Parse error: {}", e);
+                    }
+                }
+            }  
     }
 }

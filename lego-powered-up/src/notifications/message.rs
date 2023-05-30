@@ -24,7 +24,7 @@ pub enum NotificationMessage {
     PortInformation(PortInformationValue),
     PortModeInformation(PortModeInformationValue),
     PortValueSingle(PortValueSingleFormat),
-    PortValueCombinedmode(PortValueCombinedFormat),
+    PortValueCombined(PortValueCombinedFormat),
     PortInputFormatSingle(PortInputFormatSingleFormat),
     PortInputFormatCombinedmode(PortInputFormatCombinedFormat),
     VirtualPortSetup(VirtualPortSetupFormat),
@@ -112,7 +112,7 @@ impl NotificationMessage {
                 let setup = InputSetupSingle::parse(&mut msg_iter)?;
                 PortInputFormatSetupSingle(setup)
             }
-            MessageType::PortInputFormatSetupCombinedmode => {
+            MessageType::PortInputFormatSetupCombined => {
                 let setup = InputSetupCombined::parse(&mut msg_iter)?;
                 PortInputFormatSetupCombinedmode(setup)
             }
@@ -128,15 +128,15 @@ impl NotificationMessage {
                 let value = PortValueSingleFormat::parse(&mut msg_iter)?;
                 PortValueSingle(value)
             }
-            MessageType::PortValueCombinedmode => {
+            MessageType::PortValueCombined => {
                 let value = PortValueCombinedFormat::parse(&mut msg_iter)?;
-                PortValueCombinedmode(value)
+                PortValueCombined(value)
             }
             MessageType::PortInputFormatSingle => {
                 let fmt = PortInputFormatSingleFormat::parse(&mut msg_iter)?;
                 PortInputFormatSingle(fmt)
             }
-            MessageType::PortInputFormatCombinedmode => {
+            MessageType::PortInputFormatCombined => {
                 let fmt = PortInputFormatCombinedFormat::parse(&mut msg_iter)?;
                 PortInputFormatCombinedmode(fmt)
             }
@@ -179,15 +179,15 @@ impl NotificationMessage {
                 MessageType::PortInputFormatSetupSingle
             }
             PortInputFormatSetupCombinedmode(_) => {
-                MessageType::PortInputFormatSetupCombinedmode
+                MessageType::PortInputFormatSetupCombined
             }
             PortInformation(_) => MessageType::PortInformation,
             PortModeInformation(_) => MessageType::PortModeInformation,
             PortValueSingle(_) => MessageType::PortValueSingle,
-            PortValueCombinedmode(_) => MessageType::PortValueCombinedmode,
+            PortValueCombined(_) => MessageType::PortValueCombined,
             PortInputFormatSingle(_) => MessageType::PortInputFormatSingle,
             PortInputFormatCombinedmode(_) => {
-                MessageType::PortInputFormatCombinedmode
+                MessageType::PortInputFormatCombined
             }
             VirtualPortSetup(_) => MessageType::VirtualPortSetup,
             PortOutputCommand(_) => MessageType::PortOutputCommand,
@@ -264,7 +264,7 @@ impl NotificationMessage {
             PortInformation(_) => todo!(),
             PortModeInformation(_) => todo!(),
             PortValueSingle(_) => todo!(),
-            PortValueCombinedmode(_) => todo!(),
+            PortValueCombined(_) => todo!(),
             PortInputFormatSingle(_) => todo!(),
             PortInputFormatCombinedmode(_) => todo!(),
             PortOutputCommandFeedback(_) => todo!(),
