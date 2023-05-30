@@ -8,11 +8,12 @@ use btleplug::api::{Characteristic, Peripheral as _, WriteType};
 
 use async_trait::async_trait;
 use devices::{IoTypeId, MessageType};
-use devices::iodevice::IoDevice;
+use devices::iodevice::{IoDevice, ValueFormat, PortMode};
 use devices::sensor::SingleValueSensor;
 use futures::{stream::StreamExt, Stream};
-use notifications::PortValueSingleFormat;
+use notifications::{PortValueSingleFormat, ValueFormatType};
 use num_traits::FromPrimitive;
+use tokio::task::JoinHandle;
 
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -319,10 +320,73 @@ impl ConnectedHub {
         let mut device = lock.get_from_kind(io_kind).await?;
         device.single_value_sensor_enable(0x00, 1);
 
+
+
         Ok(())
     }
 
+    pub async fn sub_to_single_value(&self, io_kind: IoTypeId, channel: broadcast::Sender<PortValueSingleFormat>) -> Result<()> {
+        let mut lock = self.mutex.lock().await;
+        let mut device = lock.get_from_kind(io_kind).await?;
+        device.single_value_sensor_enable(0x00, 1);
+        
+
+
+        Ok(())
+    }
+    pub async fn sub(&self, io_kind: IoTypeId, channel: broadcast::Sender<ChannelNotification>) -> Result<(JoinHandle<()>)> {
+        // More args?
+        let mode = 0x00u8;
+        let delta = 1u32;
+        
+        let mut lock = self.mutex.lock().await;
+        let mut device = lock.get_from_kind(io_kind).await?;
+        device.single_value_sensor_enable(mode, delta);
+        
+        let port = device.port;
+        // get messagetype & valueformat based on mode
+        let msgtype = MessageType::PortValueSingle;
+        let mut vf_opt: Option<ValueFormatType> = None; 
+        if let Some(portmode) = device.modes.get(&mode) {
+            vf_opt = Some(portmode.value_format);
+        }
+        
+        let rx_opt: Option<broadcast::Receiver<ChannelNotification>> = None;
+        
+        
+        match msgtype {
+            MessageType::PortValueSingle => {
+                if let Some(val) = self.msg_channels.get(&MessageType::PortValueSingle) {
+                    let rx = val.clone();
+                    Ok(tokio::spawn(async move {
+                        while let Ok(data) = rx.subscribe().recv().await {
+                            // We could do some mangling based on valueformat here
+                            channel.send(data);
+                        }
+                    }))
+                } else {
+                    Err(Error::NoneError(String::from("no rx")))
+                }
+
+            }
+            _ => Err(Error::NoneError(String::from("Unsupported msg type")))
+        }
+
+        
+
+
+        // Ok((task))
+    }
+
 }
+
+pub struct Svh {
+    subs: HashMap<u8, Vec<broadcast::Sender<PortValueSingleFormat>>>, // port_id -> subscribers
+    rx: broadcast::Receiver<ChannelNotification>,
+
+    // För att referera till denna: Mutex, joinhandle 
+} 
+
 // pub struct HandlerSetup {
 //     hub_name: String,
 //     stream: PinnedStream,

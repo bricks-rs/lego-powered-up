@@ -88,21 +88,17 @@ async fn main() -> anyhow::Result<()> {
     }); 
     {
         let lock = rc_hub.mutex.lock().await;
-        // let mut remote_a = lock.get_from_port(0x00).await?;
-        // remote_a.remote_buttons_enable(1, 1).await?;    // mode 0x1, delta 1
-
         let mut remote_a = lock.get_from_port(0x00).await?;
         remote_a.remote_buttons_enable(1, 1).await?;
-
-        
-
         let mut remote_b = lock.get_from_port(0x01).await?;
         remote_b.remote_buttons_enable(1, 1).await?;    // mode 0x1, delta 1
     }    
 
 
+
+
     let mut rc_rx_test = rc_tx.subscribe();
-    tokio::spawn(async move {
+    let j = tokio::spawn(async move {
         while let Ok(data) = rc_rx_test.recv().await {
             match data {
                 RcButtonState::Aup => { println!("Hej! Aup") }
