@@ -40,7 +40,7 @@ pub trait Sensor8bit: Debug + Send + Sync {
     fn check(&self, mode: u8) -> Result<()>;
     fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>>;
 
-    async fn enable_8bit_sensor(&self, mode: u8, delta: u32) -> Result<(broadcast::Receiver<Vec<u8>>, JoinHandle<()> )> {
+    async fn enable_8bit_sensor(&self, mode: u8, delta: u32) -> Result<(broadcast::Receiver<Vec<i8>>, JoinHandle<()> )> {
         match self.check(mode) {
             Ok(()) => (),
             _ => return Err(Error::NoneError((String::from("Not an 8-bit sensor mode"))))
@@ -59,9 +59,9 @@ pub trait Sensor8bit: Debug + Send + Sync {
                 Err(e) => { return Err(Error::NoneError((String::from("Not an 8-bit sensor mode")))); }
             }
 
-        // Get receiver
+        // Set up channel
         let port_id = self.port();
-        let (tx, mut rx) = broadcast::channel::<Vec<u8>>(8);
+        let (tx, mut rx) = broadcast::channel::<Vec<i8>>(8);
         match self.get_rx() {
             Ok(mut rx_from_main) => { 
                 let task = tokio::spawn(async move {
@@ -69,7 +69,8 @@ pub trait Sensor8bit: Debug + Send + Sync {
                         if data.port_id != port_id {
                             continue;
                         }
-                        tx.send(data.data);
+                        let converted_data = data.data.into_iter().map(|x| x as i8).collect();
+                        tx.send(converted_data);
                     }
                 });
 

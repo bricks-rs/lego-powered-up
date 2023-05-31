@@ -12,7 +12,7 @@ use devices::iodevice::{IoDevice, PortMode};
 use devices::sensor::*;
 use futures::{stream::StreamExt, Stream};
 use hubs::io_event::ValWrap;
-use notifications::{PortValueSingleFormat, ValueFormatType, PortValueSingleFormat2, PortValueCombinedFormat, NetworkCommand};
+use notifications::{PortValueSingleFormat, ValueFormatType, PortValueCombinedFormat, NetworkCommand};
 use num_traits::FromPrimitive;
 use tokio::task::JoinHandle;
 

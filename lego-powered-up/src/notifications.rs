@@ -1050,14 +1050,14 @@ pub enum TypedValue {
 ///    ("Single" in PortValueSingle refers to single sensor mode, but single sensors can)  
 ///     and do provide provide array data, ex. color RGB or accelerometer XYZ-data.)
 /// 
-///     
+///  
 /// 
 #[derive(Clone, Debug, PartialEq, Eq)]
+
 pub struct PortValueSingleFormat {
     pub port_id: u8,
     pub data: Vec<u8>,
 }
-
 impl PortValueSingleFormat {
     pub fn parse<'a>(mut msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
         // let values = msg.cloned().collect();
@@ -1071,6 +1071,25 @@ impl PortValueSingleFormat {
         unimplemented!()
     }
 }
+
+
+// pub struct PortValueSingleFormat {
+//     pub port_id: u8,
+//     pub data: Vec<u8>,
+// }
+// impl PortValueSingleFormat {
+//     pub fn parse<'a>(mut msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
+//         // let values = msg.cloned().collect();
+//         // Ok(PortValueSingleFormat { values })
+//         let port_id = next!(msg);
+//         let data = msg.cloned().collect();
+//         Ok(Self { port_id, data })
+//     }
+
+//     pub fn process(&self, _type_mapping: ()) -> HashMap<u8, TypedValue> {
+//         unimplemented!()
+//     }
+// }
 
 /// The PortValueCombinedFormat is some horrific set of pointers to
 /// values we should already have cached elsewhere. For now we save the

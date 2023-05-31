@@ -82,7 +82,7 @@ async fn main() -> anyhow::Result<()> {
 
     let j = tokio::spawn(async move {
         while let Ok(data) = rssi_rx.recv().await {
-            println!("Rssi: {:?}", data)
+            println!("Rssi: {:?} {:?}", data, data[0] as i8)
             // match data {
             //     _ => { println!("Hej! Annan knapp");}
                 
