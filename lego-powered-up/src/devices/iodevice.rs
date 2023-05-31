@@ -328,6 +328,7 @@ impl Sensor8bit for IoDevice {
     fn p(&self) -> Option<Peripheral> { self.handles.p.clone() }  
     fn c(&self) -> Option<Characteristic> { self.handles.c.clone() } 
     fn port(&self) -> u8 { self.port }
+    
     fn check(&self, mode: u8) -> Result<()> {
         if let Some(pm) = self.modes.get(&mode) {
             let vf = pm.value_format;
@@ -339,6 +340,33 @@ impl Sensor8bit for IoDevice {
             Err(Error::NoneError((String::from("Mode not found"))))
         }
     }
+    
+    fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>> {
+        if let Some(sender) = &self.channels.rx_singlevalue_sender {
+            Ok(sender.subscribe())
+        } else {
+            Err(Error::NoneError((String::from("Sender not found")))) 
+        }
+    }
+}
+
+impl Sensor16bit for IoDevice {
+    fn p(&self) -> Option<Peripheral> { self.handles.p.clone() }  
+    fn c(&self) -> Option<Characteristic> { self.handles.c.clone() } 
+    fn port(&self) -> u8 { self.port }
+    
+    fn check(&self, mode: u8) -> Result<()> {
+        if let Some(pm) = self.modes.get(&mode) {
+            let vf = pm.value_format;
+            match vf.dataset_type {
+                DatasetType::Bits16 => Ok(()),
+                _ => Err(Error::NoneError((String::from("Not an 16 bit sensor mode")))) 
+            }             
+        } else {
+            Err(Error::NoneError((String::from("Mode not found"))))
+        }
+    }
+    
     fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>> {
         if let Some(sender) = &self.channels.rx_singlevalue_sender {
             Ok(sender.subscribe())

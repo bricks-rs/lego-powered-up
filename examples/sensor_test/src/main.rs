@@ -79,10 +79,26 @@ async fn main() -> anyhow::Result<()> {
     }    
     let (mut remote_a_rx, jh) = remote_a.enable_8bit_sensor(0x00, 1).await.unwrap();
 
+    let mut rc_volt: IoDevice;
+    {
+        let lock = rc_hub.mutex.lock().await;
+        rc_volt = lock.get_from_kind(IoTypeId::Voltage).await?;
+    }    
+    let (mut voltage_rx, jh) = rc_volt.enable_16bit_sensor(0x00, 1).await.unwrap();
 
-    let j = tokio::spawn(async move {
-        while let Ok(data) = rssi_rx.recv().await {
-            println!("Rssi: {:?} {:?}", data, data[0] as i8)
+    // let j = tokio::spawn(async move {
+    //     while let Ok(data) = rssi_rx.recv().await {
+    //         println!("Rssi: {:?} {:?}", data, data[0] as i8)
+    //         // match data {
+    //         //     _ => { println!("Hej! Annan knapp");}
+                
+    //         // }
+    //     }
+    // });
+
+    let j2 = tokio::spawn(async move {
+        while let Ok(data) = remote_a_rx.recv().await {
+            println!("Remote_a: {:?}", data)
             // match data {
             //     _ => { println!("Hej! Annan knapp");}
                 
@@ -90,9 +106,9 @@ async fn main() -> anyhow::Result<()> {
         }
     });
 
-    let j2 = tokio::spawn(async move {
-        while let Ok(data) = remote_a_rx.recv().await {
-            println!("Remote_a: {:?}", data)
+    tokio::spawn(async move {
+        while let Ok(data) = voltage_rx.recv().await {
+            println!("Voltage: {:?}", data)
             // match data {
             //     _ => { println!("Hej! Annan knapp");}
                 

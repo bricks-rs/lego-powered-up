@@ -145,7 +145,7 @@ async fn main() -> anyhow::Result<()> {
                                             remote_status.a_red = true; 
                                             println!("Ared pressed");
                                         }
-                                        255 => {
+                                        -1 => {
                                             remote_status.a_minus = true;
                                             println!("A- pressed");
                                         }
@@ -172,7 +172,7 @@ async fn main() -> anyhow::Result<()> {
                                             // set_led(*hub_led, 0xFF, 0x00, 0x00);
                                             hub_led.set_rgb(&[0xff, 0x00, 0x00]).await.unwrap();
                                         }
-                                        255 => {
+                                        -1 => {
                                             remote_status.b_minus = true;
                                             println!("B- pressed");
                                             hub_led.set_rgb(&[0x00, 0x00, 0xff]).await.unwrap();

@@ -110,7 +110,7 @@ impl RcHandler {
                                             0 => { self.tx.send(RcButtonState::Aup); }
                                             1 => { self.tx.send(RcButtonState::Aplus); }
                                             127 => { self.tx.send(RcButtonState::Ared); }
-                                            255 => { self.tx.send(RcButtonState::Aminus); }
+                                            -1 => { self.tx.send(RcButtonState::Aminus); }
                                             _  => ()
                                         }
                                     }
@@ -119,7 +119,7 @@ impl RcHandler {
                                             0 => { self.tx.send(RcButtonState::Bup); }
                                             1 => { self.tx.send(RcButtonState::Bplus); }
                                             127 => { self.tx.send(RcButtonState::Bred); }
-                                            255 => { self.tx.send(RcButtonState::Bminus); }
+                                            -1 => { self.tx.send(RcButtonState::Bminus); }
                                             _  => ()
                                         }
                                     }
@@ -203,7 +203,7 @@ pub async fn rc_handler(
                                         0 => { tx.send(RcButtonState::Aup); }
                                         1 => { tx.send(RcButtonState::Aplus); }
                                         127 => { tx.send(RcButtonState::Ared); }
-                                        255 => { tx.send(RcButtonState::Aminus); }
+                                        -1 => { tx.send(RcButtonState::Aminus); }
                                         _  => ()
                                     }
                                 }
@@ -212,7 +212,7 @@ pub async fn rc_handler(
                                         0 => { tx.send(RcButtonState::Bup); }
                                         1 => { tx.send(RcButtonState::Bplus); }
                                         127 => { tx.send(RcButtonState::Bred); }
-                                        255 => { tx.send(RcButtonState::Bminus); }
+                                        -1 => { tx.send(RcButtonState::Bminus); }
                                         _  => ()
                                     }
                                 }
@@ -245,7 +245,7 @@ pub async fn rc_handler2(
                         0 => { tx.send(RcButtonState::Aup); }
                         1 => { tx.send(RcButtonState::Aplus); }
                         127 => { tx.send(RcButtonState::Ared); }
-                        255 => { tx.send(RcButtonState::Aminus); }
+                        -1 => { tx.send(RcButtonState::Aminus); }
                         _  => ()
                     }
                 }
@@ -254,7 +254,7 @@ pub async fn rc_handler2(
                         0 => { tx.send(RcButtonState::Bup); }
                         1 => { tx.send(RcButtonState::Bplus); }
                         127 => { tx.send(RcButtonState::Bred); }
-                        255 => { tx.send(RcButtonState::Bminus); }
+                        -1 => { tx.send(RcButtonState::Bminus); }
                         _  => ()
                         }
                 }

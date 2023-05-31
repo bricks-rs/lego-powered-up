@@ -1040,30 +1040,36 @@ pub enum TypedValue {
 /// later on will provide a method to split it out into port-value pairs
 /// based on a separate port type mapping.
 /// 
-/// Notes on valueformat
+/// Notes on Value Format
 /// 1) The valuetypes are signed, i.e. the variants are i8, i16, i32, f32. This: 
 ///    https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-value-single
-///    says that the values are unsigned, but this is incorrect. Many sensors can
+///    says that the values are unsigned, but this is seemingly incorrect. Many sensors can
 ///    report negative values, as can be seen by requesting Port Mode Information::Raw range.
 /// 2) The values are not a single value but an array, the length of which is given
 ///    by the "number_of_datasets"-member of Value Format. 
 ///    ("Single" in PortValueSingle refers to single sensor mode, but single sensors can)  
 ///     and do provide provide array data, ex. color RGB or accelerometer XYZ-data.)
-/// 
-///  
+/// 3) There are some inconsistencies looking at port mode information: 
+///         HubLeds in RBG reports taking 8 bit values in the range 0-255, though this
+///         doesn't concern the parser of incoming values. As regards sensors; 
+///         TechnicHubTiltSensor mode CFG, as well as MoveHubInternalTilt modes IM_CF
+///         and CALIB: These all report that they will provide 8 bit values in
+///         range 0-255. 
+///     But these are the only ones I've been able to find. On the whole it seems better
+///     to correctly support the multitude of sensors and modes. 
 /// 
 #[derive(Clone, Debug, PartialEq, Eq)]
 
 pub struct PortValueSingleFormat {
     pub port_id: u8,
-    pub data: Vec<u8>,
+    pub data: Vec<i8>,
 }
 impl PortValueSingleFormat {
     pub fn parse<'a>(mut msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
         // let values = msg.cloned().collect();
         // Ok(PortValueSingleFormat { values })
         let port_id = next!(msg);
-        let data = msg.cloned().collect();
+        let data = msg.cloned().map(|x| x as i8).collect();
         Ok(Self { port_id, data })
     }
 
