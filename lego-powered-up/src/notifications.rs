@@ -1038,7 +1038,20 @@ pub enum TypedValue {
 /// that the values may be different lengths (u8, u16, u32, f32) depending
 /// on the port configuration. For now we just save the payload and then
 /// later on will provide a method to split it out into port-value pairs
-/// based on a separate port type mapping
+/// based on a separate port type mapping.
+/// 
+/// Notes on valueformat
+/// 1) The valuetypes are signed, i.e. the variants are i8, i16, i32, f32. This: 
+///    https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-value-single
+///    says that the values are unsigned, but this is incorrect. Many sensors can
+///    report negative values, as can be seen by requesting Port Mode Information::Raw range.
+/// 2) The values are not a single value but an array, the length of which is given
+///    by the "number_of_datasets"-member of Value Format. 
+///    ("Single" in PortValueSingle refers to single sensor mode, but single sensors can)  
+///     and do provide provide array data, ex. color RGB or accelerometer XYZ-data.)
+/// 
+///     
+/// 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PortValueSingleFormat {
     pub port_id: u8,
@@ -1058,24 +1071,6 @@ impl PortValueSingleFormat {
         unimplemented!()
     }
 }
-pub struct PortValueSingleFormat2<T> {
-    pub port_id: u8,
-    pub data: Vec<T>,
-}
-
-// impl<T> PortValueSingleFormat2<T> {
-//     pub fn parse<'a>(mut msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
-//         // let values = msg.cloned().collect();
-//         // Ok(PortValueSingleFormat { values })
-//         let port_id = next!(msg);
-//         let data:Vec<T> = msg.cloned().collect();
-//         Ok(Self { port_id, data })
-//     }
-
-//     pub fn process(&self, _type_mapping: ()) -> HashMap<u8, TypedValue> {
-//         unimplemented!()
-//     }
-// }
 
 /// The PortValueCombinedFormat is some horrific set of pointers to
 /// values we should already have cached elsewhere. For now we save the
