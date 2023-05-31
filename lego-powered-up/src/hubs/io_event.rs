@@ -46,27 +46,29 @@ pub struct ChannelNotification {
     pub portoutputcommandfeedback: Option<PortOutputCommandFeedbackFormat>
 }
 
-pub async fn io_event_handler(mut stream: PinnedStream, mutex: HubMutex, hub_name: String, 
-                            mut tx: HashMap<MessageType, broadcast::Sender<ChannelNotification>>) 
-                            -> Result<()> {
+#[derive(Debug, Default, Clone)]
+pub struct ValWrap {
+    pub uint8: Option<Vec<u8>>,
+    pub uint16: Option<Vec<u16>>,
+    pub uint32: Option<Vec<u32>>,
+    pub float32: Option<Vec<f32>>,
+}
+impl ValWrap {
+    pub fn new() -> Self {
+        Self {
+            uint8: None,
+            uint16: None,
+            uint32: None,
+            float32: None, 
+        }
+    }
+}
 
-    // if let Some(portvaluesingle_sender) = tx.remove(&MessageType::PortValueSingle) &
-    //    let Some(portvaluescombined_sender) = tx.remove(&MessageType::PortValueCombined) &
-    //    let Some(portoutputcommandfeedback_sender) = tx.remove(&MessageType::PortOutputCommandFeedback) {}
-    // if-let chains not available: https://github.com/rust-lang/rust/issues/53667
-    
-    let portvaluesingle_sender = match tx.remove(&MessageType::PortValueSingle) {
-        Some(x) => x,
-        None => return Err(Error::NoneError((String::from("No portvaluesingle_sender"))))
-    };
-    let portvaluecombined_sender = match tx.remove(&MessageType::PortValueCombined) {
-        Some(x) => x,
-        None => return Err(Error::NoneError((String::from("No portvaluescombined_sender"))))
-    };
-    let portoutputcommandfeedback_sender = match tx.remove(&MessageType::PortOutputCommandFeedback) {
-        Some(x) => x,
-        None => return Err(Error::NoneError((String::from("No portoutputcommandfeedback_sender"))))
-    };
+pub async fn io_event_handler(mut stream: PinnedStream, mutex: HubMutex, hub_name: String, 
+                            mut tx_singlevalue: broadcast::Sender<PortValueSingleFormat>,
+                            mut tx_combinedvalue: broadcast::Sender<PortValueCombinedFormat>,
+                            mut tx_networkcmd: broadcast::Sender<NetworkCommand>
+                            ) -> Result<()> {
     
     while let Some(data) = stream.next().await {
         // println!("Received data from {:?} [{:?}]: {:?}", hub_name, data.uuid, data.value);  // Dev use
@@ -188,26 +190,24 @@ pub async fn io_event_handler(mut stream: PinnedStream, mutex: HubMutex, hub_nam
                     NotificationMessage::HubActions(val) => {}
                     NotificationMessage::HubAlerts(val) => {}
                     NotificationMessage::GenericErrorMessages(val) => {}
-                    NotificationMessage::HwNetworkCommands(val) => {}
+                    NotificationMessage::HwNetworkCommands(val) => {
+                        tx_networkcmd.send(val);
+                    }
                     NotificationMessage::FwLockStatus(val) => {}
 
                     NotificationMessage::PortValueSingle(val) => {
-                        portvaluesingle_sender.send(ChannelNotification { portvaluesingle: (Some(val)), 
-                                                                          portvaluescombined: (None),
-                                                                          portoutputcommandfeedback: (None) });
+                        tx_singlevalue.send(val);
                     }
                     NotificationMessage::PortValueCombined(val) => {
-                        portvaluecombined_sender.send(ChannelNotification { portvaluesingle: (None), 
-                                                                          portvaluescombined: (Some(val)),
-                                                                          portoutputcommandfeedback: (None) });
+                        tx_combinedvalue.send(val);
                     }
                     NotificationMessage::PortInputFormatSingle(val) => {}
                     NotificationMessage::PortInputFormatCombinedmode(val) => {}
                     NotificationMessage::PortOutputCommandFeedback(val ) => {}
                     NotificationMessage::PortOutputCommandFeedback(val) => {
-                        portoutputcommandfeedback_sender.send(ChannelNotification { portvaluesingle: (None), 
-                                                                          portvaluescombined: (None),
-                                                                          portoutputcommandfeedback: (Some(val)) });
+                        // portoutputcommandfeedback_sender.send(ChannelNotification { portvaluesingle: (None), 
+                                                                        //   portvaluescombined: (None),
+                                                                        //   portoutputcommandfeedback: (Some(val)) });
                     }
 
                     _ => ()

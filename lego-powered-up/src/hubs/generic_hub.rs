@@ -9,7 +9,15 @@ pub struct GenericHub {
     lpf_characteristic: Characteristic,
     properties: HubProperties,
     pub connected_io: BTreeMap<u8, IoDevice>,
-    pub kind: crate::consts::HubType
+    pub kind: crate::consts::HubType,
+    pub channels: Channels
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct Channels {
+    pub singlevalue_sender: Option<tokio::sync::broadcast::Sender<PortValueSingleFormat>>, 
+    pub combinedvalue_sender: Option<tokio::sync::broadcast::Sender<PortValueCombinedFormat>>,
+    pub networkcmd_sender: Option<tokio::sync::broadcast::Sender<NetworkCommand>>,
 }
 
 #[async_trait::async_trait]
@@ -28,6 +36,7 @@ impl Hub for GenericHub {
     fn peripheral(&self) -> &Peripheral { &self.peripheral }
     fn connected_io(&mut self) -> &mut BTreeMap<u8, IoDevice> { &mut self.connected_io }
     fn kind(&self) -> HubType { self.kind } 
+    fn channels(&mut self) -> &mut Channels {&mut self.channels}
 
     fn attach_io(&mut self, device_to_insert: IoDevice) -> Result<()> {
         self.connected_io.insert(device_to_insert.port, device_to_insert );
@@ -114,16 +123,19 @@ impl Hub for GenericHub {
                 Err(Error::NoneError(String::from("No device of kind {kind}")))   
             }
             1 =>  {
-            // Don't include handles:
-            // let mut device_deref = *found.first().unwrap();
-            // Ok(device_deref.clone())
+                let device_deref = *found.first().unwrap();
+                let mut d = device_deref.clone();
+            
+                // Channels
+                d.channels.rx_singlevalue_sender = self.channels.singlevalue_sender.clone();
+                d.channels.rx_combinedvalue_sender = self.channels.combinedvalue_sender.clone();
+                d.channels.rx_networkcmd_sender = self.channels.networkcmd_sender.clone();
 
-            // Include handles:
-            let device_deref = *found.first().unwrap();
-            let mut d = device_deref.clone();
-            d.handles.p = Some(self.peripheral().clone());
-            d.handles.c = Some(self.characteristic().clone());
-            Ok(d) 
+                // Include handles:
+                d.handles.p = Some(self.peripheral().clone());
+                d.handles.c = Some(self.characteristic().clone());
+                
+                Ok(d) 
         }
         _ => { 
             eprintln!("Found {:#?} {:#?} on {:?}, use enable_from_port()", found.len(), get_kind, 
@@ -170,8 +182,8 @@ impl GenericHub {
             lpf_characteristic,
             properties,
             connected_io: Default::default(),
-            kind
-            // stream: peripheral().notifications().await?
+            kind,
+            channels: Default::default()
         })
     }
 

@@ -8,10 +8,11 @@ use btleplug::api::{Characteristic, Peripheral as _, WriteType};
 
 use async_trait::async_trait;
 use devices::{IoTypeId, MessageType};
-use devices::iodevice::{IoDevice, ValueFormat, PortMode};
-use devices::sensor::SingleValueSensor;
+use devices::iodevice::{IoDevice, PortMode};
+use devices::sensor::*;
 use futures::{stream::StreamExt, Stream};
-use notifications::{PortValueSingleFormat, ValueFormatType};
+use hubs::io_event::ValWrap;
+use notifications::{PortValueSingleFormat, ValueFormatType, PortValueSingleFormat2, PortValueCombinedFormat, NetworkCommand};
 use num_traits::FromPrimitive;
 use tokio::task::JoinHandle;
 
@@ -245,8 +246,8 @@ pub struct ConnectedHub {
     pub mutex: HubMutex,
     // pub stream: PinnedStream
     pub kind: HubType,
-    pub msg_channels: HashMap<MessageType, broadcast::Sender<ChannelNotification>>, 
-
+    // pub msg_channels: HashMap<MessageType, broadcast::Sender<ChannelNotification>>, 
+    // pub pvs_sender: Option<broadcast::Sender<PortValueSingleFormat>>
 }
 impl ConnectedHub {
     pub async fn setup_hub (created_hub: Box<dyn Hub>) -> ConnectedHub {    // Return result later
@@ -255,23 +256,34 @@ impl ConnectedHub {
             name: created_hub.name().await.unwrap(),                                                    // And here
             mutex: Arc::new(Mutex::new(created_hub)),
             // stream: created_hub.peripheral().notifications().await.unwrap()
-            msg_channels: HashMap::new(),
+            // msg_channels: HashMap::new(),
+            // pvs_sender: None,
         };
         
         // Set up hub handlers
         //      Attached IO
         let name_to_handler = connected_hub.name.clone();
         let mutex_to_handler = connected_hub.mutex.clone();
-        let created_channels = ConnectedHub::create_channels();
-        connected_hub.msg_channels = created_channels.0;
+        // let created_channels = ConnectedHub::create_channels();
+        // connected_hub.msg_channels = created_channels.0;
+        let singlevalue_sender = broadcast::channel::<PortValueSingleFormat>(3).0;
+        let combinedvalue_sender = broadcast::channel::<PortValueCombinedFormat>(3).0;
+        let networkcmd_sender = broadcast::channel::<NetworkCommand>(3).0;
         {
-            let mut lock = &connected_hub.mutex.lock().await;
+            let mut lock = &mut connected_hub.mutex.lock().await;
             let stream_to_handler: PinnedStream = lock.peripheral().notifications().await.unwrap();    // Can use ? here then
+            lock.channels().singlevalue_sender = Some(singlevalue_sender.clone());
+            lock.channels().combinedvalue_sender = Some(combinedvalue_sender.clone());
+            lock.channels().networkcmd_sender = Some(networkcmd_sender.clone());
             tokio::spawn(async move {
                 crate::hubs::io_event::io_event_handler(
-                    // created_stream, mutex_handle, &name).await;
-                    stream_to_handler, mutex_to_handler, name_to_handler,
-                created_channels.1).await;
+                    stream_to_handler, 
+                    mutex_to_handler,
+          name_to_handler,
+            singlevalue_sender,
+                    combinedvalue_sender,
+                    networkcmd_sender
+                ).await;
             });
         }
         //  TODO    Hub alerts etc.
@@ -285,27 +297,10 @@ impl ConnectedHub {
         connected_hub
     }
     
-    pub fn create_channels() -> ( (HashMap<MessageType, broadcast::Sender<ChannelNotification>>,
-        HashMap<MessageType, broadcast::Sender<ChannelNotification>>)  ) {
-        // let mut pairs: HashMap<MessageType, (broadcast::Sender<NotificationMessage>, broadcast::Receiver<NotificationMessage>)> =
-        //     HashMap::new();
-        // pairs.insert(MessageType::PortValueSingle, broadcast::channel::<NotificationMessage>(3));
-        // pairs.insert(MessageType::PortValueSingle, broadcast::channel::<NotificationMessage>(3));
-        // pairs.insert(MessageType::PortValueSingle, broadcast::channel::<NotificationMessage>(3));
 
-        let mut senders: HashMap<MessageType, broadcast::Sender<ChannelNotification>> =
-            HashMap::new();
-        senders.insert(MessageType::PortValueSingle, broadcast::channel::<ChannelNotification>(3).0);
-        senders.insert(MessageType::PortValueSingle, broadcast::channel::<ChannelNotification>(3).0);
-        senders.insert(MessageType::PortValueSingle, broadcast::channel::<ChannelNotification>(3).0);
 
-        let mut clones: HashMap<MessageType, broadcast::Sender<ChannelNotification>> =
-            senders.iter().map(|(k, v)|(*k, v.clone())).collect();
-        
-        (senders, clones)
-    }
 
-    // Return Result
+    // TODO: Return Result
     pub async fn set_up_handler(mutex: HubMutex) -> (PinnedStream, HubMutex, String) {
         let mutex_to_handler = mutex.clone();
         let mut lock = mutex.lock().await;
@@ -315,84 +310,47 @@ impl ConnectedHub {
         (stream_to_handler, mutex_to_handler, name_to_handler)
     } 
 
-    pub async fn single_value_handler(&self, io_kind: IoTypeId) -> Result<()> {
-        let mut lock = self.mutex.lock().await;
-        let mut device = lock.get_from_kind(io_kind).await?;
-        device.single_value_sensor_enable(0x00, 1);
+    // pub async fn enable_8bit_sensor(&self, io_kind: IoTypeId, mode: u8, delta: u32, sub_channel: broadcast::Sender<PortValueSingleFormat>) -> Result<(JoinHandle<()>)> {
+
+    // pub async fn sub_psv(&self, io_kind: IoTypeId, mode: u8, delta: u32, sub_channel: broadcast::Sender<PortValueSingleFormat>) -> Result<(JoinHandle<()>)> {
+    //     let mut lock = self.mutex.lock().await;
+    //     let mut device = lock.get_from_kind(io_kind).await?;
+    //     // device.single_value_sensor_enable(mode, delta);
+
+    //     // // get valueformat based on mode
+    //     let mut vf_opt: Option<ValueFormatType> = None; 
+    //     if let Some(portmode) = device.modes.get(&mode) {
+    //         vf_opt = Some(portmode.value_format);
+    //     }
+
+    //     if let Some(pvs_sender) = &self.pvs_sender {
+    //         match &self.pvs_sender {
+    //             Some(tx) => {
+    //                 let mut rx = tx.subscribe();
+    //                 Ok(tokio::spawn(async move {
+    //                     while let Ok(data) = rx.recv().await {
+    //                         if data.port_id != device.port {
+    //                             continue;
+    //                         }
+    //                         sub_channel.send(data);
+    //                     }
+    //                 }))
+                        
+    //             }
+    //             None => Err(Error::NoneError(String::from("Unsupported msg type")))
+    //         }   
+    //     } else {
+    //         Err(Error::NoneError(String::from("Unsupported msg type")))
+    //     }
+    // }
 
 
-
-        Ok(())
-    }
-
-    pub async fn sub_to_single_value(&self, io_kind: IoTypeId, channel: broadcast::Sender<PortValueSingleFormat>) -> Result<()> {
-        let mut lock = self.mutex.lock().await;
-        let mut device = lock.get_from_kind(io_kind).await?;
-        device.single_value_sensor_enable(0x00, 1);
-        
-
-
-        Ok(())
-    }
-    pub async fn sub(&self, io_kind: IoTypeId, channel: broadcast::Sender<ChannelNotification>) -> Result<(JoinHandle<()>)> {
-        // More args?
-        let mode = 0x00u8;
-        let delta = 1u32;
-        
-        let mut lock = self.mutex.lock().await;
-        let mut device = lock.get_from_kind(io_kind).await?;
-        device.single_value_sensor_enable(mode, delta);
-        
-        let port = device.port;
-        // get messagetype & valueformat based on mode
-        let msgtype = MessageType::PortValueSingle;
-        let mut vf_opt: Option<ValueFormatType> = None; 
-        if let Some(portmode) = device.modes.get(&mode) {
-            vf_opt = Some(portmode.value_format);
-        }
-        
-        let rx_opt: Option<broadcast::Receiver<ChannelNotification>> = None;
-        
-        
-        match msgtype {
-            MessageType::PortValueSingle => {
-                if let Some(val) = self.msg_channels.get(&MessageType::PortValueSingle) {
-                    let rx = val.clone();
-                    Ok(tokio::spawn(async move {
-                        while let Ok(data) = rx.subscribe().recv().await {
-                            // We could do some mangling based on valueformat here
-                            channel.send(data);
-                        }
-                    }))
-                } else {
-                    Err(Error::NoneError(String::from("no rx")))
-                }
-
-            }
-            _ => Err(Error::NoneError(String::from("Unsupported msg type")))
-        }
-
-        
-
-
-        // Ok((task))
-    }
+    
 
 }
 
-pub struct Svh {
-    subs: HashMap<u8, Vec<broadcast::Sender<PortValueSingleFormat>>>, // port_id -> subscribers
-    rx: broadcast::Receiver<ChannelNotification>,
 
-    // För att referera till denna: Mutex, joinhandle 
-} 
 
-// pub struct HandlerSetup {
-//     hub_name: String,
-//     stream: PinnedStream,
-//     mutex: HubMutex, 
-//     tx: tokio::sync::broadcast::Sender<T>
-// }
 
 /// Properties by which to filter discovered hubs
 #[derive(Debug)]
@@ -464,80 +422,4 @@ pub trait NotificationHandler: Debug + Send {  //+ Sync {
 
 }
 
-// Main handler does passthru
-// pub async fn single_value_handler_passthru(mut stream: PinnedStream, 
-//                                   device: &IoDevice, 
-//                                   tx: tokio::sync::broadcast::Sender<(u8, IoTypeId, u8)>) {
-//     use crate::notifications::NotificationMessage;
-//     // let (rc_tx, mut rc_rx) = broadcast::channel::<RcButtonState>(3);
-//     while let Some(data) = stream.next().await {
-//         // println!("Received data from {:?} [{:?}]: {:?}", hub_name, data.uuid, data.value);
 
-//         let r = NotificationMessage::parse(&data.value);
-//         match r {
-//             Ok(n) => {
-//                 // dbg!(&n);
-//                 match n {
-//                     // Active feedback
-//                     NotificationMessage::PortValueSingle(val) => {
-//                         match val.values[0] {
-//                             0x0 => {
-//                                 tx.send( (device.port, device.kind, val.values[1]) );
-//                             }
-//                             0x1 => {
-//                             }
-//                             _ => ()                                
-//                         }
-//                     }
-//                     NotificationMessage::PortValueCombined(val) => {
-
-//                     }
-//                     _ => ()
-//                 }
-//             }
-//             Err(e) => {
-//                 println!("Parse error: {}", e);
-//             }
-//         }
-
-//     }  
-// }
-
-// This handler should handle a channel from main handler instead
-// pub async fn single_value_handler(mut stream: PinnedStream, 
-//                                   device: &IoDevice, 
-//                                   tx: tokio::sync::broadcast::Sender<(u8, IoTypeId, u8)>) {
-//     use crate::notifications::NotificationMessage;
-//     // let (rc_tx, mut rc_rx) = broadcast::channel::<RcButtonState>(3);
-//     while let Some(data) = stream.next().await {
-//         // println!("Received data from {:?} [{:?}]: {:?}", hub_name, data.uuid, data.value);
-
-//         let r = NotificationMessage::parse(&data.value);
-//         match r {
-//             Ok(n) => {
-//                 // dbg!(&n);
-//                 match n {
-//                     // Active feedback
-//                     NotificationMessage::PortValueSingle(val) => {
-//                         match val.values[0] {
-//                             0x0 => {
-//                                 tx.send( (device.port, device.kind, val.values[1]) );
-//                             }
-//                             0x1 => {
-//                             }
-//                             _ => ()                                
-//                         }
-//                     }
-//                     NotificationMessage::PortValueCombined(val) => {
-
-//                     }
-//                     _ => ()
-//                 }
-//             }
-//             Err(e) => {
-//                 eprintln!("Parse error: {}", e);
-//             }
-//         }
-
-//     }  
-// }

@@ -12,11 +12,13 @@ use btleplug::platform::{Adapter, Manager, PeripheralId, Peripheral};
 use btleplug::api::{Characteristic, Peripheral as _, WriteType};
 
 use crate::consts::IoTypeId;
-use crate::notifications::{ValueFormatType, DatasetType, MappingValue};
+use crate::notifications::{ValueFormatType, DatasetType, MappingValue, PortValueSingleFormat, PortValueCombinedFormat, NetworkCommand};
 use crate::devices::remote::RcDevice;
 use crate::devices::sensor::*;
 use crate::devices::motor::*;
 use crate::devices::light::*;
+use crate::{Error, Result};
+use tokio::sync::broadcast;
 
 type ModeId = u8;
 
@@ -28,14 +30,24 @@ pub struct IoDevice {
     pub mode_count: u8,
     pub modes: BTreeMap<ModeId, PortMode>,
     pub valid_combos: Vec<Vec<u8>>,
-    pub handles: Handles
+    pub handles: Handles,
+    pub channels: Channels,
 }
 #[derive(Debug, Default, Clone)]
 pub struct Handles {
    pub p: Option<btleplug::platform::Peripheral>,
    pub c: Option<btleplug::api::Characteristic>,
-   pub tx: Vec<tokio::sync::mpsc::Sender<u8>>,       // Send channels
-   //  pub rx: Vec<tokio::sync::mpsc::Receiver<u8>>  // Receive channels
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct Channels {
+    pub tx_8bit: Option<tokio::sync::broadcast::Sender<Vec<u8>>>,
+    pub tx_16bit: Option<tokio::sync::broadcast::Sender<Vec<u16>>>,
+    pub tx_32bit: Option<tokio::sync::broadcast::Sender<Vec<u32>>>,
+    pub tx_float: Option<tokio::sync::broadcast::Sender<Vec<f32>>>,
+    pub rx_singlevalue_sender: Option<tokio::sync::broadcast::Sender<PortValueSingleFormat>>, 
+    pub rx_combinedvalue_sender: Option<tokio::sync::broadcast::Sender<PortValueCombinedFormat>>,
+    pub rx_networkcmd_sender: Option<tokio::sync::broadcast::Sender<NetworkCommand>>,
 }
 
 #[derive(Debug, Default, Clone)]
@@ -52,23 +64,33 @@ pub struct PortMode {
     // pub sensor_cabability: [u8; 6],  // Sensor capabilities as bits. No help from docs how to interpret, just ignore it for now.
     pub value_format: ValueFormatType,
 }
-#[derive(Debug, Default, Clone)]
-pub struct ValueFormat {
-    pub dataset_count: u8,
-    pub dataset_type: DatasetType,
-    pub total_figures: u8,
-    pub decimals: u8
-}
+// #[derive(Debug, Default, Clone)]
+// pub struct ValueFormat {
+//     pub dataset_count: u8,
+//     pub dataset_type: DatasetType,
+//     pub total_figures: u8,
+//     pub decimals: u8
+// }
 
 impl IoDevice {
+    pub fn new(kind: IoTypeId, port: u8) -> Self {
+        Self {
+            kind,
+            port,
+            mode_count: Default::default(),
+            capabilities: Default::default(),
+            valid_combos: Default::default(),
+            modes: Default::default(),
+            handles: Default::default(),
+            channels: Default::default(),
+        }
+    }
     pub fn new_with_handles(kind: IoTypeId, port: u8, 
                peripheral: btleplug::platform::Peripheral, 
                characteristic: btleplug::api::Characteristic ) -> Self {
         let handles = Handles {
             p: Some(peripheral),
             c: Some(characteristic),
-            tx: Vec::new(),
-            // rx: Vec::new(),
         };
         Self {
             kind,
@@ -77,26 +99,9 @@ impl IoDevice {
             capabilities: Default::default(),
             valid_combos: Default::default(),
             modes: Default::default(),
-            handles
-        }
+            handles,
+            channels: Default::default(),        }
     }
-    pub fn new(kind: IoTypeId, port: u8) -> Self {
-            // let handles = Handles {
-            //     p: Some(peripheral),
-            //     c: Some(characteristic),
-            //     tx: Vec::new()
-            // };
-            Self {
-                kind,
-                port,
-                mode_count: Default::default(),
-                capabilities: Default::default(),
-                valid_combos: Default::default(),
-                modes: Default::default(),
-                handles: Default::default()
-            }
-        }
-
     pub fn set_mode_count(&mut self, mode_count: u8) -> () {
         self.mode_count = mode_count;
     }
@@ -199,28 +204,33 @@ impl IoDevice {
             }
         }
     }
+    
+    // Input mapping info from docs:
+    // The roles are: The host of the sensor (even a simple and dumb black box)
+    // can then decide, what to do with the sensor without any setup (default
+    // mode 0 (zero). Using the LSB first (highest priority).
     pub fn set_mode_mapping(&mut self, mode_id: u8, input: MappingValue, output: MappingValue) -> () {
         let mut mode = self.modes.get_mut(&mode_id).unwrap();
         let mut r: Vec<Mapping> = Vec::new();
         if (input.0 >> 7) & 1 == 1 { r.push(Mapping::SupportsNull) }
         if (input.0 >> 6) & 1 == 1 { r.push(Mapping::SupportsFunctional) }
-        // if (input.0 >> 5) & 1 == 1 {}
+        // if (input.0 >> 5) & 1 == 1 {}    // Not used
         if (input.0 >> 4) & 1 == 1 { r.push(Mapping::Absolute) }
         if (input.0 >> 3) & 1 == 1 { r.push(Mapping::Relative) }
         if (input.0 >> 2) & 1 == 1 { r.push(Mapping::Discrete) }
-        // if (input.0 >> 1) & 1 == 1 {}
-        // if (input.0 >> 0) & 1 == 1 {}
+        // if (input.0 >> 1) & 1 == 1 {}    // Not used
+        // if (input.0 >> 0) & 1 == 1 {}    // Not used
         mode.input_mapping = r;
 
         let mut r: Vec<Mapping> = Vec::new();
         if (output.0 >> 7) & 1 == 1 { r.push(Mapping::SupportsNull) }
         if (output.0 >> 6) & 1 == 1 { r.push(Mapping::SupportsFunctional) }
-        // if (output.0 >> 5) & 1 == 1 {}
+        // if (output.0 >> 5) & 1 == 1 {}   // Not used
         if (output.0 >> 4) & 1 == 1 { r.push(Mapping::Absolute) }
         if (output.0 >> 3) & 1 == 1 { r.push(Mapping::Relative) }
         if (output.0 >> 2) & 1 == 1 { r.push(Mapping::Discrete) }
-        // if (output.0 >> 1) & 1 == 1 {}
-        // if (output.0 >> 0) & 1 == 1 {}
+        // if (output.0 >> 1) & 1 == 1 {}   // Not used
+        // if (output.0 >> 0) & 1 == 1 {}   // Not used
         mode.output_mapping = r;
     }
     pub fn set_mode_valueformat(&mut self, mode_id: u8, format: ValueFormatType) -> () {
@@ -262,13 +272,10 @@ impl PortMode {
             value_format: Default::default(),
         }
     }
-    // pub fn set_name(&self, chars: Vec<u8>) -> () {}
-
     pub fn name(&self) -> &str {
         &self.name
     }
 }
-
 
 // #[derive(Debug, Default)]
 // pub enum DatasetType {
@@ -316,11 +323,30 @@ pub enum Mapping {
 }
 
 
-// Input mapping info from docs:
-// The roles are: The host of the sensor (even a simple and dumb black box)
-// can then decide, what to do with the sensor without any setup (default
-// mode 0 (zero). Using the LSB first (highest priority).
-
+//  Sensor devices 
+impl Sensor8bit for IoDevice {
+    fn p(&self) -> Option<Peripheral> { self.handles.p.clone() }  
+    fn c(&self) -> Option<Characteristic> { self.handles.c.clone() } 
+    fn port(&self) -> u8 { self.port }
+    fn check(&self, mode: u8) -> Result<()> {
+        if let Some(pm) = self.modes.get(&mode) {
+            let vf = pm.value_format;
+            match vf.dataset_type {
+                DatasetType::Bits8 => Ok(()),
+                _ => Err(Error::NoneError((String::from("Not an 8bit sensor mode")))) 
+            }             
+        } else {
+            Err(Error::NoneError((String::from("Mode not found"))))
+        }
+    }
+    fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>> {
+        if let Some(sender) = &self.channels.rx_singlevalue_sender {
+            Ok(sender.subscribe())
+        } else {
+            Err(Error::NoneError((String::from("Sender not found")))) 
+        }
+    }
+}
 
 impl RcDevice for IoDevice {
     fn p(&self) -> Option<Peripheral> {
@@ -332,20 +358,7 @@ impl RcDevice for IoDevice {
     fn c(&self) -> Option<Characteristic> { self.handles.c.clone() } 
     fn port(&self) -> u8 { self.port }
 }
-impl SingleValueSensor for IoDevice {
-    // #[non_exhaustive]
-    fn p(&self) -> Option<Peripheral> {
-        match self.kind {
-            IoTypeId::TechnicHubTemperatureSensor |
-            IoTypeId::Current |
-            IoTypeId::Rssi |
-            IoTypeId::Voltage  => self.handles.p.clone(),
-            _ => None,
-        } 
-    } 
-    fn c(&self) -> Option<Characteristic> { self.handles.c.clone() } 
-    fn port(&self) -> u8 { self.port }
-}
+
 impl VisionSensor for IoDevice {
     fn p(&self) -> Option<Peripheral> {
         match self.kind {

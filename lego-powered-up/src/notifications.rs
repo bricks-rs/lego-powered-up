@@ -999,10 +999,10 @@ impl PortModeInformationType {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
 pub struct ValueFormatType {
-    number_of_datasets: u8,
-    dataset_type: DatasetType,
-    total_figures: u8,
-    decimals: u8,
+    pub number_of_datasets: u8,
+    pub dataset_type: DatasetType,
+    pub total_figures: u8,
+    pub decimals: u8,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -1058,6 +1058,24 @@ impl PortValueSingleFormat {
         unimplemented!()
     }
 }
+pub struct PortValueSingleFormat2<T> {
+    pub port_id: u8,
+    pub data: Vec<T>,
+}
+
+// impl<T> PortValueSingleFormat2<T> {
+//     pub fn parse<'a>(mut msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
+//         // let values = msg.cloned().collect();
+//         // Ok(PortValueSingleFormat { values })
+//         let port_id = next!(msg);
+//         let data:Vec<T> = msg.cloned().collect();
+//         Ok(Self { port_id, data })
+//     }
+
+//     pub fn process(&self, _type_mapping: ()) -> HashMap<u8, TypedValue> {
+//         unimplemented!()
+//     }
+// }
 
 /// The PortValueCombinedFormat is some horrific set of pointers to
 /// values we should already have cached elsewhere. For now we save the

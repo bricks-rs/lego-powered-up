@@ -70,6 +70,21 @@ async fn main() -> anyhow::Result<()> {
     let mut hub_led = hub1.port(lego_powered_up::hubs::Port::HubLed).await?;
     hub_led.set_rgb(&[0x00, 0x00, 0x00]).await.unwrap();
 
+    // Use this instead
+    // let mut rc_rx_test = rc_tx.subscribe();
+    // let j = tokio::spawn(async move {
+    //     while let Ok(data) = rc_rx_test.recv().await {
+    //         match data {
+    //             RcButtonState::Aup => { println!("Hej! Aup") }
+    //             RcButtonState::Aplus => { println!("Hej! Aplus") }
+    //             RcButtonState::Ared => { println!("Hej! Ared") }
+    //             RcButtonState::Aminus => { println!("Hej! Aminus") }
+    //             _ => { println!("Hej! Annan knapp");}
+                
+    //         }
+    //     }
+    // });
+
     tokio::spawn(async move {
         while let Some(data) = hub1_stream.next().await {
             // println!("Received data from {:?} [{:?}]: {:?}", &hub1_name, data.uuid, data.value);

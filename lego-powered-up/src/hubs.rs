@@ -53,6 +53,7 @@ pub trait Hub: Debug + Send + Sync {
     fn characteristic(&self) -> &Characteristic;
     fn kind(&self) -> HubType;
     fn connected_io(&mut self) -> &mut BTreeMap<u8, IoDevice>;
+    fn channels(&mut self) -> &mut crate::hubs::generic_hub::Channels;
 
     // Port information
     async fn request_port_info(&self, port_id: u8, infotype: InformationType) -> Result<()> {

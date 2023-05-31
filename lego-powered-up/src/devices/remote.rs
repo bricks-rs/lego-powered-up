@@ -18,6 +18,7 @@ use crate::{notifications::*, NotificationHandler};
 use crate::notifications::NetworkCommand::ConnectionRequest;
 // type HandlerMutex = Arc<Mutex<Box<dyn NotificationHandler>>>;
 
+
 #[derive(Debug, Copy, Clone)]
 pub enum RcButtonState {
     Aup,
@@ -54,8 +55,6 @@ pub trait RcDevice: Debug + Send + Sync {
     }
 }
 
-
-
 // #[derive(Default )]
 pub struct RcHandler {
     stream: PinnedStream,
@@ -84,9 +83,6 @@ impl RcHandler {
             rx: None
         }
     }
-
-
-
 
     pub async fn process(&mut self) -> () {
             while let Some(data) = self.stream.next().await {
@@ -143,7 +139,6 @@ impl RcHandler {
 
 
 type HandlerMutex = Arc<Mutex<Box<dyn NotificationHandler>>>;
-
 use crate::hubs::io_event::ChannelNotification;
 
 #[derive(Debug, Copy, Clone)]
@@ -178,15 +173,12 @@ impl RemoteStatus {
     }
 }
 
-
-
 pub async fn rc_handler(
     mut stream: PinnedStream, 
     mutex: HubMutex, 
     hub_name: String,
     tx: broadcast::Sender::<RcButtonState>) {
-        use crate::notifications::*;
-        use crate::notifications::NetworkCommand::ConnectionRequest;
+
         while let Some(data) = stream.next().await {
             let r = NotificationMessage::parse(&data.value);
             match r {
@@ -245,8 +237,6 @@ pub async fn rc_handler2(
     hub_name: String,
     tx: broadcast::Sender::<RcButtonState>,
     mut rx: broadcast::Receiver::<ChannelNotification>) {
-        use crate::notifications::*;
-        use crate::notifications::NetworkCommand::ConnectionRequest;
         while let Ok(data) = rx.recv().await {
             let d = data.portvaluesingle.unwrap(); 
             match d.port_id {

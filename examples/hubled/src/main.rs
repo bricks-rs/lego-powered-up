@@ -50,7 +50,7 @@ async fn main() -> anyhow::Result<()> {
         let created_hub = pu.create_hub(&dh).await?;
         h.push(ConnectedHub::setup_hub(created_hub).await)
     }
-    tokiosleep(Duration::from_secs(1)).await;  //Wait for attached devices to be collected
+    tokiosleep(Duration::from_secs(2)).await;  //Wait for attached devices to be collected
     let hub: ConnectedHub = h.remove(0);
     
     let mut hubled: IoDevice;
@@ -66,6 +66,8 @@ async fn main() -> anyhow::Result<()> {
                 tokiosleep(Duration::from_millis(500)).await;
         }
         tokiosleep(Duration::from_millis(1000)).await;
+
+        // hubled.
 
         // Rainbow
         hubled.set_hubled_mode(HubLedMode::Rgb).await;

@@ -94,9 +94,6 @@ async fn main() -> anyhow::Result<()> {
         remote_b.remote_buttons_enable(1, 1).await?;    // mode 0x1, delta 1
     }    
 
-
-
-
     let mut rc_rx_test = rc_tx.subscribe();
     let j = tokio::spawn(async move {
         while let Ok(data) = rc_rx_test.recv().await {
