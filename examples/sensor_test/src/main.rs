@@ -65,17 +65,34 @@ async fn main() -> anyhow::Result<()> {
     //     }
     // }
 
-    let rssi: IoDevice;
+    let mut rssi: IoDevice;
     {
         let lock = rc_hub.mutex.lock().await;
         rssi = lock.get_from_kind(IoTypeId::Rssi).await?;
     }    
-    let (mut rx, jh) = rssi.enable_8bit_sensor(0x00, 1).await.unwrap();
+    let (mut rssi_rx, jh) = rssi.enable_8bit_sensor(0x00, 1).await.unwrap();
+
+    let mut remote_a: IoDevice;
+    {
+        let lock = rc_hub.mutex.lock().await;
+        remote_a = lock.get_from_port(0).await?;
+    }    
+    let (mut remote_a_rx, jh) = remote_a.enable_8bit_sensor(0x00, 1).await.unwrap();
 
 
     let j = tokio::spawn(async move {
-        while let Ok(data) = rx.recv().await {
-            println!("Recieved: {:?}", data)
+        while let Ok(data) = rssi_rx.recv().await {
+            println!("Rssi: {:?}", data)
+            // match data {
+            //     _ => { println!("Hej! Annan knapp");}
+                
+            // }
+        }
+    });
+
+    let j2 = tokio::spawn(async move {
+        while let Ok(data) = remote_a_rx.recv().await {
+            println!("Remote_a: {:?}", data)
             // match data {
             //     _ => { println!("Hej! Annan knapp");}
                 

@@ -104,13 +104,17 @@ impl Hub for GenericHub {
     async fn get_from_port(&self, port_id: u8) -> Result<IoDevice> {
         match self.connected_io.get(&port_id) {
                 Some(connected_device) => { 
-                    // Don't include handles:
-                    // Ok(connected_device.clone())
+                    let mut d = connected_device.clone();
+
+                    // Channels
+                    d.channels.rx_singlevalue_sender = self.channels.singlevalue_sender.clone();
+                    d.channels.rx_combinedvalue_sender = self.channels.combinedvalue_sender.clone();
+                    d.channels.rx_networkcmd_sender = self.channels.networkcmd_sender.clone();
 
                     // Include handles:
-                    let mut d = connected_device.clone();
                     d.handles.p = Some(self.peripheral().clone());
                     d.handles.c = Some(self.characteristic().clone());
+                    
                     Ok(d)
                  }
                 None => { Err(Error::HubError(String::from("No device on port {port_id}"))) }
