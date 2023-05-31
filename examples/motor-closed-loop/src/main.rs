@@ -36,7 +36,7 @@ use tokio::sync::broadcast;
 use tokio::sync::mpsc;
 
 // RC
-use lego_powered_up::hubs::remote::*;
+// use lego_powered_up::hubs::remote::*;
 
 // Handle notifications
 use core::pin::Pin;
@@ -83,9 +83,9 @@ async fn main() -> anyhow::Result<()> {
     let setup = ConnectedHub::set_up_handler(rc_hub.mutex.clone()).await;
     let (rc_tx, mut rc_rx) = broadcast::channel::<RcButtonState>(3);
     let rc_tx_clone = rc_tx.clone();
-    let remote_handler1 = tokio::spawn(async move { 
-        rc_handler(setup.0, setup.1, setup.2, rc_tx_clone).await; 
-    }); 
+    // let remote_handler1 = tokio::spawn(async move { 
+    //     rc_handler(setup.0, setup.1, setup.2, rc_tx_clone).await; 
+    // }); 
     {
         let lock = rc_hub.mutex.lock().await;
         let mut remote_a = lock.get_from_port(0x00).await?;

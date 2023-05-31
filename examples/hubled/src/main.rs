@@ -23,7 +23,7 @@ use lego_powered_up::{devices::Device, error::Error};
 use tokio::sync::broadcast;
 
 // RC
-use lego_powered_up::hubs::remote::*;
+// use lego_powered_up::hubs::remote::*;
 
 // Handle notifications
 use core::pin::Pin;

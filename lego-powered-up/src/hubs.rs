@@ -210,7 +210,7 @@ pub struct ConnectedIo {        //deprecated
 
 
 // pub mod technic_hub;
-pub mod remote;
+// pub mod remote;
 // pub mod move_hub;
 pub mod generic_hub;
 pub mod io_event;

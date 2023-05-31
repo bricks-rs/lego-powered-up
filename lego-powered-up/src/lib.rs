@@ -1,3 +1,5 @@
+#![feature(associated_type_defaults)]
+
 #![allow(unused)]
 use btleplug::api::{
     Central, CentralEvent, Manager as _, Peripheral as _, PeripheralProperties,

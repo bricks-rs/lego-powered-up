@@ -277,17 +277,6 @@ impl PortMode {
     }
 }
 
-// #[derive(Debug, Default)]
-// pub enum DatasetType {
-//     // Transmitted as u8, upper 6 bits not used
-//     #[default]
-//     Unknown = 255,
-//     Bits8 = 0b00,
-//     Bits16 = 0b01,
-//     Bits32 = 0b10,
-//     Float = 0b11,
-// }
-
 #[derive(Debug, Default, Copy, Clone)]
 pub enum ModeKind {
     #[default]
@@ -322,59 +311,9 @@ pub enum Mapping {
     // bit 0 not used
 }
 
-
-//  Sensor devices 
-impl Sensor8bit for IoDevice {
-    fn p(&self) -> Option<Peripheral> { self.handles.p.clone() }  
-    fn c(&self) -> Option<Characteristic> { self.handles.c.clone() } 
-    fn port(&self) -> u8 { self.port }
-    
-    fn check(&self, mode: u8) -> Result<()> {
-        if let Some(pm) = self.modes.get(&mode) {
-            let vf = pm.value_format;
-            match vf.dataset_type {
-                DatasetType::Bits8 => Ok(()),
-                _ => Err(Error::NoneError((String::from("Not an 8bit sensor mode")))) 
-            }             
-        } else {
-            Err(Error::NoneError((String::from("Mode not found"))))
-        }
-    }
-    
-    fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>> {
-        if let Some(sender) = &self.channels.rx_singlevalue_sender {
-            Ok(sender.subscribe())
-        } else {
-            Err(Error::NoneError((String::from("Sender not found")))) 
-        }
-    }
-}
-
-impl Sensor16bit for IoDevice {
-    fn p(&self) -> Option<Peripheral> { self.handles.p.clone() }  
-    fn c(&self) -> Option<Characteristic> { self.handles.c.clone() } 
-    fn port(&self) -> u8 { self.port }
-    
-    fn check(&self, mode: u8) -> Result<()> {
-        if let Some(pm) = self.modes.get(&mode) {
-            let vf = pm.value_format;
-            match vf.dataset_type {
-                DatasetType::Bits16 => Ok(()),
-                _ => Err(Error::NoneError((String::from("Not an 16 bit sensor mode")))) 
-            }             
-        } else {
-            Err(Error::NoneError((String::from("Mode not found"))))
-        }
-    }
-    
-    fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>> {
-        if let Some(sender) = &self.channels.rx_singlevalue_sender {
-            Ok(sender.subscribe())
-        } else {
-            Err(Error::NoneError((String::from("Sender not found")))) 
-        }
-    }
-}
+//
+// Devices
+//
 
 impl RcDevice for IoDevice {
     fn p(&self) -> Option<Peripheral> {
@@ -397,17 +336,33 @@ impl VisionSensor for IoDevice {
     fn c(&self) -> Option<Characteristic> { self.handles.c.clone() } 
     fn port(&self) -> u8 { self.port }
 }
+
 impl EncoderMotor for IoDevice {
-    fn p(&self) -> Option<Peripheral> {
+    fn check(&self) -> Result<()> {
         match self.kind {
             IoTypeId::TechnicLargeLinearMotor |
             IoTypeId::TechnicXLargeLinearMotor |
-            IoTypeId::InternalMotorTacho => self.handles.p.clone(),
-            _ => None,
+            IoTypeId::InternalMotorTacho => Ok(()),
+            _ => Err(Error::HubError((String::from("Not an Encoder Motor")))),
         } 
     } 
+    fn p(&self) -> Option<Peripheral> { self.handles.p.clone() } 
     fn c(&self) -> Option<Characteristic> { self.handles.c.clone() } 
     fn port(&self) -> u8 { self.port }
+    fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>> {
+        if let Some(sender) = &self.channels.rx_singlevalue_sender {
+            Ok(sender.subscribe())
+        } else {
+            Err(Error::NoneError((String::from("Sender not found")))) 
+        }
+    }
+    fn get_rx_combined(&self) -> Result<broadcast::Receiver<PortValueCombinedFormat>> {
+        if let Some(sender) = &self.channels.rx_combinedvalue_sender {
+            Ok(sender.subscribe())
+        } else {
+            Err(Error::NoneError((String::from("Sender not found")))) 
+        }
+    }
 }
 
 impl HubLed for IoDevice {
@@ -420,3 +375,32 @@ impl HubLed for IoDevice {
     fn c(&self) -> Option<Characteristic> { self.handles.c.clone() } 
     fn port(&self) -> u8 { self.port }
 }
+
+
+//  Generic sensor devices 
+impl GenericSensor for IoDevice {
+    fn p(&self) -> Option<Peripheral> { self.handles.p.clone() }  
+    fn c(&self) -> Option<Characteristic> { self.handles.c.clone() } 
+    fn port(&self) -> u8 { self.port }
+    
+    fn check(&self, mode: u8, datasettype: DatasetType) -> Result<()> {
+        if let Some(pm) = self.modes.get(&mode) {
+            let vf = pm.value_format;
+            match vf.dataset_type {
+                datasettype => Ok(()),
+                _ => Err(Error::NoneError((String::from("Incorrect dataset type"))))
+            }             
+        } else {
+            Err(Error::NoneError((String::from("Mode not found"))))
+        }
+    }
+    
+    fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>> {
+        if let Some(sender) = &self.channels.rx_singlevalue_sender {
+            Ok(sender.subscribe())
+        } else {
+            Err(Error::NoneError((String::from("Sender not found")))) 
+        }
+    }
+}
+

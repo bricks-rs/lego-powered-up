@@ -15,6 +15,8 @@ use std::fmt::{self, Debug, Display};
 
 pub use self::message::NotificationMessage;
 pub mod message;
+
+#[macro_use]
 pub use self::macros::*;
 #[macro_use]
 pub mod macros;
@@ -1019,7 +1021,6 @@ impl MappingValue {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive, Parse, Default)]
 pub enum DatasetType {
     #[default]
-    Unknown = 255,
     Bits8 = 0b00,
     Bits16 = 0b01,
     Bits32 = 0b10,
@@ -1058,27 +1059,9 @@ pub enum TypedValue {
 ///     But these are the only ones I've been able to find. On the whole it seems better
 ///     to correctly support the multitude of sensors and modes. 
 /// 
-#[derive(Clone, Debug, PartialEq, Eq)]
-
-pub struct PortValueSingleFormat {
-    pub port_id: u8,
-    pub data: Vec<i8>,
-}
-impl PortValueSingleFormat {
-    pub fn parse<'a>(mut msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
-        // let values = msg.cloned().collect();
-        // Ok(PortValueSingleFormat { values })
-        let port_id = next!(msg);
-        let data = msg.cloned().map(|x| x as i8).collect();
-        Ok(Self { port_id, data })
-    }
-
-    pub fn process(&self, _type_mapping: ()) -> HashMap<u8, TypedValue> {
-        unimplemented!()
-    }
-}
 
 
+// #[derive(Clone, Debug, PartialEq, Eq)]
 // pub struct PortValueSingleFormat {
 //     pub port_id: u8,
 //     pub data: Vec<u8>,
@@ -1096,6 +1079,25 @@ impl PortValueSingleFormat {
 //         unimplemented!()
 //     }
 // }
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PortValueSingleFormat {
+    pub port_id: u8,
+    pub data: Vec<i8>,
+}
+impl PortValueSingleFormat {
+    pub fn parse<'a>(mut msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
+        let port_id = next!(msg);
+        let data = msg.cloned().map(|x| x as i8).collect();
+        Ok(Self { port_id, data })
+    }
+
+    pub fn process(&self, _type_mapping: ()) -> HashMap<u8, TypedValue> {
+        unimplemented!()
+    }
+}
+
+
 
 /// The PortValueCombinedFormat is some horrific set of pointers to
 /// values we should already have cached elsewhere. For now we save the

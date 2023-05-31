@@ -4,6 +4,7 @@
 #![allow(unused)]
 use std::time::Duration;
 use lego_powered_up::devices::iodevice::IoDevice;
+use lego_powered_up::notifications::Power;
 use tokio::time::sleep as tokiosleep;
 
 // Powered up
@@ -21,9 +22,10 @@ type HubMutex = Arc<Mutex<Box<dyn Hub>>>;
 // / Access devices
 use lego_powered_up::{devices::Device, error::Error};
 use tokio::sync::broadcast;
+use lego_powered_up::devices::modes;
 
 // RC
-use lego_powered_up::hubs::remote::*;
+// use lego_powered_up::hubs::remote::*;
 
 // Handle notifications
 use core::pin::Pin;
@@ -65,19 +67,29 @@ async fn main() -> anyhow::Result<()> {
     //     }
     // }
 
-    let mut rssi: IoDevice;
-    {
-        let lock = rc_hub.mutex.lock().await;
-        rssi = lock.get_from_kind(IoTypeId::Rssi).await?;
-    }    
-    let (mut rssi_rx, jh) = rssi.enable_8bit_sensor(0x00, 1).await.unwrap();
+    // let mut rssi: IoDevice;
+    // {
+    //     let lock = rc_hub.mutex.lock().await;
+    //     rssi = lock.get_from_kind(IoTypeId::Rssi).await?;
+    // }    
+    // let (mut rssi_rx, jh) = rssi.enable_8bit_sensor(0x00, 1).await.unwrap();
+    // tokio::spawn(async move {
+    //     while let Ok(data) = rssi_rx.recv().await {
+    //         println!("Rssi: {:?} {:?}", data, data[0] as i8)
+    //     }
+    // });
 
-    let mut remote_a: IoDevice;
-    {
-        let lock = rc_hub.mutex.lock().await;
-        remote_a = lock.get_from_port(0).await?;
-    }    
-    let (mut remote_a_rx, jh) = remote_a.enable_8bit_sensor(0x00, 1).await.unwrap();
+    // let mut remote_a: IoDevice;
+    // {
+    //     let lock = rc_hub.mutex.lock().await;
+    //     remote_a = lock.get_from_port(0).await?;
+    // }    
+    // let (mut remote_a_rx, jh) = remote_a.enable_8bit_sensor(0x00, 1).await.unwrap();
+    // tokio::spawn(async move {
+    //     while let Ok(data) = remote_a_rx.recv().await {
+    //         println!("Remote_a: {:?}", data)
+    //     }
+    // });
 
     let mut rc_volt: IoDevice;
     {
@@ -85,38 +97,59 @@ async fn main() -> anyhow::Result<()> {
         rc_volt = lock.get_from_kind(IoTypeId::Voltage).await?;
     }    
     let (mut voltage_rx, jh) = rc_volt.enable_16bit_sensor(0x00, 1).await.unwrap();
+    tokio::spawn(async move {
+        while let Ok(data) = voltage_rx.recv().await {
+            // println!("Voltage: {:?}  {:?}", data, data[0] as u16)
+        }
+    });
 
-    // let j = tokio::spawn(async move {
-    //     while let Ok(data) = rssi_rx.recv().await {
-    //         println!("Rssi: {:?} {:?}", data, data[0] as i8)
-    //         // match data {
-    //         //     _ => { println!("Hej! Annan knapp");}
-                
-    //         // }
+    // let mut move_accel: IoDevice;
+    // {
+    //     let lock = rc_hub.mutex.lock().await;
+    //     move_accel = lock.get_from_kind(IoTypeId::InternalTilt).await?;
+    // }    
+    // let (mut move_accel_rx, jh) = move_accel.enable_8bit_sensor(0x04, 1).await.unwrap();
+    // tokio::spawn(async move {
+    //     while let Ok(data) = move_accel_rx.recv().await {
+    //         println!("Accel: {:?}  {:?}", data, data[0] as u16)
     //     }
     // });
 
-    let j2 = tokio::spawn(async move {
-        while let Ok(data) = remote_a_rx.recv().await {
-            println!("Remote_a: {:?}", data)
-            // match data {
-            //     _ => { println!("Hej! Annan knapp");}
-                
-            // }
-        }
-    });
+    // let mut move_impct: IoDevice;
+    // {
+    //     let lock = rc_hub.mutex.lock().await;
+    //     move_impct = lock.get_from_kind(IoTypeId::InternalTilt).await?;
+    // }    
+    // let (mut move_impct_rx, jh) = move_impct.enable_32bit_sensor(0x03, 1).await.unwrap();
+    // tokio::spawn(async move {
+    //     while let Ok(data) = move_impct_rx.recv().await {
+    //         println!("Accel: {:?}  {:?}", data, data[0] as u16)
+    //     }
+    // });
 
+    let mut motor_b: IoDevice;
+    {
+        let lock = rc_hub.mutex.lock().await;
+        motor_b = lock.get_from_port(1).await?;
+    }    
+    let (mut motor_b_rx, jh) = motor_b.enable_32bit_sensor(modes::Voltage::VLT_L, 1).await.unwrap();
+    // tokio::spawn(async move {
+    //     while let Ok(data) = motor_b_rx.recv().await {
+    //         println!("Combined: {:?}  ", data, );
+    //     }
+    // });
+    let (mut motor_b_rx, jh) = 
+        motor_b.motor_combined_sensor_enable(lego_powered_up::devices::MotorSensorMode::Speed, 2, 2).await.unwrap();
     tokio::spawn(async move {
-        while let Ok(data) = voltage_rx.recv().await {
-            println!("Voltage: {:?}", data)
-            // match data {
-            //     _ => { println!("Hej! Annan knapp");}
-                
-            // }
+        while let Ok(data) = motor_b_rx.recv().await {
+            println!("Combined: {:?}  ", data, );
         }
     });
-
-
+    motor_b.start_speed_for_degrees(90, 50, Power::Cw((50)), lego_powered_up::notifications::EndState::Brake).await;
+    tokiosleep(Duration::from_secs(2)).await;
+    motor_b.start_speed_for_degrees(90, 50, Power::Cw((50)), lego_powered_up::notifications::EndState::Brake).await;
+    tokiosleep(Duration::from_secs(2)).await;
+    motor_b.start_speed_for_degrees(890, -50, Power::Cw((50)), lego_powered_up::notifications::EndState::Brake).await;
 
 
     // Start ui
