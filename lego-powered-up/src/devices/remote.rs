@@ -14,7 +14,7 @@ use tokio::sync::broadcast;
 use tokio::sync::mpsc;
 type HubMutex = Arc<Mutex<Box<dyn crate::Hub>>>;
 type PinnedStream = Pin<Box<dyn Stream<Item = ValueNotification> + Send>>;
-use crate::{notifications::*, NotificationHandler};
+use crate::{notifications::*};
 use crate::notifications::NetworkCommand::ConnectionRequest;
 // type HandlerMutex = Arc<Mutex<Box<dyn NotificationHandler>>>;
 

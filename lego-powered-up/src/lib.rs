@@ -1,9 +1,7 @@
-#![feature(associated_type_defaults)]
-
 #![allow(unused)]
 use btleplug::api::{
     Central, CentralEvent, Manager as _, Peripheral as _, PeripheralProperties,
-    ScanFilter, //ValueNotification
+    ScanFilter, 
 };
 use btleplug::platform::{Adapter, Manager, PeripheralId, Peripheral};
 use btleplug::api::{Characteristic, Peripheral as _, WriteType};
@@ -13,7 +11,6 @@ use devices::{IoTypeId, MessageType};
 use devices::iodevice::{IoDevice, PortMode};
 use devices::sensor::*;
 use futures::{stream::StreamExt, Stream};
-use hubs::io_event::ValWrap;
 use notifications::{PortValueSingleFormat, ValueFormatType, PortValueCombinedFormat, NetworkCommand};
 use num_traits::FromPrimitive;
 use tokio::task::JoinHandle;
@@ -50,8 +47,6 @@ use crate::hubs::io_event::ChannelNotification;
 
 pub struct PoweredUp {
     adapter: Adapter,
-    // peri: Peripheral,
-    // characteristic: Characteristic
 }
 
 impl PoweredUp {
@@ -195,8 +190,6 @@ impl PoweredUp {
         }
         panic!()
     }
-
-
    
     pub async fn create_hub(&mut self, hub: &DiscoveredHub,) -> Result<Box<dyn Hub>> {
         info!("Connecting to hub {}...", hub.addr,);
@@ -241,118 +234,6 @@ impl PoweredUp {
         }
     }
 }
-
-
-pub struct ConnectedHub {
-    pub name: String,
-    pub mutex: HubMutex,
-    // pub stream: PinnedStream
-    pub kind: HubType,
-    // pub msg_channels: HashMap<MessageType, broadcast::Sender<ChannelNotification>>, 
-    // pub pvs_sender: Option<broadcast::Sender<PortValueSingleFormat>>
-}
-impl ConnectedHub {
-    pub async fn setup_hub (created_hub: Box<dyn Hub>) -> ConnectedHub {    // Return result later
-        let mut connected_hub = ConnectedHub {
-            kind: created_hub.kind(),
-            name: created_hub.name().await.unwrap(),                                                    // And here
-            mutex: Arc::new(Mutex::new(created_hub)),
-            // stream: created_hub.peripheral().notifications().await.unwrap()
-            // msg_channels: HashMap::new(),
-            // pvs_sender: None,
-        };
-        
-        // Set up hub handlers
-        //      Attached IO
-        let name_to_handler = connected_hub.name.clone();
-        let mutex_to_handler = connected_hub.mutex.clone();
-        // let created_channels = ConnectedHub::create_channels();
-        // connected_hub.msg_channels = created_channels.0;
-        let singlevalue_sender = broadcast::channel::<PortValueSingleFormat>(3).0;
-        let combinedvalue_sender = broadcast::channel::<PortValueCombinedFormat>(3).0;
-        let networkcmd_sender = broadcast::channel::<NetworkCommand>(3).0;
-        {
-            let mut lock = &mut connected_hub.mutex.lock().await;
-            let stream_to_handler: PinnedStream = lock.peripheral().notifications().await.unwrap();    // Can use ? here then
-            lock.channels().singlevalue_sender = Some(singlevalue_sender.clone());
-            lock.channels().combinedvalue_sender = Some(combinedvalue_sender.clone());
-            lock.channels().networkcmd_sender = Some(networkcmd_sender.clone());
-            tokio::spawn(async move {
-                crate::hubs::io_event::io_event_handler(
-                    stream_to_handler, 
-                    mutex_to_handler,
-          name_to_handler,
-            singlevalue_sender,
-                    combinedvalue_sender,
-                    networkcmd_sender
-                ).await;
-            });
-        }
-        //  TODO    Hub alerts etc.
-        
-        // Subscribe to btleplug peripheral
-        {
-            let lock = connected_hub.mutex.lock().await;
-            lock.peripheral().subscribe(&lock.characteristic()).await.unwrap();
-        }
-
-        connected_hub
-    }
-    
-
-
-
-    // TODO: Return Result
-    pub async fn set_up_handler(mutex: HubMutex) -> (PinnedStream, HubMutex, String) {
-        let mutex_to_handler = mutex.clone();
-        let mut lock = mutex.lock().await;
-        let name_to_handler = lock.name().await.unwrap();
-        let stream_to_handler: PinnedStream = lock.peripheral().notifications().await.unwrap();     
-    
-        (stream_to_handler, mutex_to_handler, name_to_handler)
-    } 
-
-    // pub async fn enable_8bit_sensor(&self, io_kind: IoTypeId, mode: u8, delta: u32, sub_channel: broadcast::Sender<PortValueSingleFormat>) -> Result<(JoinHandle<()>)> {
-
-    // pub async fn sub_psv(&self, io_kind: IoTypeId, mode: u8, delta: u32, sub_channel: broadcast::Sender<PortValueSingleFormat>) -> Result<(JoinHandle<()>)> {
-    //     let mut lock = self.mutex.lock().await;
-    //     let mut device = lock.get_from_kind(io_kind).await?;
-    //     // device.single_value_sensor_enable(mode, delta);
-
-    //     // // get valueformat based on mode
-    //     let mut vf_opt: Option<ValueFormatType> = None; 
-    //     if let Some(portmode) = device.modes.get(&mode) {
-    //         vf_opt = Some(portmode.value_format);
-    //     }
-
-    //     if let Some(pvs_sender) = &self.pvs_sender {
-    //         match &self.pvs_sender {
-    //             Some(tx) => {
-    //                 let mut rx = tx.subscribe();
-    //                 Ok(tokio::spawn(async move {
-    //                     while let Ok(data) = rx.recv().await {
-    //                         if data.port_id != device.port {
-    //                             continue;
-    //                         }
-    //                         sub_channel.send(data);
-    //                     }
-    //                 }))
-                        
-    //             }
-    //             None => Err(Error::NoneError(String::from("Unsupported msg type")))
-    //         }   
-    //     } else {
-    //         Err(Error::NoneError(String::from("Unsupported msg type")))
-    //     }
-    // }
-
-
-    
-
-}
-
-
-
 
 /// Properties by which to filter discovered hubs
 #[derive(Debug)]
@@ -417,11 +298,51 @@ async fn identify_hub(props: &PeripheralProperties) -> Result<Option<HubType>> {
     Ok(None)
 }
 
-// async fn set
-
-#[async_trait]
-pub trait NotificationHandler: Debug + Send {  //+ Sync {
-
+pub struct ConnectedHub {
+    pub name: String,
+    pub mutex: HubMutex,
+    pub kind: HubType,
 }
+impl ConnectedHub {
+    pub async fn setup_hub (created_hub: Box<dyn Hub>) -> Result<(ConnectedHub)> {    
+        let mut connected_hub = ConnectedHub {
+            kind: created_hub.kind(),
+            name: created_hub.name().await?,                                                    
+            mutex: Arc::new(Mutex::new(created_hub)),
+        };
+        
+        // Set up hub handlers
+        //      Attached IO
+        let name_to_handler = connected_hub.name.clone();
+        let mutex_to_handler = connected_hub.mutex.clone();
+        let singlevalue_sender = broadcast::channel::<PortValueSingleFormat>(3).0;
+        let combinedvalue_sender = broadcast::channel::<PortValueCombinedFormat>(3).0;
+        let networkcmd_sender = broadcast::channel::<NetworkCommand>(3).0;
+        {
+            let mut lock = &mut connected_hub.mutex.lock().await;
+            let stream_to_handler: PinnedStream = lock.peripheral().notifications().await?;    
+            lock.channels().singlevalue_sender = Some(singlevalue_sender.clone());
+            lock.channels().combinedvalue_sender = Some(combinedvalue_sender.clone());
+            lock.channels().networkcmd_sender = Some(networkcmd_sender.clone());
+            tokio::spawn(async move {
+                crate::hubs::io_event::io_event_handler(
+                    stream_to_handler, 
+                    mutex_to_handler,
+          name_to_handler,
+            singlevalue_sender,
+                    combinedvalue_sender,
+                    networkcmd_sender
+                ).await;
+            });
+        }
+        //  TODO    Hub alerts etc.
+        
+        // Subscribe to btleplug peripheral
+        {
+            let lock = connected_hub.mutex.lock().await;
+            lock.peripheral().subscribe(&lock.characteristic()).await.unwrap();
+        }
 
-
+        Ok(connected_hub)
+    }
+}

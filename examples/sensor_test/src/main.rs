@@ -50,7 +50,7 @@ async fn main() -> anyhow::Result<()> {
     for dh in discovered_hubs {
         println!("Connecting to hub `{}`", dh.name);
         let created_hub = pu.create_hub(&dh).await?;
-        h.push(ConnectedHub::setup_hub(created_hub).await)
+        h.push(ConnectedHub::setup_hub(created_hub).await.expect("Error setting up hub"))
     }
     tokiosleep(Duration::from_secs(2)).await;
 

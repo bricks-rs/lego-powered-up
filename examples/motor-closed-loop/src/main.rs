@@ -5,30 +5,13 @@
 use std::time::Duration;
 use tokio::time::sleep as tokiosleep;
 
-
-
-// use lego_powered_up::{PoweredUp, Hub, HubFilter, devices::Device, error::Error, ConnectedHub};
-// use lego_powered_up::notifications::NotificationMessage;
-// use lego_powered_up::notifications::NetworkCommand::ConnectionRequest;
-// use lego_powered_up::notifications::*;
-// use lego_powered_up::consts::*;
-// use lego_powered_up::devices::iodevice::IoDevice;
-
-// use lego_powered_up::btleplug::api::{Peripheral, ValueNotification};
-
-// use lego_powered_up::{futures::{future, select, stream::{StreamExt, FuturesUnordered}};
-
-
-
 // Powered up
 use lego_powered_up::{PoweredUp, Hub, HubFilter, ConnectedHub,}; 
-use lego_powered_up::NotificationHandler;
 
 // Access hub 
 use std::sync::{Arc};
 use tokio::sync::Mutex;
 type HubMutex = Arc<Mutex<Box<dyn Hub>>>;
-type HandlerMutex = Arc<Mutex<Box<dyn NotificationHandler>>>;
 
 // / Access devices
 use lego_powered_up::{devices::Device, error::Error};
@@ -63,7 +46,7 @@ async fn main() -> anyhow::Result<()> {
     for dh in discovered_hubs {
         println!("Connecting to hub `{}`", dh.name);
         let created_hub = pu.create_hub(&dh).await?;
-        h.push(ConnectedHub::setup_hub(created_hub).await)
+        h.push(ConnectedHub::setup_hub(created_hub).await.expect("Error setting up hub"))
     }
 
     let rc_hub: ConnectedHub = h.remove(0);
@@ -80,7 +63,7 @@ async fn main() -> anyhow::Result<()> {
     // }
 
     // Set up RC input 
-    let setup = ConnectedHub::set_up_handler(rc_hub.mutex.clone()).await;
+    // let setup = ConnectedHub::set_up_handler(rc_hub.mutex.clone()).await;
     let (rc_tx, mut rc_rx) = broadcast::channel::<RcButtonState>(3);
     let rc_tx_clone = rc_tx.clone();
     // let remote_handler1 = tokio::spawn(async move { 
