@@ -3,7 +3,7 @@ use core::fmt::Debug;
 use crate::{Error, Result};
 use crate::notifications::NotificationMessage;
 use crate::notifications::InputSetupSingle;
-use btleplug::api::{Characteristic, Peripheral as _, WriteType};
+use btleplug::api::{Characteristic, };
 use btleplug::platform::Peripheral;
 use crate::notifications::PortOutputSubcommand;
 use crate::notifications::PortOutputCommandFormat;
@@ -43,7 +43,7 @@ pub trait HubLed: Debug + Send + Sync {
             Some(p) => p,
             None => return {
                 eprintln!("Command error: Not a Hub LED");
-                Err(Error::NoneError((String::from("Not a Hub LED"))))
+                Err(Error::NoneError(String::from("Not a Hub LED")))
             }
         };
         crate::hubs::send(p, self.c().unwrap(), mode_set_msg).await

@@ -139,7 +139,7 @@ impl IoDevice {
     pub fn set_valid_combos(&mut self, valid: Vec<u8>) -> () {
         for combo in valid {
             let mut v: Vec<u8> = Vec::new();
-            for mode in (0..7) {
+            for mode in 0..7 {
                 if (combo >> mode as u8) & 1 == 1 {
                     v.push(mode as u8);
                 }    
@@ -159,7 +159,7 @@ impl IoDevice {
         }
 
         let name = String::from_utf8(truncated).expect("Found invalid UTF-8");
-        let mut mode = self.modes.get_mut(&mode_id);
+        let mode = self.modes.get_mut(&mode_id);
         match mode {
             Some(m) => m.name = name,
             None => {
@@ -192,7 +192,7 @@ impl IoDevice {
             else {truncated.push(c)}
         }
         let symbol = String::from_utf8(truncated).expect("Found invalid UTF-8");
-        let mut mode = self.modes.get_mut(&mode_id);
+        let mode = self.modes.get_mut(&mode_id);
         match mode {
             Some(m) => m.symbol = symbol,
             None => {
@@ -207,7 +207,7 @@ impl IoDevice {
     // can then decide, what to do with the sensor without any setup (default
     // mode 0 (zero). Using the LSB first (highest priority).
     pub fn set_mode_mapping(&mut self, mode_id: u8, input: MappingValue, output: MappingValue) -> () {
-        let mut mode = self.modes.get_mut(&mode_id).unwrap();
+        let mode = self.modes.get_mut(&mode_id).unwrap();
         let mut r: Vec<Mapping> = Vec::new();
         if (input.0 >> 7) & 1 == 1 { r.push(Mapping::SupportsNull) }
         if (input.0 >> 6) & 1 == 1 { r.push(Mapping::SupportsFunctional) }
@@ -341,7 +341,7 @@ impl EncoderMotor for IoDevice {
             IoTypeId::TechnicLargeLinearMotor |
             IoTypeId::TechnicXLargeLinearMotor |
             IoTypeId::InternalMotorTacho => Ok(()),
-            _ => Err(Error::HubError((String::from("Not an Encoder Motor")))),
+            _ => Err(Error::HubError(String::from("Not an Encoder Motor"))),
         } 
     } 
     fn p(&self) -> Option<Peripheral> { self.handles.p.clone() } 
@@ -351,14 +351,14 @@ impl EncoderMotor for IoDevice {
         if let Some(sender) = &self.channels.rx_singlevalue_sender {
             Ok(sender.subscribe())
         } else {
-            Err(Error::NoneError((String::from("Sender not found")))) 
+            Err(Error::NoneError(String::from("Sender not found"))) 
         }
     }
     fn get_rx_combined(&self) -> Result<broadcast::Receiver<PortValueCombinedFormat>> {
         if let Some(sender) = &self.channels.rx_combinedvalue_sender {
             Ok(sender.subscribe())
         } else {
-            Err(Error::NoneError((String::from("Sender not found")))) 
+            Err(Error::NoneError(String::from("Sender not found"))) 
         }
     }
 }
@@ -386,10 +386,10 @@ impl GenericSensor for IoDevice {
             let vf = pm.value_format;
             match vf.dataset_type {
                 datasettype => Ok(()),
-                _ => Err(Error::NoneError((String::from("Incorrect dataset type"))))
+                _ => Err(Error::NoneError(String::from("Incorrect dataset type")))
             }             
         } else {
-            Err(Error::NoneError((String::from("Mode not found"))))
+            Err(Error::NoneError(String::from("Mode not found")))
         }
     }
     
@@ -397,7 +397,7 @@ impl GenericSensor for IoDevice {
         if let Some(sender) = &self.channels.rx_singlevalue_sender {
             Ok(sender.subscribe())
         } else {
-            Err(Error::NoneError((String::from("Sender not found")))) 
+            Err(Error::NoneError(String::from("Sender not found"))) 
         }
     }
 }

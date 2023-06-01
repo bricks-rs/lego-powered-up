@@ -22,20 +22,18 @@
 
 
 
+// Trait that any d
+// evice may implement. Having a single trait covering
+// every device is probably the wrong design, and we should have better
+// abstractions for e.g. motors vs. sensors & LEDs.
+
+// New design in modules below this:
 pub mod iodevice;
 pub mod remote;
 pub mod sensor;
 pub mod motor;
 pub mod light;
 pub mod modes;
-
-
-// Trait that any d
-// evice may implement. Having a single trait covering
-// every device is probably the wrong design, and we should have better
-// abstractions for e.g. motors vs. sensors & LEDs.
-
-// New design in modules below this
 
 
 // #[async_trait]
