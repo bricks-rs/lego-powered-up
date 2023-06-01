@@ -13,7 +13,7 @@ use btleplug::api::ValueNotification;
 use std::collections::{HashMap, BTreeMap};
 use std::fmt::Debug;
 
-use crate::{PoweredUp, HubFilter, devices::Device, error::Error};
+use crate::{PoweredUp, HubFilter,  error::Error}; // devices::Device,
 use crate::notifications::NotificationMessage;
 use crate::notifications::NetworkCommand::ConnectionRequest;
 use crate::notifications::*;
@@ -120,7 +120,7 @@ pub trait Hub: Debug + Send + Sync {
 
     // fn process_io_event(&mut self, _evt: AttachedIo);
 
-    async fn port(&self, port_id: Port) -> Result<Box<dyn Device>>;             //Deprecated
+    // async fn port(&self, port_id: Port) -> Result<Box<dyn Device>>;             //Deprecated
 
     async fn io_from_port(&self, port_id: u8) -> Result<IoDevice>;   
     async fn io_from_kind(&self, kind: IoTypeId) -> Result<IoDevice>;   

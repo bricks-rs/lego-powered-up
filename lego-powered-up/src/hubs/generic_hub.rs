@@ -75,30 +75,30 @@ impl Hub for GenericHub {
 
     // Deprecated. Some earlier examples uses this, new examples should 
     // use enable_from_port or enable_from_kind
-    async fn port(&self, port_id: Port) -> Result<Box<dyn Device>> {
-        let port =
-            *self.properties.port_map.get(&port_id).ok_or_else(|| {
-                crate::Error::NoneError(format!(
-                    "Port type `{port_id:?}` not supported"
-                ))
-            })?;
-        Ok(match port_id {
-            Port::HubLed => Box::new(devices::HubLED::new(
-                self.peripheral.clone(),
-                self.lpf_characteristic.clone(),
-                port,
-            )),
-            Port::A | Port::B  => {
-                Box::new(devices::RemoteButtons::new(
-                    self.peripheral.clone(),
-                    self.lpf_characteristic.clone(),
-                    port_id,
-                    port,
-                ))
-            }
-            _ => todo!(),
-        })
-    }
+    // async fn port(&self, port_id: Port) -> Result<Box<dyn Device>> {
+    //     let port =
+    //         *self.properties.port_map.get(&port_id).ok_or_else(|| {
+    //             crate::Error::NoneError(format!(
+    //                 "Port type `{port_id:?}` not supported"
+    //             ))
+    //         })?;
+    //     Ok(match port_id {
+    //         Port::HubLed => Box::new(devices::HubLED::new(
+    //             self.peripheral.clone(),
+    //             self.lpf_characteristic.clone(),
+    //             port,
+    //         )),
+    //         Port::A | Port::B  => {
+    //             Box::new(devices::RemoteButtons::new(
+    //                 self.peripheral.clone(),
+    //                 self.lpf_characteristic.clone(),
+    //                 port_id,
+    //                 port,
+    //             ))
+    //         }
+    //         _ => todo!(),
+    //     })
+    // }
 
     //TODO: Put actual port_id / kind in error msgs
     async fn io_from_port(&self, port_id: u8) -> Result<IoDevice> {

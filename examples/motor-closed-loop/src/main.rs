@@ -14,7 +14,7 @@ use tokio::sync::Mutex;
 type HubMutex = Arc<Mutex<Box<dyn Hub>>>;
 
 // / Access devices
-use lego_powered_up::{devices::Device, error::Error};
+use lego_powered_up::{ error::Error};  //devices::Device,
 use tokio::sync::broadcast;
 use tokio::sync::mpsc;
 
@@ -116,9 +116,6 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn set_led(mut led: Box<dyn Device>, red: u8, green: u8, blue: u8) -> Result<(), Error> {
-    led.set_rgb(&[red, green, blue]).await
-}
 
 
 

@@ -19,7 +19,7 @@ use tokio::sync::Mutex;
 type HubMutex = Arc<Mutex<Box<dyn Hub>>>;
 
 // / Access devices
-use lego_powered_up::{devices::Device, error::Error};
+use lego_powered_up::{ error::Error};  //devices::Device,
 use tokio::sync::broadcast;
 use lego_powered_up::devices::modes;
 

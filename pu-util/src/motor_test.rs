@@ -4,7 +4,10 @@
 
 use crate::argparse::MotorTestArgs;
 use anyhow::Result;
-use lego_powered_up::{hubs::Port, notifications::Power, HubFilter, PoweredUp};
+use lego_powered_up::{HubFilter, PoweredUp};
+use lego_powered_up::{ConnectedHub, IoDevice, IoTypeId, consts,
+                      devices::light::{HubLed},
+                      devices::motor::{EncoderMotor, Power} };
 
 use std::time::Duration;
 
@@ -41,22 +44,37 @@ pub async fn run(args: &MotorTestArgs) -> Result<()> {
         hub.hub_type, hub.name, hub.addr
     );
 
-    let hub = pu.create_hub(&hub).await?;
+    let hub = ConnectedHub::setup_hub
+                            (pu.create_hub(&hub).await.expect("Error creating hub"))
+                            .await.expect("Error setting up hub");
+    tokio::time::sleep(Duration::from_secs(1)).await;  //Wait for attached devices to be collected
 
-    println!("Setting hub LED");
+    // Devices to be used
+    let hub_led: IoDevice;
+    let motor_a: IoDevice;
+    let motor_b: IoDevice;
+    let motor_c: IoDevice;
+    let motor_d: IoDevice;
+    {
+        let lock = hub.mutex.lock().await;
+        hub_led = lock.io_from_kind(IoTypeId::HubLed).await?;
+        motor_a = lock.io_from_port(consts::named_port::A).await?; 
+        motor_b = lock.io_from_port(consts::named_port::B).await?; 
+        motor_c = lock.io_from_port(consts::named_port::C).await?; 
+        motor_d = lock.io_from_port(consts::named_port::D).await?; 
+    }    
 
     // Set the hub LED if available
-    let mut hub_led = hub.port(Port::HubLed).await?;
+    println!("Setting hub LED");
     let colour = [0x00, 0xff, 0x00];
     println!("Setting to: {:02x?}", colour);
-    hub_led.set_rgb(&colour).await?;
+    hub_led.set_hubled_rgb(&colour).await?;
     tokio::time::sleep(Duration::from_secs(1)).await;
 
-    for port in &[Port::A, Port::B, Port::C, Port::D] {
-        let mut motor = hub.port(*port).await?;
+    for motor in &[motor_a, motor_b, motor_c, motor_d] {
         motor.start_speed(50, Power::Cw(100)).await?;
         tokio::time::sleep(Duration::from_secs(2)).await;
-        motor.start_speed(0, Power::Float).await?;
+        motor.start_power(Power::Float).await?;
         tokio::time::sleep(Duration::from_secs(1)).await;
     }
 
@@ -65,7 +83,10 @@ pub async fn run(args: &MotorTestArgs) -> Result<()> {
     tokio::time::sleep(Duration::from_secs(5)).await;
 
     println!("Disconnecting...");
-    hub.disconnect().await?;
+    {
+        let lock = hub.mutex.lock().await;
+        lock.disconnect().await?;
+    }
     println!("Done");
 
     Ok(())

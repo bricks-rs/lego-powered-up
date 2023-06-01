@@ -2,10 +2,14 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use crate::argparse::HubArgs;
 use anyhow::Result;
-use lego_powered_up::{hubs::Port, HubFilter, PoweredUp};
 use std::time::Duration;
+use crate::argparse::HubArgs;
+use lego_powered_up::{ HubFilter };
+use lego_powered_up::{PoweredUp, ConnectedHub, IoTypeId, IoDevice, consts,
+                        devices::light::{self, HubLed},
+                        devices::motor::{EncoderMotor, Power} 
+};
 
 pub async fn run(args: &HubArgs) -> Result<()> {
     let mut pu = if let Some(dev) = args.device_index {
@@ -42,36 +46,48 @@ pub async fn run(args: &HubArgs) -> Result<()> {
     );
 
     if args.connect {
-        use lego_powered_up::notifications::Power;
-        let hub = pu.create_hub(&hub).await?;
-
-        println!("Setting hub LED");
+        let hub = ConnectedHub::setup_hub
+                                        (pu.create_hub(&hub).await.expect("Error creating hub"))
+                                        .await.expect("Error setting up hub");
+        tokio::time::sleep(Duration::from_secs(1)).await;  //Wait for attached devices to be collected
 
         // Set the hub LED if available
-        let mut hub_led = hub.port(Port::HubLed).await?;
+        println!("Setting hub LED");
+        let hub_led: IoDevice;
+        {
+            let lock = hub.mutex.lock().await;
+            hub_led = lock.io_from_kind(IoTypeId::HubLed).await?;
+        }
+        hub_led.set_hubled_mode(light::HubLedMode::Colour).await?;
         for colour in [[0_u8, 0xff, 0], [0xff, 0, 0], [0, 0, 0xff]]
             .iter()
             .cycle()
             .take(10)
         {
             println!("Setting to: {:02x?}", colour);
-            hub_led.set_rgb(colour).await?;
+            hub_led.set_hubled_rgb(colour).await?;
             tokio::time::sleep(Duration::from_millis(400)).await;
         }
 
         println!("Setting Motor A");
-
-        let mut motor = hub.port(Port::A).await?;
+        let motor: IoDevice;
+        {
+            let lock = hub.mutex.lock().await;
+            motor = lock.io_from_port(consts::named_port::A).await?; 
+        }
         motor.start_speed(50, Power::Cw(50)).await?;
         tokio::time::sleep(Duration::from_secs(4)).await;
-        motor.start_speed(0, Power::Float).await?;
+        motor.start_power(Power::Float).await?;
 
         println!("Done!");
 
         tokio::time::sleep(Duration::from_secs(2)).await;
 
         println!("Disconnecting...");
-        hub.disconnect().await?;
+        {
+            let lock = hub.mutex.lock().await;
+            lock.disconnect().await?;
+        }
         println!("Done");
     }
 
