@@ -30,66 +30,47 @@ pub mod InternalMotorTacho {
     pub const POS: u8 = 2;
 }
 pub mod InternalTilt {
-    //    pub const : u8 = ;
-    //    pub const : u8 = ;
-    //    pub const : u8 = ;
-    //    pub const : u8 = ;
-    //    pub const : u8 = ;
-    //    pub const : u8 = ;
-    //    pub const : u8 = ;
-    //    pub const : u8 = ;
-    // "ANGLE",
-    // "TILT",
-    // "ORINT",
-    // "IMPCT",
-    // "ACCEL",
-    // "OR_CF",
-    // "IM_CF",
-    // "CALIB",
+    pub const ANGLE: u8 = 0;
+    pub const TILT: u8 = 1;
+    pub const ORINT: u8 = 2;
+    pub const IMPCT: u8 = 3;
+    pub const ACCEL: u8 = 4;
+    pub const OR_CF: u8 = 5;
+    pub const IM_CF: u8 = 6;
+    pub const CALIB: u8 = 7;
 }
 pub mod TechnicLargeLinearMotorMoveHub {
-//     "POWER",
-//     "SPEED",
-//     "POS",
-//     "APOS",
-//     "CALIB",
-//     "STATS",
+    pub const POWER: u8 = 0;
+    pub const SPEED: u8 = 1;
+    pub const POS: u8 = 2;
+    pub const APOS: u8 = 3;
+    pub const CALIB: u8 = 4;
+    pub const STATS: u8 = 5;
 }
 pub mod TechnicLargeLinearMotorTechnicHub {
-    // "POWER",
-    // "SPEED",
-    // "POS",
-    // "APOS",
-    // "LOAD",
+    pub const POWER: u8 = 0;
+    pub const SPEED: u8 = 1;
+    pub const POS: u8 = 2;
+    pub const APOS: u8 = 3;
+    pub const LOAD: u8 = 4;
 }
 pub mod TechnicXLargeLinearMotorMoveHub {
-    //    pub const : u8 = ;
-    //    pub const : u8 = ;
-    //    pub const : u8 = ;
-    //    pub const : u8 = ;
-    //    pub const : u8 = ;
-//     "POWER",
-//     "SPEED",
-//     "POS",
-//     "APOS",
-//     "CALIB",
-//     "STATS",
+    pub const POWER: u8 = 0;
+    pub const SPEED: u8 = 1;
+    pub const POS: u8 = 2;
+    pub const APOS: u8 = 3;
+    pub const CALIB: u8 = 4;
+    pub const STATS: u8 = 5;
 }
 pub mod TechnicXLargeLinearMotorTechnicHub {
-    //    pub const : u8 = ;
-    //    pub const : u8 = ;
-    //    pub const : u8 = ;
-    //    pub const : u8 = ;
-    //    pub const : u8 = ;
-    // "POWER",
-    // "SPEED",
-    // "POS",
-    // "APOS",
-    // "LOAD",
+    pub const POWER: u8 = 0;
+    pub const SPEED: u8 = 1;
+    pub const POS: u8 = 2;
+    pub const APOS: u8 = 3;
+    pub const LOAD: u8 = 4;
 }
 pub mod TechnicHubGestSensor {
-    //    pub const : u8 = ;
-    // "GEST",
+    pub const GEST: u8 = 0;
 }
 pub mod RemoteButtons {
     pub const RCKEY: u8 = 0;
@@ -102,21 +83,16 @@ pub mod RemoteRssi {
     pub const RSSI: u8 = 0;
 }
 pub mod TechnicHubAccelerometer {
-    //    pub const : u8 = ;
-    //    pub const : u8 = ;
-    // "GRV",
-    // "CAL",
+    pub const GRV: u8 = 0;
+    pub const CAL: u8 = 1;
 }
 pub mod TechnicHubGyroSensor {
     pub const ROT: u8 = 0;
 }
 pub mod TechnicHubTiltSensor {
-    //    pub const : u8 = ;
-    //    pub const : u8 = ;
-    //    pub const : u8 = ;
-    // "POS",
-    // "IMP",
-    // "CFG",
+    pub const POS: u8 = 0;
+    pub const IMP: u8 = 1;
+    pub const CFG: u8 = 2;
 }
 pub mod TechnicHubTemperatureSensor {
     pub const TEMP: u8 = 0; 
