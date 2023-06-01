@@ -27,7 +27,7 @@ use crate::error::{OptionContext, Result};
 use crate::notifications::{ModeInformationRequest, ModeInformationType,
      InformationRequest, InformationType,  
      HubAction, HubActionRequest, InputSetupSingle, PortModeInformationType};
-use devices::IoTypeId;
+use crate::IoTypeId;
 use devices::iodevice::*;
 
 use futures::stream::{StreamExt, FuturesUnordered, Stream};

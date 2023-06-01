@@ -10,7 +10,7 @@ use btleplug::platform::Peripheral;
 use tokio::sync::broadcast;
 use tokio::task::JoinHandle;
 
-use super::IoTypeId;
+use crate::IoTypeId;
 
 #[macro_use]
 use crate::notifications::macros::*;

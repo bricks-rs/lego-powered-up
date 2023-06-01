@@ -8,8 +8,8 @@
 use std::collections::{BTreeMap};
 use std::fmt;
 
-use btleplug::platform::{Adapter, Manager, PeripheralId, Peripheral};
-use btleplug::api::{Characteristic, Peripheral as _, WriteType};
+use btleplug::platform::{Peripheral};
+use btleplug::api::{Characteristic,};
 use tokio::sync::broadcast;
 
 use crate::consts::IoTypeId;
@@ -104,12 +104,12 @@ impl IoDevice {
     }
     pub fn set_modes(&mut self, input_modes: u16, output_modes: u16) -> () {
         let mut r: BTreeMap<ModeId, PortMode> = BTreeMap::new();
-        for mode in (0..15) {
+        for mode in 0..15 {
             if (input_modes >> mode as u16) & 1 == 1 {
                 r.insert(mode as u8, PortMode::new(ModeKind::Sensor));
             }    
         }
-        for mode in (0..15) {
+        for mode in 0..15 {
             if (output_modes >> mode as u16) & 1 == 1 {
                 r.insert(mode as u8, PortMode::new(ModeKind::Output));
             }    

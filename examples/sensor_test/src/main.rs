@@ -139,7 +139,7 @@ async fn main() -> anyhow::Result<()> {
     //     }
     // });
     let (mut motor_b_rx, jh) = 
-        motor_b.motor_combined_sensor_enable(lego_powered_up::devices::MotorSensorMode::Speed, 2, 2).await.unwrap();
+        motor_b.motor_combined_sensor_enable(lego_powered_up::consts::MotorSensorMode::Speed, 2, 2).await.unwrap();
     tokio::spawn(async move {
         while let Ok(data) = motor_b_rx.recv().await {
             println!("Combined: {:?}  ", data, );

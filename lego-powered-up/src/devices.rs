@@ -5,23 +5,21 @@
 
 //! Definitions for the various devices which can attach to hubs, e.g. motors
 
-use btleplug::api::{Characteristic, Peripheral as _, WriteType};
-use btleplug::platform::Peripheral;
-use std::fmt::Debug;
-use std::process::ExitStatus;
+// use btleplug::api::{Characteristic, Peripheral as _, WriteType};
+// use btleplug::platform::Peripheral;
+// use std::fmt::Debug;
+// use std::process::ExitStatus;
 
-use async_trait::async_trait;
-use core::time::Duration;
-use crate::error::{Error, Result};
-use crate::hubs::Port;
-use crate::notifications::{HubLedMode, NotificationMessage, Power, EndState, PortModeInformationType, InputSetupCombined};
+// use async_trait::async_trait;
+// use core::time::Duration;
+// use crate::error::{Error, Result};
+// use crate::hubs::Port;
+// use crate::notifications::{HubLedMode, NotificationMessage, Power, EndState, PortModeInformationType, InputSetupCombined};
 
-use crate::notifications::{InputSetupSingle, PortOutputSubcommand, WriteDirectModeDataPayload, 
-    PortOutputCommandFormat, StartupInfo, CompletionInfo, InformationRequest, ModeInformationRequest,
-    PortInformationType, ModeInformationType, InformationType,  };
+// use crate::notifications::{InputSetupSingle, PortOutputSubcommand, WriteDirectModeDataPayload, 
+//     PortOutputCommandFormat, StartupInfo, CompletionInfo, InformationRequest, ModeInformationRequest,
+//     PortInformationType, ModeInformationType, InformationType,  };
 
-pub use crate::consts::MotorSensorMode;
-pub use crate::consts::IoTypeId;
 
 
 pub mod iodevice;
@@ -36,6 +34,10 @@ pub mod modes;
 // evice may implement. Having a single trait covering
 // every device is probably the wrong design, and we should have better
 // abstractions for e.g. motors vs. sensors & LEDs.
+
+// New design in modules below this
+
+
 // #[async_trait]
 // pub trait Device: Debug + Send + Sync {
 //     fn port(&self) -> Port;
