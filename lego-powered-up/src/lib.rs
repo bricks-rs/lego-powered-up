@@ -10,7 +10,8 @@ pub use btleplug;
 // std
 use futures::{stream::StreamExt, Stream};
 pub use futures;
-use std::sync::{Arc};    
+use std::sync::{Arc};
+use core::time::Duration;    
 use tokio::sync::Mutex;
 use tokio::sync::broadcast; 
 #[macro_use]
@@ -339,7 +340,7 @@ impl ConnectedHub {
             let lock = connected_hub.mutex.lock().await;
             lock.peripheral().subscribe(&lock.characteristic()).await.unwrap();
         }
-
+        tokio::time::sleep(Duration::from_millis(1500)).await; //Wait for devices to be collected
         Ok(connected_hub)
     }
 }
