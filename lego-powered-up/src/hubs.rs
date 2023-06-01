@@ -215,7 +215,15 @@ pub struct ConnectedIo {        //deprecated
 pub mod generic_hub;
 pub mod io_event;
 
+
+// Deprecated in favor of the ref-taking version below, but a bit of work to update the functions that use this 
 pub async fn send(p: Peripheral, c: Characteristic, msg: NotificationMessage) -> Result<()> {
+    let buf = msg.serialise();
+        p.write(&c, &buf, WriteType::WithoutResponse)
+        .await?;
+    Ok(())
+}
+pub async fn send2(p: &Peripheral, c: &Characteristic, msg: NotificationMessage) -> Result<()> {
     let buf = msg.serialise();
         p.write(&c, &buf, WriteType::WithoutResponse)
         .await?;
