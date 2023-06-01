@@ -4,45 +4,30 @@
 
 //! Specific implementations for each of the supported hubs.
 
-#![allow(unused)]
+// #![allow(unused)]
 
 use btleplug::api::{Characteristic, Peripheral as _, WriteType};
 use btleplug::platform::Peripheral;
-use btleplug::api::ValueNotification;
 
-use std::collections::{HashMap, BTreeMap};
+use std::collections::{BTreeMap};
 use std::fmt::Debug;
 
-use crate::{PoweredUp, HubFilter,  error::Error}; // devices::Device,
-use crate::notifications::NotificationMessage;
-use crate::notifications::NetworkCommand::ConnectionRequest;
-use crate::notifications::*;
-use crate::consts::*;
-use devices::iodevice::IoDevice;
+use crate::{IoDevice, IoTypeId};
+use crate::consts::{HubType, };
+use crate::error::{Error, OptionContext, Result};
+use crate::notifications::{NotificationMessage, ModeInformationRequest, ModeInformationType,
+                        InformationRequest, InformationType, HubAction, HubActionRequest, InputSetupSingle,
+                        PortValueSingleFormat, PortValueCombinedFormat, NetworkCommand};
 
-
-
-use crate::devices::{self, };
-use crate::error::{OptionContext, Result};
-use crate::notifications::{ModeInformationRequest, ModeInformationType,
-     InformationRequest, InformationType,  
-     HubAction, HubActionRequest, InputSetupSingle, PortModeInformationType};
-use crate::IoTypeId;
-use devices::iodevice::*;
-
-use futures::stream::{StreamExt, FuturesUnordered, Stream};
-use futures::{future, select};
-use core::pin::Pin;
-use std::sync::{Arc};
-use tokio::sync::Mutex;
-type HubMutex = Arc<Mutex<Box<dyn Hub>>>;
-type PinnedStream = Pin<Box<dyn Stream<Item = ValueNotification> + Send>>;
+// pub mod technic_hub;
+// pub mod remote;
+// pub mod move_hub;
+pub mod generic_hub;
+pub mod io_event;
 
 /// Trait describing a generic hub.
 #[async_trait::async_trait]
 pub trait Hub: Debug + Send + Sync {
-    // fn cached_name(&self) -> String;
-
     async fn name(&self) -> Result<String>;
     async fn disconnect(&self) -> Result<()>;
     async fn is_connected(&self) -> Result<bool>;
@@ -54,6 +39,12 @@ pub trait Hub: Debug + Send + Sync {
     fn kind(&self) -> HubType;
     fn connected_io(&mut self) -> &mut BTreeMap<u8, IoDevice>;
     fn channels(&mut self) -> &mut crate::hubs::generic_hub::Channels;
+    fn device_cache(&self, d: IoDevice) -> IoDevice;
+    fn attach_io(&mut self, device_to_insert: IoDevice) -> Result<()>;
+    async fn subscribe(&self, char: Characteristic) -> Result<()>;
+    async fn io_from_port(&self, port_id: u8) -> Result<IoDevice>;   
+    async fn io_from_kind(&self, kind: IoTypeId) -> Result<IoDevice>;   
+
 
     // Port information
     async fn request_port_info(&self, port_id: u8, infotype: InformationType) -> Result<()> {
@@ -101,7 +92,6 @@ pub trait Hub: Debug + Send + Sync {
         Ok(())
     }
 
-    fn attach_io(&mut self, device_to_insert: IoDevice) -> Result<()>;
 
     // async fn port_map(&self) -> &PortMap {
     //     &self.properties().await.port_map
@@ -113,17 +103,16 @@ pub trait Hub: Debug + Send + Sync {
 
     // fn send(&self, msg: NotificationMessage) -> Result<()>;
 
-    async fn subscribe(&self, char: Characteristic) -> Result<()>;
 
-    /// Ideally the vec should be sorted somehow
+    // Ideally the vec should be sorted somehow
     // async fn attached_io(&self) -> Vec<IoDevice>;
 
     // fn process_io_event(&mut self, _evt: AttachedIo);
 
     // async fn port(&self, port_id: Port) -> Result<Box<dyn Device>>;             //Deprecated
 
-    async fn io_from_port(&self, port_id: u8) -> Result<IoDevice>;   
-    async fn io_from_kind(&self, kind: IoTypeId) -> Result<IoDevice>;   
+    
+        
 
 }
 
@@ -144,49 +133,49 @@ pub struct HubProperties {
     pub battery_level: usize,
     /// BLE signal strength
     pub rssi: i16,
-    /// Mapping from port type to port ID. Internally (to the hub) each
-    /// port has a hardcoded identifier
-    pub port_map: PortMap,
+    // Mapping from port type to port ID. Internally (to the hub) each
+    // port has a hardcoded identifier
+    // pub port_map: PortMap,
 }
 
-pub type PortMap = HashMap<Port, u8>;
+// pub type PortMap = HashMap<Port, u8>;
 
 /// Ports supported by any hub
-#[non_exhaustive]
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum Port {
-    /// Motor A
-    A,
-    /// Motor B
-    B,
-    /// Motor C
-    C,
-    /// Motor D
-    D,
-    AB, // Move Hub
-    HubLed,
-    CurrentSensor,
-    VoltageSensor,
-    Accelerometer,
-    GyroSensor,
-    TiltSensor,
-    GestureSensor,
-    TemperatureSensor1,
-    TemperatureSensor2,
-    InternalMotor,
-    Rssi,
-    RemoteA,
-    RemoteB,
-    Virtual(u8),
-    Deprecated         // Port enum depreacated, have this for backwards comp
-}
+// #[non_exhaustive]
+// #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+// pub enum Port {
+//     /// Motor A
+//     A,
+//     /// Motor B
+//     B,
+//     /// Motor C
+//     C,
+//     /// Motor D
+//     D,
+//     AB, // Move Hub
+//     HubLed,
+//     CurrentSensor,
+//     VoltageSensor,
+//     Accelerometer,
+//     GyroSensor,
+//     TiltSensor,
+//     GestureSensor,
+//     TemperatureSensor1,
+//     TemperatureSensor2,
+//     InternalMotor,
+//     Rssi,
+//     RemoteA,
+//     RemoteB,
+//     Virtual(u8),
+//     Deprecated         // Port enum depreacated, have this for backwards comp
+// }
 
-impl Port {
-    /// Returns the ID of the port
-    pub fn id(&self) -> u8 {
-        todo!()
-    }
-}
+// impl Port {
+//     /// Returns the ID of the port
+//     pub fn id(&self) -> u8 {
+//         todo!()
+//     }
+// }
 
 /// Struct representing a device connected to a port
 // #[derive(Debug, Clone)]
@@ -200,20 +189,16 @@ impl Port {
 //     /// Device hardware revision
 //     pub hw_rev: VersionNumber,
 // }
-#[derive(Debug, Clone)]
-pub struct ConnectedIo {        //deprecated
-    /// Name/type of device
-    pub io_type_id: IoTypeId,
-    /// Internal numeric ID of the device
-    pub port_id: u8,
-}
+// #[derive(Debug, Clone)]
+// pub struct ConnectedIo {        //deprecated
+//     /// Name/type of device
+//     pub io_type_id: IoTypeId,
+//     /// Internal numeric ID of the device
+//     pub port_id: u8,
+// }
 
 
-// pub mod technic_hub;
-// pub mod remote;
-// pub mod move_hub;
-pub mod generic_hub;
-pub mod io_event;
+
 
 
 // Deprecated in favor of the ref-taking version below, but a bit of work to update the functions that use this 

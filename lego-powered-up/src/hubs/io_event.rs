@@ -1,8 +1,8 @@
+#![allow(unused)]
 
 use core::pin::Pin;
 use futures::stream::{Stream, StreamExt};
 
-use std::collections::HashMap;
 use std::fmt::Debug;
 use std::sync::{Arc};
 use tokio::sync::Mutex;
@@ -10,8 +10,7 @@ use tokio::sync::broadcast;
 use btleplug::api::ValueNotification;
 
 use crate::IoDevice;
-use crate::consts::MessageType;
-use crate::error::{Error, Result};
+use crate::error::{Error, Result, OptionContext};
 use crate::notifications::*;
 
 type HubMutex = Arc<Mutex<Box<dyn crate::Hub>>>;
@@ -67,10 +66,10 @@ pub struct ChannelNotification {
 //     }
 // }
 
-pub async fn io_event_handler(mut stream: PinnedStream, mutex: HubMutex, hub_name: String, 
-                            mut tx_singlevalue: broadcast::Sender<PortValueSingleFormat>,
-                            mut tx_combinedvalue: broadcast::Sender<PortValueCombinedFormat>,
-                            mut tx_networkcmd: broadcast::Sender<NetworkCommand>
+pub async fn io_event_handler(mut stream: PinnedStream, mutex: HubMutex, _hub_name: String, 
+                            tx_singlevalue: broadcast::Sender<PortValueSingleFormat>,
+                            tx_combinedvalue: broadcast::Sender<PortValueCombinedFormat>,
+                            tx_networkcmd: broadcast::Sender<NetworkCommand>
                             ) -> Result<()> {
     const DIAGNOSTICS: bool = true;
     while let Some(data) = stream.next().await {
@@ -83,15 +82,15 @@ pub async fn io_event_handler(mut stream: PinnedStream, mutex: HubMutex, hub_nam
                 match n {
                     // Forwarded
                     NotificationMessage::PortValueSingle(val) => {
-                        tx_singlevalue.send(val);
+                        tx_singlevalue.send(val).expect("Error forwarding PortValueSingle");
                     }
                     NotificationMessage::PortValueCombined(val) => {
-                        tx_combinedvalue.send(val);
+                        tx_combinedvalue.send(val).expect("Error forwarding PortValueCombined");
                     }
                     NotificationMessage::HwNetworkCommands(val) => {
-                        tx_networkcmd.send(val);
+                        tx_networkcmd.send(val).expect("Error forwarding NetworkCommands");
                     }
-                     
+
                     // IoDevice collection / configuration
                     NotificationMessage::HubAttachedIo(io_event) => {
                         match io_event {
@@ -101,17 +100,16 @@ pub async fn io_event_handler(mut stream: PinnedStream, mutex: HubMutex, hub_nam
                                     IoAttachEvent::AttachedIo{io_type_id, hw_rev, fw_rev} => {
                                         {
                                             let mut hub = mutex.lock().await;
-                                            let p = hub.peripheral().clone();
-                                            let c = hub.characteristic().clone();
-                                            hub.attach_io(
-                                                IoDevice::new(
-                                                            io_type_id, port_id));
+                                            hub.attach_io(IoDevice::new(io_type_id, port_id))?;
+
+                                            // let p = hub.peripheral().clone();
+                                            // let c = hub.characteristic().clone();
                                             // hub.attach_io(
                                             //     IoDevice::new_with_handles(
                                             //         io_type_id, port_id, p, c));
                                             
-                                            hub.request_port_info(port_id, InformationType::ModeInfo).await;
-                                            hub.request_port_info(port_id, InformationType::PossibleModeCombinations).await;
+                                            hub.request_port_info(port_id, InformationType::ModeInfo).await?;
+                                            hub.request_port_info(port_id, InformationType::PossibleModeCombinations).await?;
                                         }
                                     }
                                     IoAttachEvent::DetachedIo{} => {}
@@ -128,22 +126,22 @@ pub async fn io_event_handler(mut stream: PinnedStream, mutex: HubMutex, hub_nam
                                     PortInformationType::ModeInfo{capabilities, mode_count, input_modes, output_modes} => {
                                         {
                                             let mut hub = mutex.lock().await;
-                                            let mut port = hub.connected_io().get_mut(&port_id).unwrap();
+                                            let port = hub.connected_io().get_mut(&port_id).unwrap();
                                             port.set_mode_count(mode_count);
                                             port.set_capabilities(capabilities.0);
                                             port.set_modes(input_modes, output_modes);
                                       
                                             // let count = 
                                             for mode_id in 0..mode_count {
-                                                hub.req_mode_info(port_id, mode_id, ModeInformationType::Name).await;
-                                                hub.req_mode_info(port_id, mode_id, ModeInformationType::Raw).await;
-                                                hub.req_mode_info(port_id, mode_id, ModeInformationType::Pct).await;
-                                                hub.req_mode_info(port_id, mode_id, ModeInformationType::Si).await;
-                                                hub.req_mode_info(port_id, mode_id, ModeInformationType::Symbol).await;
-                                                hub.req_mode_info(port_id, mode_id, ModeInformationType::Mapping).await;
-                                                hub.req_mode_info(port_id, mode_id, ModeInformationType::MotorBias).await;
+                                                hub.req_mode_info(port_id, mode_id, ModeInformationType::Name).await?;
+                                                hub.req_mode_info(port_id, mode_id, ModeInformationType::Raw).await?;
+                                                hub.req_mode_info(port_id, mode_id, ModeInformationType::Pct).await?;
+                                                hub.req_mode_info(port_id, mode_id, ModeInformationType::Si).await?;
+                                                hub.req_mode_info(port_id, mode_id, ModeInformationType::Symbol).await?;
+                                                hub.req_mode_info(port_id, mode_id, ModeInformationType::Mapping).await?;
+                                                hub.req_mode_info(port_id, mode_id, ModeInformationType::MotorBias).await?;
                                                 // hub.request_mode_info(port_id, mode_id, ModeInformationType::CapabilityBits).await;
-                                                hub.req_mode_info(port_id, mode_id, ModeInformationType::ValueFormat).await;
+                                                hub.req_mode_info(port_id, mode_id, ModeInformationType::ValueFormat).await?;
                                             }
                                         }
                                     }

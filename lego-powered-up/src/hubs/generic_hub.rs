@@ -1,6 +1,5 @@
 use std::collections::BTreeMap;
 
-/// Definition for the Remote Control
 use super::*;
 
 #[derive(Debug, )]
@@ -100,28 +99,34 @@ impl Hub for GenericHub {
     //     })
     // }
 
+    /// Cache handles held by hub on device so we don't need to lock hub mutex as often    
+    fn device_cache(&self, mut d: IoDevice) -> IoDevice {
+        // Channels that forward some notification message types
+        d.channels.rx_singlevalue_sender = self.channels.singlevalue_sender.clone();
+        d.channels.rx_combinedvalue_sender = self.channels.combinedvalue_sender.clone();
+        d.channels.rx_networkcmd_sender = self.channels.networkcmd_sender.clone();
+        // BT handles for calling send
+        d.handles.p = Some(self.peripheral().clone());
+        d.handles.c = Some(self.characteristic().clone());
+
+        d
+    }
+
     //TODO: Put actual port_id / kind in error msgs
     async fn io_from_port(&self, port_id: u8) -> Result<IoDevice> {
         match self.connected_io.get(&port_id) {
                 Some(connected_device) => { 
                     let mut d = connected_device.clone();
-
-                    // Channels
-                    d.channels.rx_singlevalue_sender = self.channels.singlevalue_sender.clone();
-                    d.channels.rx_combinedvalue_sender = self.channels.combinedvalue_sender.clone();
-                    d.channels.rx_networkcmd_sender = self.channels.networkcmd_sender.clone();
-
-                    // Include handles:
-                    d.handles.p = Some(self.peripheral().clone());
-                    d.handles.c = Some(self.characteristic().clone());
+                    d = self.device_cache(d);
                     
                     Ok(d)
                  }
                 None => { Err(Error::HubError(String::from("No device on port {port_id}"))) }
             }
     }
-    async fn io_from_kind(&self, get_kind: IoTypeId) -> Result<IoDevice> {
-        let mut found: Vec<&IoDevice> = self.connected_io.values().filter(|&x| x.kind == get_kind).collect();
+
+    async fn io_from_kind(&self, req_kind: IoTypeId) -> Result<IoDevice> {
+        let found: Vec<&IoDevice> = self.connected_io.values().filter(|&x| x.kind == req_kind).collect();
         match found.len() {
             0 => {
                 Err(Error::NoneError(String::from("No device of kind {kind}")))   
@@ -129,25 +134,17 @@ impl Hub for GenericHub {
             1 =>  {
                 let device_deref = *found.first().unwrap();
                 let mut d = device_deref.clone();
+                d = self.device_cache(d);
             
-                // Channels
-                d.channels.rx_singlevalue_sender = self.channels.singlevalue_sender.clone();
-                d.channels.rx_combinedvalue_sender = self.channels.combinedvalue_sender.clone();
-                d.channels.rx_networkcmd_sender = self.channels.networkcmd_sender.clone();
-
-                // Include handles:
-                d.handles.p = Some(self.peripheral().clone());
-                d.handles.c = Some(self.characteristic().clone());
-                
                 Ok(d) 
-        }
-        _ => { 
-            eprintln!("Found {:#?} {:#?} on {:?}, use enable_from_port()", found.len(), get_kind, 
-                found.iter().map(|x|x.port).collect::<Vec<_>>());
-            Err(Error::HubError(String::from("Found {count} {kind} on {list of ports}, use enable_from_port()"))) 
+            }
+            _ => { 
+                eprintln!("Found {:#?} {:#?} on {:?}, use enable_from_port()", found.len(), req_kind, 
+                    found.iter().map(|x|x.port).collect::<Vec<_>>());
+                Err(Error::HubError(String::from("Found {count} {kind} on {list of ports}, use enable_from_port()"))) 
+            }
         }
     }
-}
   
 }
 
@@ -165,21 +162,20 @@ impl GenericHub {
             .await?
             .context("No properties found for hub")?;
 
-        let mut port_map = PortMap::with_capacity(10);
-        port_map.insert(Port::A, 0x0);
-        port_map.insert(Port::B, 0x1);
-        port_map.insert(Port::HubLed, 0x34);
-        port_map.insert(Port::VoltageSensor, 0x3b);
-        port_map.insert(Port::Rssi, 0x3c);
+        // let mut port_map = PortMap::with_capacity(10);
+        // port_map.insert(Port::A, 0x0);
+        // port_map.insert(Port::B, 0x1);
+        // port_map.insert(Port::HubLed, 0x34);
+        // port_map.insert(Port::VoltageSensor, 0x3b);
+        // port_map.insert(Port::Rssi, 0x3c);
 
         let properties = HubProperties {
             mac_address: props.address.to_string(),
             name: props.local_name.unwrap_or_default(),
             rssi: props.tx_power_level.unwrap_or_default(),
-            port_map,
+            // port_map,
             ..Default::default()
         };
-        
 
         Ok(Self {
             peripheral,
@@ -190,7 +186,6 @@ impl GenericHub {
             channels: Default::default()
         })
     }
-
 
 }
 
