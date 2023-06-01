@@ -28,11 +28,16 @@ pub mod error;
 pub mod hubs;
 pub mod notifications;
 mod tests;
+
 pub use hubs::Hub;
+pub use crate::consts::IoTypeId;
+pub use crate::devices::iodevice::IoDevice;
 
 use notifications::{PortValueSingleFormat, PortValueCombinedFormat, NetworkCommand};
 use consts::{BLEManufacturerData, HubType};
+
 pub use error::{Error, OptionContext, Result};
+// pub use consts::IoTypeId;
 
 type HubMutex = Arc<Mutex<Box<dyn Hub>>>;
 type PinnedStream = Pin<Box<dyn Stream<Item = ValueNotification> + Send>>;
@@ -134,7 +139,7 @@ impl PoweredUp {
             let CentralEvent::DeviceDiscovered(id) = event else { continue };
             // get peripheral info
             let peripheral = self.adapter.peripheral(&id).await?;
-            println!("{:?}", peripheral.properties().await?);
+            // println!("{:?}", peripheral.properties().await?);
             let Some(props) = peripheral.properties().await? else { continue };
             if let Some(hub_type) = identify_hub(&props).await? {
                 let hub = DiscoveredHub {

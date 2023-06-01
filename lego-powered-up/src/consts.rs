@@ -92,6 +92,13 @@ pub const LEGO_COLORS: [Color; 11] = [
     Color::Black
 ];
 
+pub mod named_port {
+    pub const A: u8 = 0x00;
+    pub const B: u8 = 0x01;
+    pub const C: u8 = 0x02;
+    pub const D: u8 = 0x03;
+}
+
 // @typedef ButtonState
 // @property {number} PRESSED 0
 // @property {number} RELEASED 1

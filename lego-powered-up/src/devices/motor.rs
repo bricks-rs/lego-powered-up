@@ -3,7 +3,7 @@ use core::fmt::Debug;
 use crate::error::{Error, OptionContext, Result};
 use crate::notifications::NotificationMessage;
 use crate::notifications::InputSetupSingle;
-use crate::notifications::{Power, EndState, WriteDirectModeDataPayload, WriteDirectPayload};
+use crate::notifications::{ WriteDirectModeDataPayload, WriteDirectPayload};
 use crate::notifications::{PortOutputSubcommand, PortOutputCommandFormat, StartupInfo, CompletionInfo};
 use crate::consts::{MotorSensorMode};
 use crate::notifications::{InputSetupCombined, PortInputFormatCombinedFormat, InputSetupCombinedSubcommand};
@@ -19,6 +19,7 @@ use tokio::task::JoinHandle;
 use crate::PinnedStream;
 use crate::HubMutex;
 
+pub use crate::notifications::{Power, EndState};
 
 #[derive(Debug, Copy, Clone)]
 pub enum MotorState{
@@ -87,7 +88,7 @@ pub trait EncoderMotor: Debug + Send + Sync {
     }
 
     // Commands
-    async fn start_power(&mut self, power: Power) -> Result<()> {
+    async fn start_power(&self, power: Power) -> Result<()> {
         let subcommand = PortOutputSubcommand::WriteDirectModeData(
             WriteDirectModeDataPayload::StartPower(power) 
         );
@@ -118,7 +119,7 @@ pub trait EncoderMotor: Debug + Send + Sync {
             });
         crate::hubs::send(self.p().unwrap(), self.c().unwrap(), msg).await
     }
-    async fn start_speed(&mut self, speed: i8, max_power: Power) -> Result<()> {
+    async fn start_speed(&self, speed: i8, max_power: Power) -> Result<()> {
         let subcommand = PortOutputSubcommand::StartSpeed {
             speed,
             max_power,
@@ -132,7 +133,7 @@ pub trait EncoderMotor: Debug + Send + Sync {
                 completion_info: CompletionInfo::NoAction,
                 subcommand,
             });
-        crate::hubs::send(self.p().unwrap(), self.c().unwrap(), msg).await
+            crate::hubs::send(self.p().unwrap(), self.c().unwrap(), msg).await
     }
     async fn start_speed_for_degrees(&mut self, degrees: i32, speed: i8, max_power: Power, end_state: EndState ) -> Result<()> {
         let subcommand = PortOutputSubcommand::StartSpeedForDegrees {

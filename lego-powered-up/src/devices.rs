@@ -20,7 +20,9 @@ use crate::notifications::{InputSetupSingle, PortOutputSubcommand, WriteDirectMo
     PortOutputCommandFormat, StartupInfo, CompletionInfo, InformationRequest, ModeInformationRequest,
     PortInformationType, ModeInformationType, InformationType,  };
 
-pub use crate::consts::*;
+pub use crate::consts::MotorSensorMode;
+pub use crate::consts::IoTypeId;
+
 
 pub mod iodevice;
 pub mod remote;
@@ -28,6 +30,7 @@ pub mod sensor;
 pub mod motor;
 pub mod light;
 pub mod modes;
+
 
 /// Trait that any d
 /// evice may implement. Having a single trait covering
