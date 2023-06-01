@@ -16,7 +16,6 @@ use std::fmt::{self, Debug, Display};
 pub use self::message::NotificationMessage;
 pub mod message;
 
-#[macro_use]
 pub use self::macros::*;
 #[macro_use]
 pub mod macros;

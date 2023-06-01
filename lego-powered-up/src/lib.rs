@@ -1,49 +1,41 @@
-#![allow(unused)]
+// #![allow(unused)]
 use btleplug::api::{
     Central, CentralEvent, Manager as _, Peripheral as _, PeripheralProperties,
     ScanFilter, 
+    ValueNotification
 };
-use btleplug::platform::{Adapter, Manager, PeripheralId, Peripheral};
-use btleplug::api::{Characteristic, Peripheral as _, WriteType};
+use btleplug::platform::{Adapter, Manager, PeripheralId, };
+pub use btleplug;
 
-use async_trait::async_trait;
-use devices::{IoTypeId, MessageType};
-use devices::iodevice::{IoDevice, PortMode};
-use devices::sensor::*;
+// std
 use futures::{stream::StreamExt, Stream};
-use notifications::{PortValueSingleFormat, ValueFormatType, PortValueCombinedFormat, NetworkCommand};
-use num_traits::FromPrimitive;
-use tokio::task::JoinHandle;
-
-use std::collections::HashMap;
-use std::fmt::Debug;
-use core::pin::Pin;
+pub use futures;
 use std::sync::{Arc};    
 use tokio::sync::Mutex;
-use btleplug::api::ValueNotification;
-
+use tokio::sync::broadcast; 
 #[macro_use]
 extern crate log;
 
+// nostd
+use num_traits::FromPrimitive;
+use core::fmt::Debug;
+use core::pin::Pin;
+
+// Crate
 pub mod consts;
 pub mod devices;
 pub mod error;
 pub mod hubs;
 pub mod notifications;
 mod tests;
-
-pub use btleplug;
-pub use error::{Error, OptionContext, Result};
-pub use futures;
-
-use consts::{BLEManufacturerData, HubType};
 pub use hubs::Hub;
 
-use tokio::sync::broadcast::{self, Receiver};
-use crate::notifications::NotificationMessage;
+use notifications::{PortValueSingleFormat, PortValueCombinedFormat, NetworkCommand};
+use consts::{BLEManufacturerData, HubType};
+pub use error::{Error, OptionContext, Result};
+
 type HubMutex = Arc<Mutex<Box<dyn Hub>>>;
 type PinnedStream = Pin<Box<dyn Stream<Item = ValueNotification> + Send>>;
-use crate::hubs::io_event::ChannelNotification;
 
 pub struct PoweredUp {
     adapter: Adapter,
@@ -304,8 +296,8 @@ pub struct ConnectedHub {
     pub kind: HubType,
 }
 impl ConnectedHub {
-    pub async fn setup_hub (created_hub: Box<dyn Hub>) -> Result<(ConnectedHub)> {    
-        let mut connected_hub = ConnectedHub {
+    pub async fn setup_hub (created_hub: Box<dyn Hub>) -> Result<ConnectedHub> {    
+        let connected_hub = ConnectedHub {
             kind: created_hub.kind(),
             name: created_hub.name().await?,                                                    
             mutex: Arc::new(Mutex::new(created_hub)),
@@ -319,7 +311,7 @@ impl ConnectedHub {
         let combinedvalue_sender = broadcast::channel::<PortValueCombinedFormat>(3).0;
         let networkcmd_sender = broadcast::channel::<NetworkCommand>(3).0;
         {
-            let mut lock = &mut connected_hub.mutex.lock().await;
+            let lock = &mut connected_hub.mutex.lock().await;
             let stream_to_handler: PinnedStream = lock.peripheral().notifications().await?;    
             lock.channels().singlevalue_sender = Some(singlevalue_sender.clone());
             lock.channels().combinedvalue_sender = Some(combinedvalue_sender.clone());
@@ -332,7 +324,7 @@ impl ConnectedHub {
             singlevalue_sender,
                     combinedvalue_sender,
                     networkcmd_sender
-                ).await;
+                ).await.expect("Error setting up main handler");
             });
         }
         //  TODO    Hub alerts etc.

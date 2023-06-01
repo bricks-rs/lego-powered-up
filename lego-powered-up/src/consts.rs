@@ -6,7 +6,7 @@
 //! types
 
 use num_derive::FromPrimitive;
-use std::{fmt::{self, Display}, hash};
+use std::{fmt::{self, Display}, };
 
 /// ```ignore
 /// @typedef HubType
