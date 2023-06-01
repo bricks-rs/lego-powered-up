@@ -72,7 +72,7 @@ pub async fn io_event_handler(mut stream: PinnedStream, mutex: HubMutex, hub_nam
                             mut tx_combinedvalue: broadcast::Sender<PortValueCombinedFormat>,
                             mut tx_networkcmd: broadcast::Sender<NetworkCommand>
                             ) -> Result<()> {
-    
+    const DIAGNOSTICS: bool = true;
     while let Some(data) = stream.next().await {
         // println!("Received data from {:?} [{:?}]: {:?}", hub_name, data.uuid, data.value);  // Dev use
 
@@ -81,6 +81,18 @@ pub async fn io_event_handler(mut stream: PinnedStream, mutex: HubMutex, hub_nam
             Ok(n) => {
                 // dbg!(&n);
                 match n {
+                    // Forwarded
+                    NotificationMessage::HwNetworkCommands(val) => {
+                        tx_networkcmd.send(val);
+                    }
+                    NotificationMessage::PortValueSingle(val) => {
+                        tx_singlevalue.send(val);
+                    }
+                    NotificationMessage::PortValueCombined(val) => {
+                        tx_combinedvalue.send(val);
+                    }
+                    
+                    // IoDevice collection / configuration
                     NotificationMessage::HubAttachedIo(io_event) => {
                         match io_event {
                             AttachedIo{port, event} => {
@@ -189,30 +201,32 @@ pub async fn io_event_handler(mut stream: PinnedStream, mutex: HubMutex, hub_nam
 
                         }
                     }
-                    NotificationMessage::HubProperties(val) => {}
-                    NotificationMessage::HubActions(val) => {}
-                    NotificationMessage::HubAlerts(val) => {}
-                    NotificationMessage::GenericErrorMessages(val) => {}
-                    NotificationMessage::HwNetworkCommands(val) => {
-                        tx_networkcmd.send(val);
+                    
+                    // Not doing anything with these yet. Alerts and error messages could be useful.
+                    NotificationMessage::HubProperties(val) => {
+                        if DIAGNOSTICS { eprintln!("{:?}", val); }
                     }
-                    NotificationMessage::FwLockStatus(val) => {}
-
-                    NotificationMessage::PortValueSingle(val) => {
-                        tx_singlevalue.send(val);
+                    NotificationMessage::HubActions(val) => {
+                        if DIAGNOSTICS { eprintln!("{:?}", val); }
                     }
-                    NotificationMessage::PortValueCombined(val) => {
-                        tx_combinedvalue.send(val);
+                    NotificationMessage::HubAlerts(val) => {
+                        if DIAGNOSTICS { eprintln!("{:?}", val); }
                     }
-                    NotificationMessage::PortInputFormatSingle(val) => {}
-                    NotificationMessage::PortInputFormatCombinedmode(val) => {}
-                    NotificationMessage::PortOutputCommandFeedback(val ) => {}
-                    NotificationMessage::PortOutputCommandFeedback(val) => {
-                        // portoutputcommandfeedback_sender.send(ChannelNotification { portvaluesingle: (None), 
-                                                                        //   portvaluescombined: (None),
-                                                                        //   portoutputcommandfeedback: (Some(val)) });
+                    NotificationMessage::GenericErrorMessages(val) => {
+                        if DIAGNOSTICS { eprintln!("{:?}", val); }
                     }
-
+                    NotificationMessage::FwLockStatus(val) => {
+                        if DIAGNOSTICS { eprintln!("{:?}", val); }
+                    }
+                    NotificationMessage::PortInputFormatSingle(val) => {
+                        if DIAGNOSTICS { eprintln!("{:?}", val); }
+                    }
+                    NotificationMessage::PortInputFormatCombinedmode(val) => {
+                        if DIAGNOSTICS { eprintln!("{:?}", val); }
+                    }
+                    NotificationMessage::PortOutputCommandFeedback(val ) => {
+                        if DIAGNOSTICS { eprintln!("{:?}", val); }
+                    }
                     _ => ()
                 }
             }
@@ -220,7 +234,6 @@ pub async fn io_event_handler(mut stream: PinnedStream, mutex: HubMutex, hub_nam
                 eprintln!("Parse error: {}", e);
             }
         }
-
     }
     Ok(())  
 }
