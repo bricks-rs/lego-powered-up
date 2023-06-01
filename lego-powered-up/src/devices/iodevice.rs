@@ -322,6 +322,26 @@ impl RcDevice for IoDevice {
     } 
     fn c(&self) -> Option<Characteristic> { self.handles.c.clone() } 
     fn port(&self) -> u8 { self.port }
+    fn get_rx_pvs(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>> {
+        if let Some(sender) = &self.channels.rx_singlevalue_sender {
+            Ok(sender.subscribe())
+        } else {
+            Err(Error::NoneError(String::from("Sender not found"))) 
+        }
+    }
+    fn get_rx_nwc(&self) -> Result<broadcast::Receiver<NetworkCommand>> {
+        if let Some(sender) = &self.channels.rx_networkcmd_sender {
+            Ok(sender.subscribe())
+        } else {
+            Err(Error::NoneError(String::from("Sender not found"))) 
+        }
+    }
+    fn check(&self) -> Result<()> {
+        match self.kind {
+            IoTypeId::RemoteButtons => Ok(()),
+            _ => Err(Error::HubError(String::from("Not a remote control device"))),
+        } 
+    } 
 }
 
 impl VisionSensor for IoDevice {
