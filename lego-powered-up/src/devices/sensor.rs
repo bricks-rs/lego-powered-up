@@ -1,20 +1,17 @@
-
-use crate::error::{Error, OptionContext, Result};
 use async_trait::async_trait;
 use core::fmt::Debug;
-use std::convert;
-use crate::notifications::{NotificationMessage, ValueFormatType, PortValueSingleFormat, DatasetType};
-use crate::notifications::InputSetupSingle;
+
 use btleplug::api::{Characteristic, Peripheral as _, WriteType};
 use btleplug::platform::Peripheral;
 use tokio::sync::broadcast;
 use tokio::task::JoinHandle;
 
 use crate::IoTypeId;
+use crate::error::{Error, OptionContext, Result};
+use crate::notifications::{NotificationMessage, ValueFormatType, PortValueSingleFormat, DatasetType, InputSetupSingle};
 
-#[macro_use]
-use crate::notifications::macros::*;
-
+// #[macro_use]
+// use crate::notifications::macros::*;
 
 #[async_trait]
 pub trait GenericSensor: Debug + Send + Sync {

@@ -8,11 +8,11 @@
 use std::collections::{BTreeMap};
 use std::fmt;
 
-use btleplug::platform::{Peripheral};
-use btleplug::api::{Characteristic,};
+use btleplug::platform::Peripheral;
+use btleplug::api::Characteristic;
 use tokio::sync::broadcast;
 
-use crate::consts::IoTypeId;
+use crate::IoTypeId;
 use crate::notifications::{ValueFormatType, DatasetType, MappingValue, PortValueSingleFormat, PortValueCombinedFormat, NetworkCommand};
 use crate::devices::remote::RcDevice;
 use crate::devices::sensor::*;
@@ -61,13 +61,7 @@ pub struct PortMode {
     // pub sensor_cabability: [u8; 6],  // Sensor capabilities as bits. No help from docs how to interpret, just ignore it for now.
     pub value_format: ValueFormatType,
 }
-// #[derive(Debug, Default, Clone)]
-// pub struct ValueFormat {
-//     pub dataset_count: u8,
-//     pub dataset_type: DatasetType,
-//     pub total_figures: u8,
-//     pub decimals: u8
-// }
+
 
 impl IoDevice {
     pub fn new(kind: IoTypeId, port: u8) -> Self {
@@ -311,8 +305,6 @@ pub enum Mapping {
 //
 // Devices
 //
-
-
 impl RcDevice for IoDevice {
     fn p(&self) -> Option<Peripheral> {
         match self.kind {

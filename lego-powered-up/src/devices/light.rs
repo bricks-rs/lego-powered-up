@@ -1,17 +1,19 @@
 use async_trait::async_trait;
 use core::fmt::Debug;
+
+use btleplug::api::{Characteristic, };
+use btleplug::platform::Peripheral;
+
+pub use crate::consts::Color;
+use crate::devices::modes;
 use crate::{Error, Result};
 use crate::notifications::NotificationMessage;
 use crate::notifications::InputSetupSingle;
-use btleplug::api::{Characteristic, };
-use btleplug::platform::Peripheral;
 use crate::notifications::PortOutputSubcommand;
 use crate::notifications::PortOutputCommandFormat;
 use crate::notifications::WriteDirectModeDataPayload;
 use crate::notifications::StartupInfo;
 use crate::notifications::CompletionInfo;
-pub use crate::consts::Color;
-use crate::devices::modes;
 
 #[async_trait]
 pub trait HubLed: Debug + Send + Sync {

@@ -1,22 +1,13 @@
 use async_trait::async_trait;
 use core::fmt::Debug;
 use crate::{Error, Result};
-use crate::notifications::NotificationMessage;
-use crate::notifications::InputSetupSingle;
-use btleplug::api::{Characteristic, Peripheral as _, WriteType};
+use btleplug::api::{Characteristic};
 use btleplug::platform::Peripheral;
-use core::pin::Pin;
-use crate::futures::stream::{Stream, StreamExt};
-use crate::btleplug::api::ValueNotification;
-use std::sync::{Arc};
-use tokio::sync::Mutex;
 use tokio::sync::broadcast;
-use tokio::sync::mpsc;
+// use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
-type HubMutex = Arc<Mutex<Box<dyn crate::Hub>>>;
-type PinnedStream = Pin<Box<dyn Stream<Item = ValueNotification> + Send>>;
-use crate::{notifications::*};
-use crate::notifications::NetworkCommand::ConnectionRequest;
+use crate::notifications::{ NetworkCommand::{self, ConnectionRequest}, PortValueSingleFormat, NotificationMessage,
+                            InputSetupSingle, ButtonState};
 
 struct MsgWrapper {
     pvs_msg: Option<PortValueSingleFormat>,
@@ -134,8 +125,6 @@ pub trait RcDevice: Debug + Send + Sync {
                 Ok((rx, task))
       
     }
-
-    
 
     async fn remote_connect_with_green(&self) -> Result<(broadcast::Receiver<RcButtonState>, JoinHandle<()> )> {
         match self.check() {

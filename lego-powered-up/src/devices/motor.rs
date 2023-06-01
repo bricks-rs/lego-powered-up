@@ -1,5 +1,11 @@
 use async_trait::async_trait;
 use core::fmt::Debug;
+
+use btleplug::api::{Characteristic};
+use btleplug::platform::Peripheral;
+use tokio::sync::broadcast;
+use tokio::task::JoinHandle;
+
 use crate::error::{Error, OptionContext, Result};
 use crate::notifications::NotificationMessage;
 use crate::notifications::InputSetupSingle;
@@ -8,25 +14,15 @@ use crate::notifications::{PortOutputSubcommand, PortOutputCommandFormat, Startu
 use crate::consts::{MotorSensorMode};
 use crate::notifications::{InputSetupCombined, PortInputFormatCombinedFormat, InputSetupCombinedSubcommand};
 use crate::notifications::{PortValueSingleFormat, PortValueCombinedFormat};
-
-use btleplug::api::{Characteristic, Peripheral as _, WriteType};
-use btleplug::platform::Peripheral;
-
-use futures::stream::StreamExt;
-use tokio::sync::broadcast;
-use tokio::task::JoinHandle;
-
-use crate::PinnedStream;
-use crate::HubMutex;
-
 pub use crate::notifications::{Power, EndState};
 
-#[derive(Debug, Copy, Clone)]
-pub enum MotorState{
-    Speed(i8),
-    Pos(i32),
-    Apos(i32)
-}
+
+// #[derive(Debug, Copy, Clone)]
+// pub enum MotorState{
+//     Speed(i8),
+//     Pos(i32),
+//     Apos(i32)
+// }
 
 #[async_trait]
 pub trait EncoderMotor: Debug + Send + Sync {

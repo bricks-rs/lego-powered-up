@@ -1,22 +1,22 @@
 
 use core::pin::Pin;
-use std::collections::HashMap;
-use crate::consts::MessageType;
-use crate::futures::stream::{Stream, StreamExt};
-use crate::btleplug::api::ValueNotification;
+use futures::stream::{Stream, StreamExt};
 
+use std::collections::HashMap;
+use std::fmt::Debug;
 use std::sync::{Arc};
 use tokio::sync::Mutex;
 use tokio::sync::broadcast;
-use crate::error;
+use btleplug::api::ValueNotification;
+
+use crate::IoDevice;
+use crate::consts::MessageType;
 use crate::error::{Error, Result};
+use crate::notifications::*;
 
 type HubMutex = Arc<Mutex<Box<dyn crate::Hub>>>;
 type PinnedStream = Pin<Box<dyn Stream<Item = ValueNotification> + Send>>;
 
-use crate::{notifications::*};
-use crate::devices::iodevice::*;
-use std::fmt::Debug;
 
   // // Musings on notfication-message parsing and handling
         // I realized that the design where there is a handler like this for each enabled port (where an iodevice has been
