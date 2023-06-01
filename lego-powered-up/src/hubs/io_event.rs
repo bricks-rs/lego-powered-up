@@ -82,16 +82,16 @@ pub async fn io_event_handler(mut stream: PinnedStream, mutex: HubMutex, hub_nam
                 // dbg!(&n);
                 match n {
                     // Forwarded
-                    NotificationMessage::HwNetworkCommands(val) => {
-                        tx_networkcmd.send(val);
-                    }
                     NotificationMessage::PortValueSingle(val) => {
                         tx_singlevalue.send(val);
                     }
                     NotificationMessage::PortValueCombined(val) => {
                         tx_combinedvalue.send(val);
                     }
-                    
+                    NotificationMessage::HwNetworkCommands(val) => {
+                        tx_networkcmd.send(val);
+                    }
+                     
                     // IoDevice collection / configuration
                     NotificationMessage::HubAttachedIo(io_event) => {
                         match io_event {
@@ -225,7 +225,7 @@ pub async fn io_event_handler(mut stream: PinnedStream, mutex: HubMutex, hub_nam
                         if DIAGNOSTICS { eprintln!("{:?}", val); }
                     }
                     NotificationMessage::PortOutputCommandFeedback(val ) => {
-                        if DIAGNOSTICS { eprintln!("{:?}", val); }
+                        // if DIAGNOSTICS { eprintln!("{:?}", val); }
                     }
                     _ => ()
                 }

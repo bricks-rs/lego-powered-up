@@ -2,33 +2,30 @@
 // https://creativecommons.org/publicdomain/zero/1.0/
 
 #![allow(unused)]
-use std::time::Duration;
-use tokio::time::sleep as tokiosleep;
-
-// Powered up
-use lego_powered_up::{PoweredUp, Hub, HubFilter, ConnectedHub, IoDevice}; 
-
-// Access hub 
-use std::sync::{Arc};
-use tokio::sync::Mutex;
-type HubMutex = Arc<Mutex<Box<dyn Hub>>>;
-
-// / Access devices
-use lego_powered_up::{ error::Error};  //devices::Device,
-use tokio::sync::broadcast;
-use tokio::sync::mpsc;
-
-// RC
-// use lego_powered_up::hubs::remote::*;
-
-// Handle notifications
 use core::pin::Pin;
-use lego_powered_up::futures::stream::{Stream, StreamExt};
-use lego_powered_up::btleplug::api::ValueNotification;
-type PinnedStream = Pin<Box<dyn Stream<Item = ValueNotification> + Send>>;
+use core::time::Duration;
+use futures::stream::{Stream, StreamExt};
 
+use std::sync::{Arc};
+use tokio::time::sleep as tokiosleep;
+use tokio::sync::Mutex;
+use tokio::sync::broadcast;
+// use tokio::sync::mpsc;
+use btleplug::api::ValueNotification;
+
+use lego_powered_up::{PoweredUp, Hub, HubFilter, ConnectedHub, IoDevice}; 
+use lego_powered_up::{ error::Error};  
+use lego_powered_up::consts::MotorSensorMode;
+use lego_powered_up::consts::named_port;
+use lego_powered_up::devices::motor::EncoderMotor;
 use lego_powered_up::devices::remote::RcDevice;
 use lego_powered_up::devices::remote::RcButtonState;
+use lego_powered_up::devices::sensor::GenericSensor;
+use lego_powered_up::devices::modes;
+use lego_powered_up::notifications::Power;
+
+type HubMutex = Arc<Mutex<Box<dyn Hub>>>;
+type PinnedStream = Pin<Box<dyn Stream<Item = ValueNotification> + Send>>;
 
 
 #[tokio::main]
@@ -37,7 +34,7 @@ async fn main() -> anyhow::Result<()> {
     println!("Looking for BT adapter and initializing PoweredUp with found adapter");
     let mut pu = PoweredUp::init().await?;
 
-    let hub_count = 1;
+    let hub_count = 2;
     println!("Waiting for hubs...");
     let discovered_hubs = pu.wait_for_hubs_filter(HubFilter::Null, &hub_count).await?;
     println!("Discovered {} hubs, trying to connect...", &hub_count);
@@ -50,7 +47,7 @@ async fn main() -> anyhow::Result<()> {
     }
 
     let rc_hub: ConnectedHub = h.remove(0);
-    let main_hub: ConnectedHub;
+    let main_hub: ConnectedHub = h.remove(0);
     // match h[0].kind {
     //     lego_powered_up::consts::HubType::RemoteControl => {
     //         rc_hub = h.remove(0);
@@ -66,93 +63,141 @@ async fn main() -> anyhow::Result<()> {
     let rc: IoDevice;
     {
         let lock = rc_hub.mutex.lock().await;
-        rc = lock.io_from_port(0x00).await?;
+        rc = lock.io_from_port(named_port::A).await?;
     }    
     let (mut rc_rx, _) = rc.remote_connect_with_green().await?;
 
-    tokio::spawn(async move {
-        while let Ok(data) = rc_rx.recv().await {
-            match data {
-                RcButtonState::Aup => { println!("A side released") }
-                RcButtonState::Aplus => { println!("A plus") }
-                RcButtonState::Ared => { println!("A red") }
-                RcButtonState::Aminus => { println!("A minus") }
-                RcButtonState::Bup => { println!("B side released") }
-                RcButtonState::Bplus => { println!("B plus") }
-                RcButtonState::Bred => { println!("B red") }
-                RcButtonState::Bminus => { println!("B minus") }
-                RcButtonState::Green => { println!("Green pressed") }
-                RcButtonState::GreenUp => { println!("Green released") }
-                _ => ()
-            }
-        }
+    // Set up motor feedback
+    let motor: IoDevice;
+    {
+        let lock = main_hub.mutex.lock().await;
+        motor = lock.io_from_port(named_port::A).await?;
+    }
+    motor.motor_sensor_enable(MotorSensorMode::Pos, 1).await?;
+    let (mut motor_rx, _) = motor.enable_32bit_sensor(modes::InternalMotorTacho::POS, 1).await?;
+
+    let motor_control = tokio::spawn(async move {
+        const MAX_POWER: Power = Power::Cw((100));
+        let mut set_limit: (Option<i32>, Option<i32>) = (None, None);
+        let mut set_speed: i8 = 20;
+        let mut pos: i32 = 0;
+        let mut at_limit: (bool, bool) = (false, false);
+        let mut cmd: (bool, bool) = (false, false);
+        loop {
+            tokio::select! {
+                Ok(msg) = rc_rx.recv() => {
+                    match msg {
+                        RcButtonState::Aup => { 
+                            motor.start_power(Power::Brake).await;
+                            cmd = (false, false);
+                        }
+                        RcButtonState::Aminus => { 
+                            if !at_limit.0 {
+                                cmd.0 = true;
+                                motor.start_speed(-set_speed, MAX_POWER).await;
+                            }
+                        }
+                        RcButtonState::Aplus => { 
+                            if !at_limit.1 { 
+                                cmd.1 = true;
+                                motor.start_speed(set_speed, MAX_POWER).await; 
+                            }
+                        }
+                        RcButtonState::Ared => { 
+                            match set_limit.0 {
+                                None => {
+                                    set_limit.0 = Some(pos);
+                                    println!("Left limit set: {:?}", pos);
+                                }
+                                Some(_) => { 
+                                    set_limit.0 = None;
+                                    println!("Left limit cancelled");
+                                } 
+                            }
+                        }
+                        RcButtonState::Bred => { 
+                            match set_limit.1 {
+                                None => {
+                                    set_limit.1 = Some(pos);
+                                    println!("Right limit set: {:?}", pos);
+                                }
+                                Some(_) => { 
+                                    set_limit.1 = None;
+                                    println!("Right limit cancelled");
+                                }
+                            }
+                        }
+                        RcButtonState::Bplus => { 
+                            if set_speed < 96 { 
+                                set_speed += 5; 
+                                println!("Set speed: {}", set_speed);
+                            }
+                        }
+                        RcButtonState::Bminus => { 
+                            if set_speed > 4 { 
+                                set_speed -= 5; 
+                                println!("Set speed: {}", set_speed);
+                            } 
+                        }
+
+                        // RcButtonState::Bup => { println!("B side released"); }
+                        RcButtonState::Green => { println!("Green pressed");
+                            println!("Exiting");
+                            break;
+                        }
+                        // RcButtonState::GreenUp => { println!("Green released") }
+                        _ => ()
+                    }
+                }
+                Ok(msg) = motor_rx.recv() => {
+                    pos = msg[0];
+                    match set_limit.0 {
+                        None => (),
+                        Some(limit) => {
+                            if (pos <= limit) & cmd.0 {
+                                motor.start_power(Power::Brake).await;
+                                at_limit.0 = true;
+                                println!("Left LIMIT: {}", limit);
+                            } else {
+                                at_limit.0 = false;
+                            }
+                        }
+                    }
+                    match set_limit.1 {
+                        None => (),
+                        Some(limit) => {
+                            if (pos >= limit) & cmd.1 {
+                                motor.start_power(Power::Brake).await;
+                                at_limit.1 = true;
+                                println!("Right LIMIT: {}", limit);
+                            } else {
+                                at_limit.1 = false;
+                            }
+
+                        }
+                    }
+                    println!("Pos: {}", pos);
+                }
+                else => { break }    
+            };
+        }    
     });
 
-    // Set up motor feedback
-    // let setup = ConnectedHub::set_up_handler(main_hub.mutex.clone()).await;
-    // let motor1 = tokio::spawn(async move { motor_handler(setup.0, setup.1, setup.2).await; });
-    // use lego_powered_up::devices::MotorSensorMode;
-    // {
-    //     let lock = main_hub.mutex.lock().await;
-    //     let mut motor_c = lock.enable_from_port(0x02).await?;
-    //     motor_c.motor_sensor_enable(MotorSensorMode::Pos, 1).await?;
-    // }
+    motor_control.await;
 
-
-
-    // Start ui
-    let mutex = rc_hub.mutex.clone();
-    ui(mutex).await;
-
-    // Cleanup after ui exit
-    let lock = rc_hub.mutex.lock().await;
-    println!("Disconnect from hub `{}`", lock.name().await?);
-    lock.disconnect().await?;
+    // Cleanup 
+    println!("Disconnect from hub `{}`", rc_hub.name);
+    {
+        let lock = rc_hub.mutex.lock().await;
+        lock.disconnect().await?;
+    }
+    println!("Disconnect from hub `{}`", main_hub.name);
+    {
+        let lock = main_hub.mutex.lock().await;
+        lock.disconnect().await?;
+    }
+    
     println!("Done!");
 
     Ok(())
-}
-
-
-
-
-
-
-
-pub async fn ui(mutex: HubMutex) -> () {
-    use text_io::read;
-    loop {
-        print!("(l)ist, <port> or (q)uit > ");
-        let line: String = read!("{}\n");
-        if line.len() == 1 {
-            continue;
-        } 
-        else if line.contains("l") {
-            let mut lock = mutex.lock().await;
-            for device in lock.connected_io().values() {
-                println!("{}", device);
-            }
-            continue;
-        } 
-        else if line.contains("q") {
-            break
-        }
-        else {
-            let input = line.trim().parse::<u8>();
-            // println!("Input: {}", input);
-            match input {
-                Ok(num) => {
-                    let mut lock = mutex.lock().await;
-                    let o = lock.connected_io().get(&num);
-                    match o {
-                        Some(device) => {dbg!(device);}
-                        None => {println!("Device not found");}
-                    }
-                }
-                Err(e) => {
-                    println!("Not a number: {}", e);
-                }
-            }
-        }
-    }
 }
