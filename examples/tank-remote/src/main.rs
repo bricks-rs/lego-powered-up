@@ -1,18 +1,22 @@
 // Any copyright is dedicated to the Public Domain.
 // https://creativecommons.org/publicdomain/zero/1.0/
 
+use lego_powered_up::{PoweredUp, ConnectedHub, IoTypeId, IoDevice,
+    consts,
+    devices::light::{self, HubLed},
+    devices::motor::{EncoderMotor, Power},
+    Result as LpuResult 
+};
+use core::time::Duration;
 use console_engine::{pixel, Color, ConsoleEngine, KeyCode};
 use eyre::Result;
-use lego_powered_up::{
-    devices::Device, notifications::Power, PoweredUp, Result as LpuResult,
-};
 use std::fmt::{self, Display, Formatter};
 
 struct Robot {
     left_speed: i8,
     right_speed: i8,
-    left_motor: Box<dyn Device>,
-    right_motor: Box<dyn Device>,
+    left_motor: IoDevice,
+    right_motor: IoDevice,
 }
 
 impl Display for Robot {
@@ -23,8 +27,8 @@ impl Display for Robot {
 
 impl Robot {
     pub fn new(
-        left_motor: Box<dyn Device>,
-        right_motor: Box<dyn Device>,
+        left_motor: IoDevice,
+        right_motor: IoDevice,
     ) -> Self {
         Self {
             left_speed: 0,
@@ -42,25 +46,25 @@ impl Robot {
 
     pub async fn forward(&mut self) -> LpuResult<()> {
         self.left_speed = 50;
-        self.right_speed = -50;
+        self.right_speed = 50;
         self.commit().await
     }
 
     pub async fn backward(&mut self) -> LpuResult<()> {
         self.left_speed = -50;
-        self.right_speed = 50;
+        self.right_speed = -50;
         self.commit().await
     }
 
     pub async fn left(&mut self) -> LpuResult<()> {
         self.left_speed = -50;
-        self.right_speed = -50;
+        self.right_speed = 50;
         self.commit().await
     }
 
     pub async fn right(&mut self) -> LpuResult<()> {
         self.left_speed = 50;
-        self.right_speed = 50;
+        self.right_speed = -50;
         self.commit().await
     }
 
@@ -81,26 +85,37 @@ fn key(engine: &mut ConsoleEngine, key: KeyCode) -> bool {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    println!("Searching for hubs...");
+    println!("Listening for hubs...");
     let mut pu = PoweredUp::init().await?;
     let hub = pu.wait_for_hub().await?;
 
     println!("Connecting to hub `{}`", hub.name);
-    let hub = pu.create_hub(&hub).await?;
+    let hub = ConnectedHub::setup_hub
+                                        (pu.create_hub(&hub).await.expect("Error creating hub"))
+                                        .await.expect("Error setting up hub");
+    tokio::time::sleep(Duration::from_secs(1)).await;  //Wait for attached devices to be collected
 
+    // Devices to be used
+    let hub_led: IoDevice;
+    let motor_a: IoDevice;
+    let motor_b: IoDevice;
+    {
+        let lock = hub.mutex.lock().await;
+        hub_led = lock.io_from_kind(IoTypeId::HubLed).await?;
+        motor_a = lock.io_from_port(consts::named_port::A).await?; 
+        motor_b = lock.io_from_port(consts::named_port::B).await?; 
+    }    
+    
     println!("Change the hub LED to green");
-    let mut hub_led = hub.port(lego_powered_up::hubs::Port::HubLed).await?;
-    hub_led.set_rgb(&[0, 0xff, 0]).await?;
-
-    let motor_c = hub.port(lego_powered_up::hubs::Port::C).await?;
-    let motor_d = hub.port(lego_powered_up::hubs::Port::D).await?;
+    hub_led.set_hubled_mode(light::HubLedMode::Colour).await?;
+    hub_led.set_hubled_color(consts::Color::Green).await?;
 
     // initializes a screen of 20x10 characters with a target of 3 frames
     // per second
     // coordinates will range from [0,0] to [19,9]
     let mut engine = console_engine::ConsoleEngine::init(20, 20, 5)?;
 
-    let mut robot = Robot::new(motor_c, motor_d);
+    let mut robot = Robot::new(motor_a, motor_b);
 
     loop {
         //TODO ascii art robot
@@ -133,8 +148,10 @@ async fn main() -> Result<()> {
         engine.draw(); // draw the screen
     }
 
-    hub.disconnect().await?;
-
+    {
+        let lock = hub.mutex.lock().await;
+        lock.disconnect().await?;
+    }
     println!("Exit successful");
 
     Ok(())
