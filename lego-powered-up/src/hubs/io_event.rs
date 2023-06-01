@@ -38,7 +38,7 @@ use std::fmt::Debug;
         // We'll start by splitting out those three to to senders i think.  
 
 
-// There's surely a better way to do this with generics
+//Deprecated
 #[derive(Debug, Default, Clone)]
 pub struct ChannelNotification {
     pub portvaluesingle: Option<PortValueSingleFormat>,
@@ -46,23 +46,26 @@ pub struct ChannelNotification {
     pub portoutputcommandfeedback: Option<PortOutputCommandFeedbackFormat>
 }
 
-#[derive(Debug, Default, Clone)]
-pub struct ValWrap {
-    pub uint8: Option<Vec<u8>>,
-    pub uint16: Option<Vec<u16>>,
-    pub uint32: Option<Vec<u32>>,
-    pub float32: Option<Vec<f32>>,
-}
-impl ValWrap {
-    pub fn new() -> Self {
-        Self {
-            uint8: None,
-            uint16: None,
-            uint32: None,
-            float32: None, 
-        }
-    }
-}
+// This was an idea for generic tasking, went instead with separate functions
+// for the types (trait GenericSensor in devices::sensor). That could surely
+// be bettered with generic types, but low priority right now. 
+// #[derive(Debug, Default, Clone)]
+// pub struct ValWrap {
+//     pub uint8: Option<Vec<u8>>,
+//     pub uint16: Option<Vec<u16>>,
+//     pub uint32: Option<Vec<u32>>,
+//     pub float32: Option<Vec<f32>>,
+// }
+// impl ValWrap {
+//     pub fn new() -> Self {
+//         Self {
+//             uint8: None,
+//             uint16: None,
+//             uint32: None,
+//             float32: None, 
+//         }
+//     }
+// }
 
 pub async fn io_event_handler(mut stream: PinnedStream, mutex: HubMutex, hub_name: String, 
                             mut tx_singlevalue: broadcast::Sender<PortValueSingleFormat>,

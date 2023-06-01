@@ -11,12 +11,24 @@ use crate::notifications::WriteDirectModeDataPayload;
 use crate::notifications::StartupInfo;
 use crate::notifications::CompletionInfo;
 pub use crate::consts::Color;
+use crate::devices::modes;
 
 #[async_trait]
 pub trait HubLed: Debug + Send + Sync {
     fn p(&self) -> Option<Peripheral>;
     fn c(&self) -> Option<Characteristic>;
     fn port(&self) -> u8;
+
+    async fn set_port_mode(&self, mode: u8, delta: u32, notification_enabled: bool) -> Result<()> {
+        let mode_set_msg =
+            NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
+                port_id: self.port(),
+                mode, 
+                delta,
+                notification_enabled,
+            });
+        crate::hubs::send(self.p().unwrap(), self.c().unwrap(), mode_set_msg).await
+    }
 
     async fn set_hubled_mode(&self, mode: HubLedMode) -> Result<()> {
         let mode_set_msg =

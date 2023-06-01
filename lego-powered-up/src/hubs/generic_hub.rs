@@ -101,7 +101,7 @@ impl Hub for GenericHub {
     }
 
     //TODO: Put actual port_id / kind in error msgs
-    async fn get_from_port(&self, port_id: u8) -> Result<IoDevice> {
+    async fn io_from_port(&self, port_id: u8) -> Result<IoDevice> {
         match self.connected_io.get(&port_id) {
                 Some(connected_device) => { 
                     let mut d = connected_device.clone();
@@ -120,7 +120,7 @@ impl Hub for GenericHub {
                 None => { Err(Error::HubError(String::from("No device on port {port_id}"))) }
             }
     }
-    async fn get_from_kind(&self, get_kind: IoTypeId) -> Result<IoDevice> {
+    async fn io_from_kind(&self, get_kind: IoTypeId) -> Result<IoDevice> {
         let mut found: Vec<&IoDevice> = self.connected_io.values().filter(|&x| x.kind == get_kind).collect();
         match found.len() {
             0 => {

@@ -122,8 +122,8 @@ pub trait Hub: Debug + Send + Sync {
 
     async fn port(&self, port_id: Port) -> Result<Box<dyn Device>>;             //Deprecated
 
-    async fn get_from_port(&self, port_id: u8) -> Result<IoDevice>;   
-    async fn get_from_kind(&self, kind: IoTypeId) -> Result<IoDevice>;   
+    async fn io_from_port(&self, port_id: u8) -> Result<IoDevice>;   
+    async fn io_from_kind(&self, kind: IoTypeId) -> Result<IoDevice>;   
 
 }
 

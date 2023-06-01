@@ -41,10 +41,6 @@ pub struct Handles {
 
 #[derive(Debug, Default, Clone)]
 pub struct Channels {
-    pub tx_8bit: Option<tokio::sync::broadcast::Sender<Vec<u8>>>,
-    pub tx_16bit: Option<tokio::sync::broadcast::Sender<Vec<u16>>>,
-    pub tx_32bit: Option<tokio::sync::broadcast::Sender<Vec<u32>>>,
-    pub tx_float: Option<tokio::sync::broadcast::Sender<Vec<f32>>>,
     pub rx_singlevalue_sender: Option<tokio::sync::broadcast::Sender<PortValueSingleFormat>>, 
     pub rx_combinedvalue_sender: Option<tokio::sync::broadcast::Sender<PortValueCombinedFormat>>,
     pub rx_networkcmd_sender: Option<tokio::sync::broadcast::Sender<NetworkCommand>>,
@@ -314,6 +310,7 @@ pub enum Mapping {
 //
 // Devices
 //
+
 
 impl RcDevice for IoDevice {
     fn p(&self) -> Option<Peripheral> {

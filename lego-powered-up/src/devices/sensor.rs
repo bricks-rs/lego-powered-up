@@ -54,11 +54,11 @@ pub trait GenericSensor: Debug + Send + Sync {
         match self.get_rx() {
             Ok(mut rx_from_main) => { 
                 let task = tokio::spawn(async move {
-                    while let Ok(data) = rx_from_main.recv().await {
-                        if data.port_id != port_id {
+                    while let Ok(msg) = rx_from_main.recv().await {
+                        if msg.port_id != port_id {
                             continue;
                         }
-                        tx.send(data.data);
+                        tx.send(msg.data);
                         
                         // let converted_data = data.data.into_iter().map(|x| x as i8).collect();
                         // tx.send(converted_data);
@@ -67,7 +67,7 @@ pub trait GenericSensor: Debug + Send + Sync {
 
                 Ok((rx, task))
             }
-            _ => Err(Error::NoneError((String::from("Something went wrong"))))
+            _ => Err(Error::NoneError((String::from("No sender in device cache"))))
         }
 
     }
@@ -112,7 +112,7 @@ pub trait GenericSensor: Debug + Send + Sync {
 
                 Ok((rx, task))
             }
-            _ => Err(Error::NoneError((String::from("Something went wrong"))))
+            _ => Err(Error::NoneError((String::from("No sender in device cache"))))
         }
     }
 
@@ -150,7 +150,7 @@ pub trait GenericSensor: Debug + Send + Sync {
 
                 Ok((rx, task))
             }
-            _ => Err(Error::NoneError((String::from("Something went wrong"))))
+            _ => Err(Error::NoneError((String::from("No sender in device cache"))))
         }
     }
 
