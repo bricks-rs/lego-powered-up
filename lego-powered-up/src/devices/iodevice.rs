@@ -10,6 +10,7 @@ use std::fmt;
 
 use btleplug::platform::{Adapter, Manager, PeripheralId, Peripheral};
 use btleplug::api::{Characteristic, Peripheral as _, WriteType};
+use tokio::sync::broadcast;
 
 use crate::consts::IoTypeId;
 use crate::notifications::{ValueFormatType, DatasetType, MappingValue, PortValueSingleFormat, PortValueCombinedFormat, NetworkCommand};
@@ -18,7 +19,7 @@ use crate::devices::sensor::*;
 use crate::devices::motor::*;
 use crate::devices::light::*;
 use crate::{Error, Result};
-use tokio::sync::broadcast;
+
 
 type ModeId = u8;
 

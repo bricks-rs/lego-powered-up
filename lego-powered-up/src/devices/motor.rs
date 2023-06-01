@@ -38,7 +38,7 @@ pub trait EncoderMotor: Debug + Send + Sync {
     fn get_rx_combined(&self) -> Result<broadcast::Receiver<PortValueCombinedFormat>>;
 
     // Settings
-    async fn preset_encoder(&mut self, position: i32) -> Result<()> {
+    async fn preset_encoder(&self, position: i32) -> Result<()> {
         let mode_set_msg =
             NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
                 port_id: 0x01, // Port B
@@ -61,7 +61,7 @@ pub trait EncoderMotor: Debug + Send + Sync {
         crate::hubs::send(self.p().unwrap(), self.c().unwrap(), msg).await
     }
 
-    async fn set_acc_time(&mut self, time: i16, profile_number: i8) -> Result<()> {
+    async fn set_acc_time(&self, time: i16, profile_number: i8) -> Result<()> {
         let subcommand = PortOutputSubcommand::SetAccTime { time, profile_number, };
 
         let msg =
@@ -74,7 +74,7 @@ pub trait EncoderMotor: Debug + Send + Sync {
         crate::hubs::send(self.p().unwrap(), self.c().unwrap(), msg).await
     }
 
-    async fn set_dec_time(&mut self, time: i16, profile_number: i8) -> Result<()> {
+    async fn set_dec_time(&self, time: i16, profile_number: i8) -> Result<()> {
         let subcommand = PortOutputSubcommand::SetDecTime { time, profile_number, };
 
         let msg =
@@ -102,7 +102,7 @@ pub trait EncoderMotor: Debug + Send + Sync {
             });
         crate::hubs::send(self.p().unwrap(), self.c().unwrap(), msg).await
     }
-    async fn start_power2(&mut self, power1: Power, power2: Power) -> Result<()> {
+    async fn start_power2(&self, power1: Power, power2: Power) -> Result<()> {
         let subcommand = PortOutputSubcommand::WriteDirectModeData(
             WriteDirectModeDataPayload::StartPower2 {
                 power1,
@@ -135,7 +135,7 @@ pub trait EncoderMotor: Debug + Send + Sync {
             });
             crate::hubs::send(self.p().unwrap(), self.c().unwrap(), msg).await
     }
-    async fn start_speed_for_degrees(&mut self, degrees: i32, speed: i8, max_power: Power, end_state: EndState ) -> Result<()> {
+    async fn start_speed_for_degrees(&self, degrees: i32, speed: i8, max_power: Power, end_state: EndState ) -> Result<()> {
         let subcommand = PortOutputSubcommand::StartSpeedForDegrees {
             degrees,
             speed,
@@ -166,7 +166,7 @@ pub trait EncoderMotor: Debug + Send + Sync {
             });
         crate::hubs::send(self.p().unwrap(), self.c().unwrap(), mode_set_msg).await
     }
-    async fn motor_sensor_disable(&mut self) -> Result<()> {
+    async fn motor_sensor_disable(&self) -> Result<()> {
         let mode_set_msg =
             NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
                 port_id: self.port(),
@@ -176,7 +176,7 @@ pub trait EncoderMotor: Debug + Send + Sync {
             });
         crate::hubs::send(self.p().unwrap(), self.c().unwrap(), mode_set_msg).await
     }
-    async fn motor_combined_sensor_enable(&mut self, primary_mode: MotorSensorMode, speed_delta: u32, position_delta: u32) 
+    async fn motor_combined_sensor_enable(&self, primary_mode: MotorSensorMode, speed_delta: u32, position_delta: u32) 
                                             -> Result<(broadcast::Receiver<Vec<u8>>, JoinHandle<()> )> {
         // Step 1: Lock device
         let subcommand = InputSetupCombinedSubcommand::LockLpf2DeviceForSetup {};     

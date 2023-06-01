@@ -31,6 +31,7 @@ pub trait HubLed: Debug + Send + Sync {
     }
 
     async fn set_hubled_mode(&self, mode: HubLedMode) -> Result<()> {
+        // TODO: check
         let mode_set_msg =
             NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
                 port_id: self.port(),
