@@ -94,7 +94,7 @@ async fn main() -> anyhow::Result<()> {
     let mut rc_volt: IoDevice;
     {
         let lock = rc_hub.mutex.lock().await;
-        rc_volt = lock.get_from_kind(IoTypeId::Voltage).await?;
+        rc_volt = lock.io_from_kind(IoTypeId::Voltage).await?;
     }    
     let (mut voltage_rx, jh) = rc_volt.enable_16bit_sensor(0x00, 1).await.unwrap();
     tokio::spawn(async move {
@@ -130,7 +130,7 @@ async fn main() -> anyhow::Result<()> {
     let mut motor_b: IoDevice;
     {
         let lock = rc_hub.mutex.lock().await;
-        motor_b = lock.get_from_port(1).await?;
+        motor_b = lock.io_from_port(1).await?;
     }    
     let (mut motor_b_rx, jh) = motor_b.enable_32bit_sensor(modes::Voltage::VLT_L, 1).await.unwrap();
     // tokio::spawn(async move {

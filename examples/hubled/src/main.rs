@@ -21,6 +21,7 @@ type HubMutex = Arc<Mutex<Box<dyn Hub>>>;
 // / Access devices
 use lego_powered_up::{devices::Device, error::Error};
 use tokio::sync::broadcast;
+use lego_powered_up::devices::modes;
 
 // RC
 // use lego_powered_up::hubs::remote::*;
@@ -53,21 +54,21 @@ async fn main() -> anyhow::Result<()> {
     tokiosleep(Duration::from_secs(2)).await;  //Wait for attached devices to be collected
     let hub: ConnectedHub = h.remove(0);
     
+    // Demo hub RGB 
     let mut hubled: IoDevice;
     {
         let lock = hub.mutex.lock().await;
-        hubled = lock.get_from_kind(IoTypeId::HubLed).await?;
+        hubled = lock.io_from_kind(IoTypeId::HubLed).await?;
     }
     tokio::spawn(async move { 
         // LEGO colors
         hubled.set_hubled_mode(HubLedMode::Colour).await;
+        hubled.set_port_mode(modes::HubLed::COL_O, 0, false).await;
         for c in LEGO_COLORS {
                 hubled.set_hubled_color(c).await;
                 tokiosleep(Duration::from_millis(500)).await;
         }
         tokiosleep(Duration::from_millis(1000)).await;
-
-        // hubled.
 
         // Rainbow
         hubled.set_hubled_mode(HubLedMode::Rgb).await;
@@ -117,7 +118,6 @@ pub async fn ui(mutex: HubMutex) -> () {
         }
         else {
             let input = line.trim().parse::<u8>();
-            // println!("Input: {}", input);
             match input {
                 Ok(num) => {
                     let mut lock = mutex.lock().await;

@@ -88,9 +88,9 @@ async fn main() -> anyhow::Result<()> {
     // }); 
     {
         let lock = rc_hub.mutex.lock().await;
-        let mut remote_a = lock.get_from_port(0x00).await?;
+        let mut remote_a = lock.io_from_port(0x00).await?;
         remote_a.remote_buttons_enable(1, 1).await?;
-        let mut remote_b = lock.get_from_port(0x01).await?;
+        let mut remote_b = lock.io_from_port(0x01).await?;
         remote_b.remote_buttons_enable(1, 1).await?;    // mode 0x1, delta 1
     }    
 
