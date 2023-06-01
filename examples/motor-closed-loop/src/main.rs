@@ -6,7 +6,7 @@ use std::time::Duration;
 use tokio::time::sleep as tokiosleep;
 
 // Powered up
-use lego_powered_up::{PoweredUp, Hub, HubFilter, ConnectedHub,}; 
+use lego_powered_up::{PoweredUp, Hub, HubFilter, ConnectedHub, IoDevice}; 
 
 // Access hub 
 use std::sync::{Arc};
@@ -63,30 +63,27 @@ async fn main() -> anyhow::Result<()> {
     // }
 
     // Set up RC input 
-    // let setup = ConnectedHub::set_up_handler(rc_hub.mutex.clone()).await;
-    let (rc_tx, mut rc_rx) = broadcast::channel::<RcButtonState>(3);
-    let rc_tx_clone = rc_tx.clone();
-    // let remote_handler1 = tokio::spawn(async move { 
-    //     rc_handler(setup.0, setup.1, setup.2, rc_tx_clone).await; 
-    // }); 
+    let rc: IoDevice;
     {
         let lock = rc_hub.mutex.lock().await;
-        let mut remote_a = lock.io_from_port(0x00).await?;
-        remote_a.remote_buttons_enable(1, 1).await?;
-        let mut remote_b = lock.io_from_port(0x01).await?;
-        remote_b.remote_buttons_enable(1, 1).await?;    // mode 0x1, delta 1
+        rc = lock.io_from_port(0x00).await?;
     }    
+    let (mut rc_rx, _) = rc.remote_connect_with_green().await?;
 
-    let mut rc_rx_test = rc_tx.subscribe();
-    let j = tokio::spawn(async move {
-        while let Ok(data) = rc_rx_test.recv().await {
+    tokio::spawn(async move {
+        while let Ok(data) = rc_rx.recv().await {
             match data {
-                RcButtonState::Aup => { println!("Hej! Aup") }
-                RcButtonState::Aplus => { println!("Hej! Aplus") }
-                RcButtonState::Ared => { println!("Hej! Ared") }
-                RcButtonState::Aminus => { println!("Hej! Aminus") }
-                _ => { println!("Hej! Annan knapp");}
-                
+                RcButtonState::Aup => { println!("A side released") }
+                RcButtonState::Aplus => { println!("A plus") }
+                RcButtonState::Ared => { println!("A red") }
+                RcButtonState::Aminus => { println!("A minus") }
+                RcButtonState::Bup => { println!("B side released") }
+                RcButtonState::Bplus => { println!("B plus") }
+                RcButtonState::Bred => { println!("B red") }
+                RcButtonState::Bminus => { println!("B minus") }
+                RcButtonState::Green => { println!("Green pressed") }
+                RcButtonState::GreenUp => { println!("Green released") }
+                _ => ()
             }
         }
     });
@@ -119,39 +116,7 @@ async fn main() -> anyhow::Result<()> {
 
 
 
-pub async fn motor_handler(mut stream: PinnedStream, mutex: HubMutex, hub_name: String) {
-    use lego_powered_up::notifications::NotificationMessage;
 
-    while let Some(data) = stream.next().await {
-        // println!("Received data from {:?} [{:?}]: {:?}", hub_name, data.uuid, data.value);
-
-        let r = NotificationMessage::parse(&data.value);
-        match r {
-            Ok(n) => {
-                // dbg!(&n);
-                match n {
-                    // Active feedback
-                    NotificationMessage::PortValueSingle(val) => {
-
-                    }
-                    NotificationMessage::PortValueCombined(val) => {}
-
-                    // Setup feedback and errors
-                    NotificationMessage::PortInputFormatSingle(val) => {}
-                    NotificationMessage::PortInputFormatCombinedmode(val) => {}
-                    NotificationMessage::PortOutputCommandFeedback(val ) => {}
-                    NotificationMessage::GenericErrorMessages(val) => {}
-
-                    _ => ()
-                }
-            }
-            Err(e) => {
-                println!("Parse error: {}", e);
-            }
-        }
-
-    }  
-}
 
 
 pub async fn ui(mutex: HubMutex) -> () {
