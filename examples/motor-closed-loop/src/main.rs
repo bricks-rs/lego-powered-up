@@ -2,31 +2,18 @@
 // https://creativecommons.org/publicdomain/zero/1.0/
 
 #![allow(unused)]
-use core::pin::Pin;
-use core::time::Duration;
-use futures::stream::{Stream, StreamExt};
 
-use std::sync::{Arc};
-use tokio::time::sleep as tokiosleep;
-use tokio::sync::Mutex;
-use tokio::sync::broadcast;
-// use tokio::sync::mpsc;
-use btleplug::api::ValueNotification;
+// use core::time::Duration;
+// use tokio::time::sleep as sleep;
 
-use lego_powered_up::{PoweredUp, Hub, HubFilter, ConnectedHub, IoDevice}; 
-use lego_powered_up::{ error::Error};  
+use lego_powered_up::{PoweredUp, HubFilter, ConnectedHub, IoDevice}; 
 use lego_powered_up::consts::MotorSensorMode;
 use lego_powered_up::consts::named_port;
 use lego_powered_up::devices::motor::EncoderMotor;
-use lego_powered_up::devices::remote::RcDevice;
-use lego_powered_up::devices::remote::RcButtonState;
+use lego_powered_up::devices::remote::{RcDevice, RcButtonState};
 use lego_powered_up::devices::sensor::GenericSensor;
 use lego_powered_up::devices::modes;
 use lego_powered_up::notifications::Power;
-
-type HubMutex = Arc<Mutex<Box<dyn Hub>>>;
-type PinnedStream = Pin<Box<dyn Stream<Item = ValueNotification> + Send>>;
-
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -39,25 +26,25 @@ async fn main() -> anyhow::Result<()> {
     let discovered_hubs = pu.wait_for_hubs_filter(HubFilter::Null, &hub_count).await?;
     println!("Discovered {} hubs, trying to connect...", &hub_count);
 
-    let mut h: Vec<ConnectedHub> = Vec::new();
+    let mut connected_hubs: Vec<ConnectedHub> = Vec::new();
     for dh in discovered_hubs {
         println!("Connecting to hub `{}`", dh.name);
         let created_hub = pu.create_hub(&dh).await?;
-        h.push(ConnectedHub::setup_hub(created_hub).await.expect("Error setting up hub"))
+        connected_hubs.push(ConnectedHub::setup_hub(created_hub).await.expect("Error setting up hub"))
     }
 
-    let rc_hub: ConnectedHub = h.remove(0);
-    let main_hub: ConnectedHub = h.remove(0);
-    // match h[0].kind {
-    //     lego_powered_up::consts::HubType::RemoteControl => {
-    //         rc_hub = h.remove(0);
-    //         if h.len() > 0 { main_hub = h.remove(0) }
-    //     }
-    //     _ => {
-    //         main_hub = h.remove(0);
-    //         if h.len() > 0 { rc_hub = h.remove(0) }
-    //     }
-    // }
+    let rc_hub: ConnectedHub;
+    let main_hub: ConnectedHub;
+    match connected_hubs[0].kind {
+        lego_powered_up::consts::HubType::RemoteControl => {
+            rc_hub = connected_hubs.remove(0);
+            main_hub = connected_hubs.remove(0) 
+        }
+        _ => {
+            main_hub = connected_hubs.remove(0);
+            rc_hub = connected_hubs.remove(0) 
+        }
+    }
 
     // Set up RC input 
     let rc: IoDevice;
@@ -77,7 +64,7 @@ async fn main() -> anyhow::Result<()> {
     let (mut motor_rx, _) = motor.enable_32bit_sensor(modes::InternalMotorTacho::POS, 1).await?;
 
     let motor_control = tokio::spawn(async move {
-        const MAX_POWER: Power = Power::Cw((100));
+        const MAX_POWER: Power = Power::Cw(100);
         let mut set_limit: (Option<i32>, Option<i32>) = (None, None);
         let mut set_speed: i8 = 20;
         let mut pos: i32 = 0;
@@ -141,7 +128,7 @@ async fn main() -> anyhow::Result<()> {
                         }
 
                         // RcButtonState::Bup => { println!("B side released"); }
-                        RcButtonState::Green => { println!("Green pressed");
+                        RcButtonState::Green => { 
                             println!("Exiting");
                             break;
                         }
