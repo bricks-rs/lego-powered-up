@@ -33,7 +33,19 @@ pub trait RcDevice: Debug + Send + Sync {
     fn get_rx_pvs(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>>;
     fn get_rx_nwc(&self) -> Result<broadcast::Receiver<NetworkCommand>>;
 
+    fn fetch_handles(&self) -> (Peripheral, Characteristic) {
+        let p = self.p().expect("Peripheral not in device cache");
+        let c = self.c().expect("Charactheristic not in device cache");
+
+        (p, c)
+    }
+
     async fn remote_buttons_enable(&self, mode: u8, delta: u32) -> Result<()> {
+        match self.check() {
+            Ok(()) => (),
+            _ => return Err(Error::NoneError((String::from("Not a remote control device"))))
+        }
+        let (p, c) = self.fetch_handles();
         let mode_set_msg =
             NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
                 port_id: self.port(),
@@ -41,34 +53,15 @@ pub trait RcDevice: Debug + Send + Sync {
                 delta,
                 notification_enabled: true,
             });
-        let p = match self.p() {
-            Some(p) => p,
-            None => return Err(Error::NoneError((String::from("Not a rc button device"))))
-        };
-        crate::hubs::send(p, self.c().unwrap(), mode_set_msg).await
-    }
-
-    async fn remote_buttons_enable_both(&self) -> Result<()> {
-        let p = self.p().expect("Peripheral not in device cache");
-        let c = self.c().expect("Charactheristic not in device cache");
-        for port in 0..2 { // For some reason the last for-loop is dropped?
-            // println!("Enable buttons on port: {:?}", port);
-            let mode_set_msg =
-                NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
-                    port_id: port,
-                    mode: 0,                // Not sure what the usecases for the different button modes are, 0 seems fine
-                    delta: 1,
-                    notification_enabled: true,
-                });
-            crate::hubs::send2(&p, &c, mode_set_msg).await.expect("Error while setting mode");
-        }
-
-        Ok(())
+        crate::hubs::send2(&self.p().unwrap(), &self.c().unwrap(), mode_set_msg).await
     }
 
     async fn remote_buttons_enable_by_port(&self, port_id: u8) -> Result<()> {
-        let p = self.p().expect("Peripheral not in device cache");
-        let c = self.c().expect("Charactheristic not in device cache");
+        match self.check() {
+            Ok(()) => (),
+            _ => return Err(Error::NoneError((String::from("Not a remote control device"))))
+        }
+        let (p, c) = self.fetch_handles();
         let mode_set_msg =
             NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
                 port_id,
@@ -82,18 +75,12 @@ pub trait RcDevice: Debug + Send + Sync {
     }
 
     async fn remote_connect(&self) -> Result<(broadcast::Receiver<RcButtonState>, JoinHandle<()> )> {
-        match self.check() {
-            Ok(()) => (),
-            _ => return Err(Error::NoneError((String::from("Not a remote control device"))))
-        }
-        // self.remote_buttons_enable_both().await?;
         self.remote_buttons_enable_by_port(0x0).await?;
         self.remote_buttons_enable_by_port(0x1).await?;
 
         // Set up channel
         let (tx, mut rx) = broadcast::channel::<RcButtonState>(8);
         let mut pvs_from_main = self.get_rx_pvs().expect("Single value sender not in device cache");
-        let nwc_from_main = self.get_rx_nwc().expect("Network command sender not in device cache");
                 let task = tokio::spawn(async move {
                     while let Ok(msg) = pvs_from_main.recv().await {
                         match msg.port_id {
@@ -125,11 +112,8 @@ pub trait RcDevice: Debug + Send + Sync {
     }
 
     async fn remote_connect_with_green(&self) -> Result<(broadcast::Receiver<RcButtonState>, JoinHandle<()> )> {
-        match self.check() {
-            Ok(()) => (),
-            _ => return Err(Error::NoneError((String::from("Not a remote control device"))))
-        }
-        self.remote_buttons_enable_both().await?;
+        self.remote_buttons_enable_by_port(0x0).await?;
+        self.remote_buttons_enable_by_port(0x1).await?;
 
         // Set up channel
         let (tx, mut rx) = broadcast::channel::<RcButtonState>(8);
