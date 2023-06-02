@@ -18,7 +18,6 @@ async fn main() -> anyhow::Result<()> {
     let hub = ConnectedHub::setup_hub
                                         (pu.create_hub(&hub).await.expect("Error creating hub"))
                                         .await.expect("Error setting up hub");
-    tokio::time::sleep(Duration::from_secs(1)).await;  //Wait for attached devices to be collected
 
     // Devices to be used
     let hub_led: IoDevice;
