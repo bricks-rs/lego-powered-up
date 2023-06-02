@@ -129,7 +129,7 @@ impl Hub for GenericHub {
         let found: Vec<&IoDevice> = self.connected_io.values().filter(|&x| x.kind == req_kind).collect();
         match found.len() {
             0 => {
-                Err(Error::NoneError(String::from("No device of kind {kind}")))   
+                Err(Error::NoneError(format!("No device of kind: {req_kind:?}")))   
             }
             1 =>  {
                 let device_deref = *found.first().unwrap();
@@ -141,7 +141,28 @@ impl Hub for GenericHub {
             _ => { 
                 eprintln!("Found {:#?} {:#?} on {:?}, use enable_from_port()", found.len(), req_kind, 
                     found.iter().map(|x|x.port).collect::<Vec<_>>());
-                Err(Error::HubError(String::from("Found {count} {kind} on {list of ports}, use enable_from_port()"))) 
+                // Err(Error::HubError(String::from("Found {count} {kind} on {list of ports}, use enable_from_port()"))) 
+                Err(Error::HubError(format!("Found {:?} {req_kind:?} on {:?}, use io_from_port()", found.len(), found.iter().map(|x|x.port).collect::<Vec<_>>()) )) 
+            }
+        }
+    }
+    async fn io_multi_from_kind(&self, req_kind: IoTypeId) -> Result<Vec<IoDevice>> {
+        let found: Vec<IoDevice> = self.connected_io.values().filter(|&x| x.kind == req_kind).map(|x|x.clone()).collect();
+        match found.len() {
+            0 => {
+                Err(Error::NoneError(format!("No device of kind: {req_kind:?}")))   
+            }
+            1..10 =>  {
+                // let device_deref = *found.first().unwrap();
+                // let mut d = device_deref.clone();
+                // d = self.device_cache(d);
+            
+                Ok(found) 
+            }
+            _ => { 
+                eprintln!("Found {:#?} {:#?} on {:?}, use enable_from_port()", found.len(), req_kind, 
+                    found.iter().map(|x|x.port).collect::<Vec<_>>());
+                Err(Error::HubError(format!("Found {:?} {req_kind:?} on {:?}, use io_from_port()", found.len(), found.iter().map(|x|x.port).collect::<Vec<_>>()) )) 
             }
         }
     }
