@@ -1,9 +1,14 @@
-// Representation of an IoDevice 
-// (expanded replacement for ConnectedIo, PortMap and Port).
-//
-//      This overlaps with previous definitions spread out through the lib, 
-//      mostly in notifications and consts modules. Doing this to make organization
-//      clearer for myself to start. Perhaps we'll use it if it helps. 
+/// Representation of an IoDevice 
+///      This struct + device traits (mod sensor, motor, et.al.) replaces
+///      the previous design in mod devices. It also replaces and extends
+///      functionality of ConnectedIo, PortMap and Port.
+///      This design is basically flipped around; instead of a single device
+///      trait with implementations for specific devices we have a single
+///      device struct with traits for specific devices. 
+///      This fits because all devices share the same data structure (as
+///      defined by the data available from the various information-
+///      commands) but differ in functionality.
+
 
 use std::collections::{BTreeMap};
 use std::fmt;
