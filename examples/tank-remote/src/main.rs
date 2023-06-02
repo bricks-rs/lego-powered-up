@@ -7,7 +7,6 @@ use lego_powered_up::{PoweredUp, ConnectedHub, IoTypeId, IoDevice,
     devices::motor::{EncoderMotor, Power},
     Result as LpuResult 
 };
-use core::time::Duration;
 use console_engine::{pixel, Color, ConsoleEngine, KeyCode};
 use eyre::Result;
 use std::fmt::{self, Display, Formatter};
