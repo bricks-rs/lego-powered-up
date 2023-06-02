@@ -2,7 +2,7 @@
 // https://creativecommons.org/publicdomain/zero/1.0/
 
 // #![allow(unused)]
-use lego_powered_up::{PoweredUp, HubFilter, ConnectedHub, IoDevice}; 
+use lego_powered_up::{PoweredUp, ConnectedHub, IoDevice}; 
 use lego_powered_up::consts::named_port;
 use lego_powered_up::devices::remote::RcDevice;
 use lego_powered_up::devices::remote::RcButtonState;
@@ -13,30 +13,13 @@ async fn main() -> anyhow::Result<()> {
     println!("Looking for BT adapter and initializing PoweredUp with found adapter");
     let mut pu = PoweredUp::init().await?;
 
-    let hub_count = 1;
     println!("Waiting for hubs...");
-    let discovered_hubs = pu.wait_for_hubs_filter(HubFilter::Null, &hub_count).await?;
-    println!("Discovered {} hubs, trying to connect...", &hub_count);
+    let hub= pu.wait_for_hub().await?;
 
-    let mut h: Vec<ConnectedHub> = Vec::new();
-    for dh in discovered_hubs {
-        println!("Connecting to hub `{}`", dh.name);
-        let created_hub = pu.create_hub(&dh).await?;
-        h.push(ConnectedHub::setup_hub(created_hub).await.expect("Error setting up hub"))
-    }
-
-    let rc_hub: ConnectedHub = h.remove(0);
-    // let main_hub: ConnectedHub = h.remove(0);
-    // match h[0].kind {
-    //     lego_powered_up::consts::HubType::RemoteControl => {
-    //         rc_hub = h.remove(0);
-    //         if h.len() > 0 { main_hub = h.remove(0) }
-    //     }
-    //     _ => {
-    //         main_hub = h.remove(0);
-    //         if h.len() > 0 { rc_hub = h.remove(0) }
-    //     }
-    // }
+    println!("Connecting to hub...");
+    let rc_hub = ConnectedHub::setup_hub
+                                        (pu.create_hub(&hub).await.expect("Error creating hub"))
+                                        .await.expect("Error setting up hub");
 
     // Set up RC input 
     let rc: IoDevice;
@@ -46,6 +29,7 @@ async fn main() -> anyhow::Result<()> {
     }    
     let (mut rc_rx, _) = rc.remote_connect_with_green().await?;
 
+    // Print some feedback for button presses. Both red buttons together to exit.
     let button_feedback = tokio::spawn(async move {
         let mut red_down: (bool, bool) = (false, false); 
         while let Ok(data) = rc_rx.recv().await {
