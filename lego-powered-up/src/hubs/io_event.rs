@@ -6,7 +6,7 @@ use futures::stream::{Stream, StreamExt};
 use std::fmt::Debug;
 use std::sync::{Arc};
 use tokio::sync::Mutex;
-use tokio::sync::broadcast;
+use tokio::sync::broadcast::{self, Sender};
 use btleplug::api::ValueNotification;
 
 use crate::IoDevice;
@@ -17,59 +17,10 @@ type HubMutex = Arc<Mutex<Box<dyn crate::Hub>>>;
 type PinnedStream = Pin<Box<dyn Stream<Item = ValueNotification> + Send>>;
 
 
-  // // Musings on notfication-message parsing and handling
-        // I realized that the design where there is a handler like this for each enabled port (where an iodevice has been
-        // req'd / cloned from hub and a handler started) means sending each message thru NotificationMessage::parse once 
-        // for every task. Better to split out by messagetype => broadcast-channel. (Setting up handler with dedicated parsing is fine is the need 
-        // is felt for an application.) 
-        //
-        // So: Somewhere (in hub?) a hashmap (in struct for methods) that maps Notification-message type to a a sender/receiver pair).
-        // Then a main handler (for each hub-stream) get a clone of that? Or just the senders? 
-        // I'll start with this function as main handler (let it also handle hub-related messages for now.) 
-        //
-        // Those messagetypes that have a port in their value could be further split to avoid multiple processing of those.
-        // Perhaps not the config/information ones but PortValueSingle, PortValueCombined and PortOutputCommandFeedback have
-        // the potential to be numerous. 
-        // Although this needs config information. Lets 
-        // Alt. 1: Create subtasks to receive each of the 3 to a channel by port. Problem: Would need to spawn/create sender when port enabled (or configured)
-        // Vs. the messagetypes being known at compile time.
-        // Alt. 2: Main handler has senders for each of the 3 by port. Again this would need to be dynamic. 
-        // We'll start by splitting out those three to to senders i think.  
-
-
-//Deprecated
-#[derive(Debug, Default, Clone)]
-pub struct ChannelNotification {
-    pub portvaluesingle: Option<PortValueSingleFormat>,
-    pub portvaluescombined: Option<PortValueCombinedFormat>,
-    pub portoutputcommandfeedback: Option<PortOutputCommandFeedbackFormat>
-}
-
-// This was an idea for generic tasking, went instead with separate functions
-// for the types (trait GenericSensor in devices::sensor). That could surely
-// be bettered with generic types, but low priority right now. 
-// #[derive(Debug, Default, Clone)]
-// pub struct ValWrap {
-//     pub uint8: Option<Vec<u8>>,
-//     pub uint16: Option<Vec<u16>>,
-//     pub uint32: Option<Vec<u32>>,
-//     pub float32: Option<Vec<f32>>,
-// }
-// impl ValWrap {
-//     pub fn new() -> Self {
-//         Self {
-//             uint8: None,
-//             uint16: None,
-//             uint32: None,
-//             float32: None, 
-//         }
-//     }
-// }
-
-pub async fn io_event_handler(mut stream: PinnedStream, mutex: HubMutex, _hub_name: String, 
-                            tx_singlevalue: broadcast::Sender<PortValueSingleFormat>,
-                            tx_combinedvalue: broadcast::Sender<PortValueCombinedFormat>,
-                            tx_networkcmd: broadcast::Sender<NetworkCommand>
+pub async fn io_event_handler(mut stream: PinnedStream, mutex: HubMutex, 
+                            senders: (Sender<PortValueSingleFormat>, 
+                                      Sender<PortValueCombinedFormat>,
+                                      Sender<NetworkCommand>)
                             ) -> Result<()> {
     const DIAGNOSTICS: bool = true;
     while let Some(data) = stream.next().await {
@@ -82,13 +33,13 @@ pub async fn io_event_handler(mut stream: PinnedStream, mutex: HubMutex, _hub_na
                 match n {
                     // Forwarded
                     NotificationMessage::PortValueSingle(val) => {
-                        tx_singlevalue.send(val).expect("Error forwarding PortValueSingle");
+                        senders.0.send(val).expect("Error forwarding PortValueSingle");
                     }
                     NotificationMessage::PortValueCombined(val) => {
-                        tx_combinedvalue.send(val).expect("Error forwarding PortValueCombined");
+                        senders.1.send(val).expect("Error forwarding PortValueCombined");
                     }
                     NotificationMessage::HwNetworkCommands(val) => {
-                        tx_networkcmd.send(val).expect("Error forwarding NetworkCommands");
+                        senders.2.send(val).expect("Error forwarding NetworkCommands");
                     }
 
                     // IoDevice collection / configuration
@@ -101,13 +52,6 @@ pub async fn io_event_handler(mut stream: PinnedStream, mutex: HubMutex, _hub_na
                                         {
                                             let mut hub = mutex.lock().await;
                                             hub.attach_io(IoDevice::new(io_type_id, port_id))?;
-
-                                            // let p = hub.peripheral().clone();
-                                            // let c = hub.characteristic().clone();
-                                            // hub.attach_io(
-                                            //     IoDevice::new_with_handles(
-                                            //         io_type_id, port_id, p, c));
-                                            
                                             hub.request_port_info(port_id, InformationType::ModeInfo).await?;
                                             hub.request_port_info(port_id, InformationType::PossibleModeCombinations).await?;
                                         }
