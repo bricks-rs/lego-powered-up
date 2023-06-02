@@ -33,7 +33,12 @@ pub async fn io_event_handler(mut stream: PinnedStream, mutex: HubMutex,
                 match n {
                     // Forwarded
                     NotificationMessage::PortValueSingle(val) => {
-                        senders.0.send(val).expect("Error forwarding PortValueSingle");
+                        match senders.0.send(val) {
+                            Ok(_) => (),
+                            Err(e) =>  {
+                                eprintln!("Error forwarding PortValueSingle: {:?}", e);
+                            }
+                        }
                     }
                     NotificationMessage::PortValueCombined(val) => {
                         senders.1.send(val).expect("Error forwarding PortValueCombined");
@@ -53,7 +58,7 @@ pub async fn io_event_handler(mut stream: PinnedStream, mutex: HubMutex,
                                             let mut hub = mutex.lock().await;
                                             hub.attach_io(IoDevice::new(io_type_id, port_id))?;
                                             hub.request_port_info(port_id, InformationType::ModeInfo).await?;
-                                            hub.request_port_info(port_id, InformationType::PossibleModeCombinations).await?;
+                                            // hub.request_port_info(port_id, InformationType::PossibleModeCombinations).await?;
                                         }
                                     }
                                     IoAttachEvent::DetachedIo{} => {}
@@ -74,8 +79,12 @@ pub async fn io_event_handler(mut stream: PinnedStream, mutex: HubMutex,
                                             port.set_mode_count(mode_count);
                                             port.set_capabilities(capabilities.0);
                                             port.set_modes(input_modes, output_modes);
+                                            
+                                            // Req combinations if LogicalCombinable or LogicalSynchronizable
+                                            if ((capabilities.0 >> 2) & 1 == 1) | ((capabilities.0 >> 3) & 1 == 1) {
+                                                hub.request_port_info(port_id, InformationType::PossibleModeCombinations).await?;
+                                            }
                                       
-                                            // let count = 
                                             for mode_id in 0..mode_count {
                                                 hub.req_mode_info(port_id, mode_id, ModeInformationType::Name).await?;
                                                 hub.req_mode_info(port_id, mode_id, ModeInformationType::Raw).await?;
@@ -83,8 +92,8 @@ pub async fn io_event_handler(mut stream: PinnedStream, mutex: HubMutex,
                                                 hub.req_mode_info(port_id, mode_id, ModeInformationType::Si).await?;
                                                 hub.req_mode_info(port_id, mode_id, ModeInformationType::Symbol).await?;
                                                 hub.req_mode_info(port_id, mode_id, ModeInformationType::Mapping).await?;
-                                                hub.req_mode_info(port_id, mode_id, ModeInformationType::MotorBias).await?;
-                                                // hub.request_mode_info(port_id, mode_id, ModeInformationType::CapabilityBits).await;
+                                                // hub.req_mode_info(port_id, mode_id, ModeInformationType::MotorBias).await?;          // Returns errorcode CommandNotRecognized on all devices I've tested
+                                                // hub.request_mode_info(port_id, mode_id, ModeInformationType::CapabilityBits).await;  // Don't have documentation to parse this
                                                 hub.req_mode_info(port_id, mode_id, ModeInformationType::ValueFormat).await?;
                                             }
                                         }
