@@ -39,7 +39,7 @@ pub trait HubLed: Debug + Send + Sync {
                 port_id: self.port(),
                 mode: mode as u8,
                 delta: 1,
-                notification_enabled: true,
+                notification_enabled: false,
             });
         let p = match self.p() {
             Some(p) => p,
