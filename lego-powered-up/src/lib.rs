@@ -1,4 +1,4 @@
-// #![allow(unused)]
+#![allow(unused)]
 use btleplug::api::{
     Central, CentralEvent, Manager as _, Peripheral as _, PeripheralProperties,
     ScanFilter, 
@@ -41,7 +41,7 @@ pub use error::{Error, OptionContext, Result};
 // pub use consts::IoTypeId;
 
 type HubMutex = Arc<Mutex<Box<dyn Hub>>>;
-type PinnedStream = Pin<Box<dyn Stream<Item = ValueNotification> + Send>>;
+type NotificationStream = Pin<Box<dyn Stream<Item = ValueNotification> + Send>>;
 
 pub struct PoweredUp {
     adapter: Adapter,
@@ -107,27 +107,7 @@ impl PoweredUp {
         Ok(hubs)
     }
 
-    pub async fn scan(&mut self) -> Result<impl Stream<Item = DiscoveredHub> + '_> {
-        let events = self.adapter.events().await?;
-        self.adapter.start_scan(ScanFilter::default()).await?;
-        Ok(events.filter_map(|event| async {
-            let CentralEvent::DeviceDiscovered(id) = event else { None? };
-            // get peripheral info
-            let peripheral = self.adapter.peripheral(&id).await.ok()?;
-            println!("{:?}", peripheral.properties().await.unwrap());
-            let Some(props) = peripheral.properties().await.ok()? else { None? };
-            if let Some(hub_type) = identify_hub(&props).await.ok()? {
-                let hub = DiscoveredHub {
-                    hub_type,
-                    addr: id,
-                    name: props
-                        .local_name
-                        .unwrap_or_else(|| "unknown".to_string()),
-                };
-                Some(hub)
-            } else { None }
-        }))
-    }
+    
 
     pub async fn wait_for_hub(&mut self) -> Result<DiscoveredHub> {
         self.wait_for_hub_filter(HubFilter::Null).await
@@ -231,6 +211,50 @@ impl PoweredUp {
             }
         }
     }
+
+    pub async fn scan(&mut self) -> Result<impl Stream<Item = DiscoveredHub> + '_> {
+        let events = self.adapter.events().await?;
+        self.adapter.start_scan(ScanFilter::default()).await?;
+        Ok(events.filter_map(|event| async {
+            let CentralEvent::DeviceDiscovered(id) = event else { None? };
+            // get peripheral info
+            let peripheral = self.adapter.peripheral(&id).await.ok()?;
+            println!("{:?}", peripheral.properties().await.unwrap());
+            let Some(props) = peripheral.properties().await.ok()? else { None? };
+            if let Some(hub_type) = identify_hub(&props).await.ok()? {
+                let hub = DiscoveredHub {
+                    hub_type,
+                    addr: id,
+                    name: props
+                        .local_name
+                        .unwrap_or_else(|| "unknown".to_string()),
+                };
+                Some(hub)
+            } else { None }
+        }))
+    }
+
+    pub async fn scan2(&mut self) -> Result<Pin<Box<dyn Stream<Item = DiscoveredHub> + Send + '_>>> {
+        let events = self.adapter.events().await?;
+        self.adapter.start_scan(ScanFilter::default()).await?;
+        Ok(Box::pin(events.filter_map(|event| async {
+            let CentralEvent::DeviceDiscovered(id) = event else { None? };
+            // get peripheral info
+            let peripheral = self.adapter.peripheral(&id).await.ok()?;
+            println!("{:?}", peripheral.properties().await.unwrap());
+            let Some(props) = peripheral.properties().await.ok()? else { None? };
+            if let Some(hub_type) = identify_hub(&props).await.ok()? {
+                let hub = DiscoveredHub {
+                    hub_type,
+                    addr: id,
+                    name: props
+                        .local_name
+                        .unwrap_or_else(|| "unknown".to_string()),
+                };
+                Some(hub)
+            } else { None }
+        })))
+    }
 }
 
 /// Properties by which to filter discovered hubs
@@ -308,32 +332,32 @@ impl ConnectedHub {
             name: created_hub.name().await?,                                                    
             mutex: Arc::new(Mutex::new(created_hub)),
         };
-        
-        // Set up hub handlers
-        //      Attached IO
-        let name_to_handler = connected_hub.name.clone();
-        let mutex_to_handler = connected_hub.mutex.clone();
-        let singlevalue_sender = broadcast::channel::<PortValueSingleFormat>(3).0;
-        let combinedvalue_sender = broadcast::channel::<PortValueCombinedFormat>(3).0;
-        let networkcmd_sender = broadcast::channel::<NetworkCommand>(3).0;
+        // Create forwarding channels and store in hub so we can create receivers on demand 
         {
             let lock = &mut connected_hub.mutex.lock().await;
-            let stream_to_handler: PinnedStream = lock.peripheral().notifications().await?;    
-            lock.channels().singlevalue_sender = Some(singlevalue_sender.clone());
-            lock.channels().combinedvalue_sender = Some(combinedvalue_sender.clone());
-            lock.channels().networkcmd_sender = Some(networkcmd_sender.clone());
-            tokio::spawn(async move {
-                crate::hubs::io_event::io_event_handler(
-                    stream_to_handler, 
-                    mutex_to_handler,
-          name_to_handler,
-            singlevalue_sender,
-                    combinedvalue_sender,
-                    networkcmd_sender
-                ).await.expect("Error setting up main handler");
-            });
+            lock.channels().singlevalue_sender = 
+                Some(broadcast::channel::<PortValueSingleFormat>(16).0);
+            lock.channels().combinedvalue_sender =
+                Some(broadcast::channel::<PortValueCombinedFormat>(16).0);
+            lock.channels().networkcmd_sender =
+                Some(broadcast::channel::<NetworkCommand>(16).0);
         }
-        //  TODO    Hub alerts etc.
+
+        // Set up notification handler
+        let hub_mutex = connected_hub.mutex.clone();
+        {
+            let lock = &mut connected_hub.mutex.lock().await;
+            let stream: NotificationStream = lock.peripheral().notifications().await?;
+            let senders = (
+                lock.channels().singlevalue_sender.as_ref().unwrap().clone(),
+                lock.channels().combinedvalue_sender.as_ref().unwrap().clone(),
+                lock.channels().networkcmd_sender.as_ref().unwrap().clone(),
+            );
+            tokio::spawn(async move {
+                crate::hubs::io_event::io_event_handler(stream, hub_mutex, senders)
+                    .await.expect("Error setting up main notification handler");
+            });
+        }  
         
         // Subscribe to btleplug peripheral
         {
