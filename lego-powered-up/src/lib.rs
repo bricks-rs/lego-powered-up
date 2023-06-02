@@ -1,3 +1,5 @@
+#![feature(exclusive_range_pattern)]
+
 #![allow(unused)]
 use btleplug::api::{
     Central, CentralEvent, Manager as _, Peripheral as _, PeripheralProperties,
@@ -28,6 +30,7 @@ pub mod devices;
 pub mod error;
 pub mod hubs;
 pub mod notifications;
+pub mod setup;
 mod tests;
 
 pub use hubs::Hub;
