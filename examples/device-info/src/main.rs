@@ -1,85 +1,59 @@
 // Any copyright is dedicated to the Public Domain.
 // https://creativecommons.org/publicdomain/zero/1.0/
 
-#![allow(unused)]
-use std::time::Duration;
-use lego_powered_up::devices::iodevice::IoDevice;
-use tokio::time::sleep as tokiosleep;
+// #![allow(unused)]
+use core::time::Duration;
 
-// Powered up
-use lego_powered_up::{PoweredUp, Hub, HubFilter, ConnectedHub,}; 
-use lego_powered_up::consts::{IoTypeId, LEGO_COLORS};
-use lego_powered_up::devices::remote::RcDevice;
+use std::sync::{Arc};
+use tokio::time::sleep as sleep;
+use tokio::sync::Mutex;
+
+use lego_powered_up::{IoDevice, IoTypeId};
+use lego_powered_up::{PoweredUp, Hub, ConnectedHub,}; 
+use lego_powered_up::consts::{LEGO_COLORS};
 use lego_powered_up::devices::{light::*};
 
-
-// Access hub 
-use std::sync::{Arc};
-use tokio::sync::Mutex;
 type HubMutex = Arc<Mutex<Box<dyn Hub>>>;
-
-// / Access devices
-use lego_powered_up::{ error::Error};  //devices::Device,
-use tokio::sync::broadcast;
-use lego_powered_up::devices::modes;
-
-// RC
-// use lego_powered_up::hubs::remote::*;
-
-// Handle notifications
-use core::pin::Pin;
-use lego_powered_up::futures::stream::{Stream, StreamExt};
-use lego_powered_up::btleplug::api::ValueNotification;
-type PinnedStream = Pin<Box<dyn Stream<Item = ValueNotification> + Send>>;
-
 
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // Init PoweredUp with found adapter
-    println!("Looking for BT adapter and initializing PoweredUp with found adapter");
+    println!("Discovering BT adapter and initializing PoweredUp");
     let mut pu = PoweredUp::init().await?;
 
-    let hub_count = 1;
-    println!("Waiting for hubs...");
-    let discovered_hubs = pu.wait_for_hubs_filter(HubFilter::Null, &hub_count).await?;
-    println!("Discovered {} hubs, trying to connect...", &hub_count);
-
-    let mut h: Vec<ConnectedHub> = Vec::new();
-    for dh in discovered_hubs {
-        println!("Connecting to hub `{}`", dh.name);
-        let created_hub = pu.create_hub(&dh).await?;
-        h.push(ConnectedHub::setup_hub(created_hub).await.expect("Error setting up hub"))
-    }
-    tokiosleep(Duration::from_secs(2)).await;  //Wait for attached devices to be collected
-    let hub: ConnectedHub = h.remove(0);
+    println!("Waiting for hub...");
+    let hub = pu.wait_for_hub().await?;
     
+    println!("Connecting to hub...");
+    let hub = ConnectedHub::setup_hub(pu.create_hub(&hub)
+                                        .await.expect("Error creating hub"))
+                                        .await.expect("Error setting up hub");
+
     // Demo hub RGB 
-    let mut hubled: IoDevice;
+    let hubled: IoDevice;
     {
         let lock = hub.mutex.lock().await;
         hubled = lock.io_from_kind(IoTypeId::HubLed).await?;
     }
     tokio::spawn(async move { 
         // LEGO colors
-        hubled.set_hubled_mode(HubLedMode::Colour).await;
-        hubled.set_port_mode(modes::HubLed::COL_O, 0, false).await;
+        hubled.set_hubled_mode(HubLedMode::Colour).await.expect("Error setting mode");
         for c in LEGO_COLORS {
-                hubled.set_hubled_color(c).await;
-                tokiosleep(Duration::from_millis(500)).await;
+                hubled.set_hubled_color(c).await.expect("Error setting color");
+                sleep(Duration::from_millis(500)).await;
         }
-        tokiosleep(Duration::from_millis(1000)).await;
+        sleep(Duration::from_millis(1000)).await;
 
         // Rainbow
-        hubled.set_hubled_mode(HubLedMode::Rgb).await;
+        hubled.set_hubled_mode(HubLedMode::Rgb).await.expect("Error setting mode");
         let mut rgb: [u8; 3] = [0; 3];
         loop {
             for angle in 0..360 {
                 rgb[0] = RAINBOW_TABLE[(angle+120)%360];
                 rgb[1] = RAINBOW_TABLE[angle];
                 rgb[2] = RAINBOW_TABLE[(angle+240)%360];
-                hubled.set_hubled_rgb(&rgb).await;    
-                tokiosleep(Duration::from_millis(30)).await;
+                hubled.set_hubled_rgb(&rgb).await.expect("Error setting RGB");    
+                sleep(Duration::from_millis(30)).await;
             }
         }
     });
