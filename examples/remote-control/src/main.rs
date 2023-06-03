@@ -2,24 +2,13 @@
 // https://creativecommons.org/publicdomain/zero/1.0/
 
 // #![allow(unused)]
-use lego_powered_up::{PoweredUp, ConnectedHub, IoDevice}; 
+use lego_powered_up::IoDevice; 
 use lego_powered_up::consts::named_port;
-use lego_powered_up::devices::remote::RcDevice;
-use lego_powered_up::devices::remote::RcButtonState;
+use lego_powered_up::devices::remote::{RcDevice, RcButtonState};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // Init PoweredUp with found adapter
-    println!("Looking for BT adapter and initializing PoweredUp with found adapter");
-    let mut pu = PoweredUp::init().await?;
-
-    println!("Waiting for hubs...");
-    let hub= pu.wait_for_hub().await?;
-
-    println!("Connecting to hub...");
-    let rc_hub = ConnectedHub::setup_hub
-                                        (pu.create_hub(&hub).await.expect("Error creating hub"))
-                                        .await.expect("Error setting up hub");
+    let rc_hub = lego_powered_up::setup::single_hub().await.unwrap();
 
     // Set up RC input 
     let rc: IoDevice;
@@ -27,7 +16,7 @@ async fn main() -> anyhow::Result<()> {
         let lock = rc_hub.mutex.lock().await;
         rc = lock.io_from_port(named_port::A).await?;
     }    
-    let (mut rc_rx, _) = rc.remote_connect_with_green().await?;
+    let (mut rc_rx, _rc_task) = rc.remote_connect_with_green().await?;
 
     // Print some feedback for button presses. Both red buttons together to exit.
     let button_feedback = tokio::spawn(async move {
@@ -69,7 +58,6 @@ async fn main() -> anyhow::Result<()> {
         let lock = rc_hub.mutex.lock().await;
         lock.disconnect().await?;
     }
-
     println!("Done!");
 
     Ok(())

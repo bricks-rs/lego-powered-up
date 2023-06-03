@@ -1,7 +1,7 @@
 // Any copyright is dedicated to the Public Domain.
 // https://creativecommons.org/publicdomain/zero/1.0/
 
-use lego_powered_up::{PoweredUp, ConnectedHub, IoTypeId, IoDevice,
+use lego_powered_up::{IoTypeId, IoDevice,
     consts,
     devices::light::{self, HubLed},
     devices::motor::{EncoderMotor, Power},
@@ -84,14 +84,7 @@ fn key(engine: &mut ConsoleEngine, key: KeyCode) -> bool {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    println!("Listening for hubs...");
-    let mut pu = PoweredUp::init().await?;
-    let hub = pu.wait_for_hub().await?;
-
-    println!("Connecting to hub `{}`", hub.name);
-    let hub = ConnectedHub::setup_hub
-                                        (pu.create_hub(&hub).await.expect("Error creating hub"))
-                                        .await.expect("Error setting up hub");
+    let hub = lego_powered_up::setup::single_hub().await?;
 
     // Devices to be used
     let hub_led: IoDevice;

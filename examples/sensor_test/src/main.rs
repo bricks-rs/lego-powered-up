@@ -4,8 +4,9 @@
 #![allow(unused)]
 use std::time::Duration;
 use lego_powered_up::devices::iodevice::IoDevice;
+use lego_powered_up::devices::visionsensor::VisionSensor;
 use lego_powered_up::notifications::Power;
-use tokio::time::sleep as tokiosleep;
+use tokio::time::sleep as sleep;
 
 // Powered up
 use lego_powered_up::{PoweredUp, Hub, HubFilter, ConnectedHub,}; 
@@ -37,41 +38,17 @@ type PinnedStream = Pin<Box<dyn Stream<Item = ValueNotification> + Send>>;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // Init PoweredUp with found adapter
-    println!("Looking for BT adapter and initializing PoweredUp with found adapter");
-    let mut pu = PoweredUp::init().await?;
+    let rc_hub = lego_powered_up::setup::single_hub().await?;
 
-    let hub_count = 1;
-    println!("Waiting for hubs...");
-    let discovered_hubs = pu.wait_for_hubs_filter(HubFilter::Null, &hub_count).await?;
-    println!("Discovered {} hubs, trying to connect...", &hub_count);
-
-    let mut h: Vec<ConnectedHub> = Vec::new();
-    for dh in discovered_hubs {
-        println!("Connecting to hub `{}`", dh.name);
-        let created_hub = pu.create_hub(&dh).await?;
-        h.push(ConnectedHub::setup_hub(created_hub).await.expect("Error setting up hub"))
-    }
-    tokiosleep(Duration::from_secs(2)).await;
-
-    let rc_hub: ConnectedHub = h.remove(0);
     let main_hub: ConnectedHub;
-    // match h[0].kind {
-    //     lego_powered_up::consts::HubType::RemoteControl => {
-    //         rc_hub = h.remove(0);
-    //         if h.len() > 0 { main_hub = h.remove(0) }
-    //     }
-    //     _ => {
-    //         main_hub = h.remove(0);
-    //         if h.len() > 0 { rc_hub = h.remove(0) }
-    //     }
-    // }
 
-    // let mut rssi: IoDevice;
+    let mut ferry: Vec<IoDevice> = Vec::new();
+
     // {
     //     let lock = rc_hub.mutex.lock().await;
-    //     rssi = lock.get_from_kind(IoTypeId::Rssi).await?;
-    // }    
+    //     ferry = lock.io_multi_from_kind(IoTypeId::Rssi).await?;
+    // } 
+    // let rssi = ferry.remove(0);   
     // let (mut rssi_rx, jh) = rssi.enable_8bit_sensor(0x00, 1).await.unwrap();
     // tokio::spawn(async move {
     //     while let Ok(data) = rssi_rx.recv().await {
@@ -99,7 +76,7 @@ async fn main() -> anyhow::Result<()> {
     let (mut voltage_rx, jh) = rc_volt.enable_16bit_sensor(0x00, 1).await.unwrap();
     tokio::spawn(async move {
         while let Ok(data) = voltage_rx.recv().await {
-            // println!("Voltage: {:?}  {:?}", data, data[0] as u16)
+            println!("Voltage: {:?}  {:?}", data, data[0] as u16)
         }
     });
 
@@ -127,29 +104,51 @@ async fn main() -> anyhow::Result<()> {
     //     }
     // });
 
-    let mut motor_b: IoDevice;
-    {
-        let lock = rc_hub.mutex.lock().await;
-        motor_b = lock.io_from_port(1).await?;
-    }    
-    let (mut motor_b_rx, jh) = motor_b.enable_32bit_sensor(modes::Voltage::VLT_L, 1).await.unwrap();
+    // let mut motor_b: IoDevice;
+    // {
+    //     let lock = rc_hub.mutex.lock().await;
+    //     motor_b = lock.io_from_port(1).await?;
+    // }    
+    // let (mut motor_b_rx, jh) = motor_b.enable_32bit_sensor(modes::Voltage::VLT_L, 1).await.unwrap();
+    // // tokio::spawn(async move {
+    // //     while let Ok(data) = motor_b_rx.recv().await {
+    // //         println!("Combined: {:?}  ", data, );
+    // //     }
+    // // });
+    // let (mut motor_b_rx, jh) = 
+    //     motor_b.motor_combined_sensor_enable(lego_powered_up::consts::MotorSensorMode::Speed, 2, 2).await.unwrap();
     // tokio::spawn(async move {
     //     while let Ok(data) = motor_b_rx.recv().await {
     //         println!("Combined: {:?}  ", data, );
     //     }
     // });
-    let (mut motor_b_rx, jh) = 
-        motor_b.motor_combined_sensor_enable(lego_powered_up::consts::MotorSensorMode::Speed, 2, 2).await.unwrap();
-    tokio::spawn(async move {
-        while let Ok(data) = motor_b_rx.recv().await {
-            println!("Combined: {:?}  ", data, );
-        }
-    });
-    motor_b.start_speed_for_degrees(90, 50, Power::Cw((50)), lego_powered_up::notifications::EndState::Brake).await;
-    tokiosleep(Duration::from_secs(2)).await;
-    motor_b.start_speed_for_degrees(90, 50, Power::Cw((50)), lego_powered_up::notifications::EndState::Brake).await;
-    tokiosleep(Duration::from_secs(2)).await;
-    motor_b.start_speed_for_degrees(890, -50, Power::Cw((50)), lego_powered_up::notifications::EndState::Brake).await;
+    // motor_b.start_speed_for_degrees(90, 50, Power::Cw((50)), lego_powered_up::notifications::EndState::Brake).await;
+    // sleep(Duration::from_secs(2)).await;
+    // motor_b.start_speed_for_degrees(90, 50, Power::Cw((50)), lego_powered_up::notifications::EndState::Brake).await;
+    // sleep(Duration::from_secs(2)).await;
+    // motor_b.start_speed_for_degrees(890, -50, Power::Cw((50)), lego_powered_up::notifications::EndState::Brake).await;
+
+    // {
+    //     let lock = rc_hub.mutex.lock().await;
+    //     ferry = lock.io_multi_from_kind(IoTypeId::RemoteButtons).await?;
+    // }   
+    // let remote_a = ferry.remove(0);
+    // let remote_b = ferry.remove(0);
+    // println!("RC A: {:?} {:?}", remote_a.kind, remote_a.port);
+    // println!("RC B: {:?} {:?}", remote_b.kind, remote_b.port);
+
+    // let vision: IoDevice;
+    // {
+    //     let lock = rc_hub.mutex.lock().await;
+    //     vision = lock.io_from_kind(IoTypeId::VisionSensor).await?;
+    // }    
+    // // let (mut vision_rx, _) = vision.enable_8bit_sensor(modes::VisionSensor::COLOR, 1).await.unwrap();
+    // let (mut vision_rx, _) = vision.visionsensor_color().await.unwrap();
+    // tokio::spawn(async move {
+    //     while let Ok(data) = vision_rx.recv().await {
+    //         println!("Vision: {:?} ", data, )
+    //     }
+    // });
 
 
     // Start ui

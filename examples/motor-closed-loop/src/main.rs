@@ -17,52 +17,26 @@ use lego_powered_up::notifications::Power;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // Init PoweredUp with found adapter
-    println!("Looking for BT adapter and initializing PoweredUp with found adapter");
-    let mut pu = PoweredUp::init().await?;
-
-    let hub_count = 2;
-    println!("Waiting for hubs...");
-    let discovered_hubs = pu.wait_for_hubs_filter(HubFilter::Null, &hub_count).await?;
-    println!("Discovered {} hubs, trying to connect...", &hub_count);
-
-    let mut connected_hubs: Vec<ConnectedHub> = Vec::new();
-    for dh in discovered_hubs {
-        println!("Connecting to hub `{}`", dh.name);
-        let created_hub = pu.create_hub(&dh).await?;
-        connected_hubs.push(ConnectedHub::setup_hub(created_hub).await.expect("Error setting up hub"))
-    }
-
-    let rc_hub: ConnectedHub;
-    let main_hub: ConnectedHub;
-    match connected_hubs[0].kind {
-        lego_powered_up::consts::HubType::RemoteControl => {
-            rc_hub = connected_hubs.remove(0);
-            main_hub = connected_hubs.remove(0) 
-        }
-        _ => {
-            main_hub = connected_hubs.remove(0);
-            rc_hub = connected_hubs.remove(0) 
-        }
-    }
-
+    let (main_hub, rc_hub) = lego_powered_up::setup::main_and_rc().await.unwrap();
+    
     // Set up RC input 
     let rc: IoDevice;
     {
         let lock = rc_hub.mutex.lock().await;
         rc = lock.io_from_port(named_port::A).await?;
     }    
-    let (mut rc_rx, _) = rc.remote_connect_with_green().await?;
+    let (mut rc_rx, rc_task) = rc.remote_connect_with_green().await?;
 
     // Set up motor feedback
     let motor: IoDevice;
     {
         let lock = main_hub.mutex.lock().await;
-        motor = lock.io_from_port(named_port::A).await?;
+        motor = lock.io_from_port(named_port::D).await?;
     }
     motor.motor_sensor_enable(MotorSensorMode::Pos, 1).await?;
-    let (mut motor_rx, _) = motor.enable_32bit_sensor(modes::InternalMotorTacho::POS, 1).await?;
+    let (mut motor_rx, position_task) = motor.enable_32bit_sensor(modes::InternalMotorTacho::POS, 1).await?;
 
+    // Control task
     let motor_control = tokio::spawn(async move {
         const MAX_POWER: Power = Power::Cw(100);
         let mut set_limit: (Option<i32>, Option<i32>) = (None, None);

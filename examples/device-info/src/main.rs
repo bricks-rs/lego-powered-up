@@ -9,7 +9,7 @@ use tokio::time::sleep as sleep;
 use tokio::sync::Mutex;
 
 use lego_powered_up::{IoDevice, IoTypeId};
-use lego_powered_up::{PoweredUp, Hub, ConnectedHub,}; 
+use lego_powered_up::Hub; 
 use lego_powered_up::consts::{LEGO_COLORS};
 use lego_powered_up::devices::{light::*};
 
@@ -18,16 +18,7 @@ type HubMutex = Arc<Mutex<Box<dyn Hub>>>;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    println!("Discovering BT adapter and initializing PoweredUp");
-    let mut pu = PoweredUp::init().await?;
-
-    println!("Waiting for hub...");
-    let hub = pu.wait_for_hub().await?;
-    
-    println!("Connecting to hub...");
-    let hub = ConnectedHub::setup_hub(pu.create_hub(&hub)
-                                        .await.expect("Error creating hub"))
-                                        .await.expect("Error setting up hub");
+    let hub = lego_powered_up::setup::single_hub().await?;
 
     // Demo hub RGB 
     let hubled: IoDevice;
@@ -35,7 +26,7 @@ async fn main() -> anyhow::Result<()> {
         let lock = hub.mutex.lock().await;
         hubled = lock.io_from_kind(IoTypeId::HubLed).await?;
     }
-    tokio::spawn(async move { 
+    let _led_task = tokio::spawn(async move { 
         // LEGO colors
         hubled.set_hubled_mode(HubLedMode::Colour).await.expect("Error setting mode");
         for c in LEGO_COLORS {
@@ -60,19 +51,21 @@ async fn main() -> anyhow::Result<()> {
 
     // Start attached io ui
     let mutex = hub.mutex.clone();
-    ui(mutex).await;
+    attached_device_info(mutex).await;
 
     // Cleanup after ui exit
-    let lock = hub.mutex.lock().await;
-    println!("Disconnect from hub `{}`", lock.name().await?);
-    lock.disconnect().await?;
+    println!("Disconnect from hub `{}`", hub.name);
+    {
+        let lock = hub.mutex.lock().await;
+        lock.disconnect().await?;
+    }
     println!("Done!");
 
     Ok(())
 }
 
 
-pub async fn ui(mutex: HubMutex) -> () {
+pub async fn attached_device_info(mutex: HubMutex) -> () {
     use text_io::read;
     loop {
         print!("(l)ist, <port> or (q)uit > ");
@@ -95,15 +88,13 @@ pub async fn ui(mutex: HubMutex) -> () {
             match input {
                 Ok(num) => {
                     let mut lock = mutex.lock().await;
-                    let o = lock.connected_io().get(&num);
-                    match o {
+                    let device = lock.connected_io().get(&num);
+                    match device {
                         Some(device) => { println!("{:#?}", device) }  //{dbg!(device);}
-                        None => {println!("Device not found");}
+                        None => { println!("Device not found"); }
                     }
                 }
-                Err(e) => {
-                    println!("Not a number: {}", e);
-                }
+                Err(e) => { println!("Not a number: {}", e); }
             }
         }
     }

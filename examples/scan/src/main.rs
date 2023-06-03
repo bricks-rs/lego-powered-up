@@ -26,8 +26,6 @@ type DiscoStream = Pin<Box<dyn Stream<Item = DiscoveredHub> + Send>>;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // Init PoweredUp with found adapter
-    println!("Looking for BT adapter and initializing PoweredUp with found adapter");
     let mut pu: PoweredUp = PoweredUp::init().await?;
 
 
