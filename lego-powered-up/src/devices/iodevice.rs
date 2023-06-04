@@ -1,13 +1,16 @@
 /// Representation of an IoDevice 
-///      This struct + device traits (mod sensor, motor, et.al.) replaces
-///      the previous design in mod devices. It also replaces and extends
-///      functionality of ConnectedIo, PortMap and Port.
-///      This design is basically flipped around; instead of a single device
-///      trait with implementations for specific devices we have a single
-///      device struct with traits for specific devices. 
-///      This fits because all devices share the same data structure (as
-///      defined by the data available from the various information-
-///      commands) but differ in functionality.
+///     This struct + device traits (mod sensor, motor, et.al.) replaces
+///     the previous design in mod devices. It also replaces and extends
+///     functionality of ConnectedIo, PortMap and Port.
+///     This design is basically flipped around; instead of a single device
+///     trait with implementations for specific devices we have a single
+///     device struct with traits for specific devices. 
+///     This fits because all devices share the same data structure (as
+///     defined by the data available from the various information-
+///     commands) but differ in functionality.
+///    
+///     Considerations: 
+/// 
 
 
 use std::collections::{BTreeMap};
@@ -23,6 +26,7 @@ use crate::devices::remote::RcDevice;
 use crate::devices::sensor::*;
 use crate::devices::motor::*;
 use crate::devices::light::*;
+use crate::devices::visionsensor::*;
 use crate::{Error, Result};
 
 
@@ -273,7 +277,7 @@ impl PortMode {
     }
 }
 
-#[derive(Debug, Default, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq)]
 pub enum ModeKind {
     #[default]
     Unknown,
@@ -310,6 +314,39 @@ pub enum Mapping {
 //
 // Devices
 //
+impl GenericSensor for IoDevice {
+    fn p(&self) -> Option<Peripheral> { self.handles.p.clone() }  
+    fn c(&self) -> Option<Characteristic> { self.handles.c.clone() } 
+    fn port(&self) -> u8 { self.port }
+    
+    fn check(&self, mode: u8, datasettype: DatasetType) -> Result<()> {
+        if let Some(pm) = self.modes.get(&mode) {
+            let vf = pm.value_format;
+            // println!("Dataset for call: {:?}  Dataset for device: {:?} Device kind: {:?} ", &datasettype, &vf.dataset_type, &self.kind);
+            // dbg!(&self.modes);
+            if datasettype == vf.dataset_type { return Ok(()) }
+            else { return Err(Error::NoneError(String::from("Incorrect dataset type"))) }
+        } else {
+            Err(Error::NoneError(String::from("Mode not found")))
+        }
+    }
+    fn pc(&self) -> (Peripheral, Characteristic) {
+        (self.handles.p.clone().unwrap(), self.handles.c.clone().unwrap())
+    }    
+    fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>> {
+        if let Some(sender) = &self.channels.rx_singlevalue_sender {
+            Ok(sender.subscribe())
+        } else {
+            Err(Error::NoneError(String::from("Sender not found"))) 
+        }
+    }
+    fn dataset(&self, mode: u8) -> Option<DatasetType> {
+        if let Some(pm) = self.modes.get(&mode) {
+            Some(pm.value_format.dataset_type)
+        } else { None }
+    }
+}
+
 impl RcDevice for IoDevice {
     fn p(&self) -> Option<Peripheral> {
         match self.kind {
@@ -339,17 +376,6 @@ impl RcDevice for IoDevice {
             _ => Err(Error::HubError(String::from("Not a remote control device"))),
         } 
     } 
-}
-
-impl VisionSensor for IoDevice {
-    fn p(&self) -> Option<Peripheral> {
-        match self.kind {
-            IoTypeId::VisionSensor => self.handles.p.clone(),
-            _ => None,
-        } 
-    } 
-    fn c(&self) -> Option<Characteristic> { self.handles.c.clone() } 
-    fn port(&self) -> u8 { self.port }
 }
 
 impl EncoderMotor for IoDevice {
@@ -391,25 +417,15 @@ impl HubLed for IoDevice {
     fn port(&self) -> u8 { self.port }
 }
 
-
-//  Generic sensor devices 
-impl GenericSensor for IoDevice {
-    fn p(&self) -> Option<Peripheral> { self.handles.p.clone() }  
-    fn c(&self) -> Option<Characteristic> { self.handles.c.clone() } 
+impl VisionSensor for IoDevice {
     fn port(&self) -> u8 { self.port }
-    
-    fn check(&self, mode: u8, datasettype: DatasetType) -> Result<()> {
-        if let Some(pm) = self.modes.get(&mode) {
-            let vf = pm.value_format;
-            match vf.dataset_type {
-                datasettype => Ok(()),
-                _ => Err(Error::NoneError(String::from("Incorrect dataset type")))
-            }             
-        } else {
-            Err(Error::NoneError(String::from("Mode not found")))
-        }
+    fn check(&self) -> Option<(Peripheral, Characteristic)> {
+        match self.kind {
+            IoTypeId::VisionSensor => Some( (self.handles.p.clone().expect("Peripheral not in device cache"), 
+                                            self.handles.c.clone().expect("Characteristic not in device cache")) ),
+            _ => None,
+        } 
     }
-    
     fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>> {
         if let Some(sender) = &self.channels.rx_singlevalue_sender {
             Ok(sender.subscribe())
@@ -418,4 +434,3 @@ impl GenericSensor for IoDevice {
         }
     }
 }
-

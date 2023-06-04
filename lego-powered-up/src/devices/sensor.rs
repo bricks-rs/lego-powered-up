@@ -17,10 +17,12 @@ use crate::notifications::{NotificationMessage, ValueFormatType, PortValueSingle
 pub trait GenericSensor: Debug + Send + Sync {
     fn p(&self) -> Option<Peripheral>;
     fn c(&self) -> Option<Characteristic>;
+    fn pc(&self) -> (Peripheral, Characteristic);
     fn port(&self) -> u8;
-    // fn check(&self, mode: u8) -> Result<()>;
     fn check(&self, mode: u8, datasettype: DatasetType) -> Result<()>;
     fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>>;
+    fn dataset(&self, mode: u8) -> Option<DatasetType>;
+
 
     async fn set_device_mode(&self, mode: u8, delta: u32) -> Result<()>{
         let mode_set_msg =
@@ -122,7 +124,7 @@ pub trait GenericSensor: Debug + Send + Sync {
 
         // Set up channel
         let port_id = self.port();
-        let (tx, mut rx) = broadcast::channel::<Vec<i32>>(8);
+        let (tx, mut rx) = broadcast::channel::<Vec<i32>>(16);
         match self.get_rx() {
             Ok(mut rx_from_main) => { 
                 let task = tokio::spawn(async move {
@@ -151,28 +153,87 @@ pub trait GenericSensor: Debug + Send + Sync {
         }
     }
 
-}
+    async fn raw_channel(&self) -> Result<(broadcast::Receiver<Vec<i8>>, JoinHandle<()> )> {
+        let port_id = self.port();
+        let (tx, mut rx) = broadcast::channel::<Vec<i8>>(8);
+        match self.get_rx() {
+            Ok(mut rx_from_main) => { 
+                let task = tokio::spawn(async move {
+                    while let Ok(msg) = rx_from_main.recv().await {
+                        if msg.port_id != port_id {
+                            continue;
+                        }
+                        tx.send(msg.data);
+                    }
+                });
 
-
-
-#[async_trait]
-pub trait VisionSensor: Debug + Send + Sync {
-    fn p(&self) -> Option<Peripheral>;
-    fn c(&self) -> Option<Characteristic>;
-    fn port(&self) -> u8;
-
-    async fn vison_sensor_single_enable(&self, mode: u8, delta: u32) -> Result<()> {
-        let mode_set_msg =
-            NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
-                port_id: self.port(),
-                mode: mode as u8,
-                delta,
-                notification_enabled: true,
-            });
-        let p = match self.p() {
-            Some(p) => p,
-            None => return Err(Error::NoneError((String::from("Not a Vision sensor"))))
-        };
-        crate::hubs::send(p, self.c().unwrap(), mode_set_msg).await
+                Ok((rx, task))
+            }
+            _ => Err(Error::NoneError((String::from("No sender in device cache"))))
+        }
     }
+
+
+    // async fn enable_sensor<T>(&self, mode: u8, delta: u32) -> Result<(broadcast::Receiver<Vec<T>>, JoinHandle<()> )> {
+    //     let dataset = match self.dataset(mode) {
+    //         Some(dst) => dst,
+    //         None => { return Err(Error::NoneError((String::from("Dataset type unavailable")))); }
+    //     };
+    //     self.set_device_mode(mode, delta).await?;
+
+    //     let port_id = self.port();
+    //     match dataset {
+    //         DatasetType::Bits8 => {
+    //             let (tx, mut rx) = broadcast::channel::<Vec<i8>>(8);
+    //             match self.get_rx() {
+    //                 Ok(mut rx_from_main) => { 
+    //                     let task = tokio::spawn(async move {
+    //                         while let Ok(msg) = rx_from_main.recv().await {
+    //                             if msg.port_id != port_id {
+    //                                 continue;
+    //                             }
+    //                             tx.send(msg.data);
+    //                         }
+    //                     });
+        
+    //                     return Ok((rx, task))
+    //                 }
+    //                 _ => Err(Error::NoneError((String::from("No sender in device cache"))))
+    //             }
+    //         },
+    //         DatasetType::Bits16 => {
+    //             let (tx, mut rx) = broadcast::channel::<Vec<i16>>(8);
+    //             match self.get_rx() {
+    //                 Ok(mut rx_from_main) => { 
+    //                     let task = tokio::spawn(async move {
+    //                         while let Ok(data) = rx_from_main.recv().await {
+    //                             if data.port_id != port_id {
+    //                                 continue;
+    //                             }
+    //                             let mut converted: Vec<i16> = Vec::new();
+    //                             let cycles = &data.data.len() / 2;
+    //                             let mut it = data.data.into_iter();
+    //                             for _ in 0..cycles {
+    //                                 converted.push(i16::from_le_bytes([it.next().unwrap() as u8, it.next().unwrap() as u8]));
+    //                             }    
+    //                             tx.send(converted);
+    //                         }
+    //                     });
+    //                     return Ok((rx, task))
+    //                 }
+    //             _ => Err(Error::NoneError((String::from("No sender in device cache"))))
+    //             }
+    //         },
+    //         DatasetType::Bits32 => {
+
+    //         }
+
+            
+    //     }
+
+    // }
+
+
 }
+
+

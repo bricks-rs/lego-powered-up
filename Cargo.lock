@@ -12,6 +12,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "all-sensors"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "btleplug",
+ "futures",
+ "lego-powered-up",
+ "tokio",
+]
+
+[[package]]
 name = "anyhow"
 version = "1.0.66"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -318,6 +329,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "device-info"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "btleplug",
+ "futures",
+ "lego-powered-up",
+ "text_io",
+ "tokio",
+]
+
+[[package]]
 name = "either"
 version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -496,18 +519,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "hubled"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "btleplug",
- "futures",
- "lego-powered-up",
- "text_io",
- "tokio",
-]
-
-[[package]]
 name = "humantime"
 version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -665,6 +676,17 @@ version = "0.1.0"
 dependencies = [
  "quote",
  "syn",
+]
+
+[[package]]
+name = "lpu-template"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "btleplug",
+ "futures",
+ "lego-powered-up",
+ "tokio",
 ]
 
 [[package]]
@@ -895,6 +917,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "93fc1dc3aaa9bfed95e02e6eadabb4baf7e3078b0bd1b4d7b6b0b68378900502"
 dependencies = [
  "winapi-util",
+]
+
+[[package]]
+name = "scan"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "btleplug",
+ "futures",
+ "lego-powered-up",
+ "tokio",
 ]
 
 [[package]]
@@ -1145,6 +1178,28 @@ name = "uuid"
 version = "1.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "422ee0de9031b5b948b97a8fc04e3aa35230001a722ddd27943e0be31564ce4c"
+
+[[package]]
+name = "vision-sensor"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "btleplug",
+ "futures",
+ "lego-powered-up",
+ "tokio",
+]
+
+[[package]]
+name = "vision-sensor-color"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "btleplug",
+ "futures",
+ "lego-powered-up",
+ "tokio",
+]
 
 [[package]]
 name = "walkdir"

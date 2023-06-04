@@ -34,7 +34,7 @@ pub mod sensor;
 pub mod motor;
 pub mod light;
 pub mod modes;
-
+pub mod visionsensor;
 
 // #[async_trait]
 // pub trait Device: Debug + Send + Sync {

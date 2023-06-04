@@ -18,6 +18,8 @@ async fn main() -> anyhow::Result<()> {
     }    
     let (mut rc_rx, _rc_task) = rc.remote_connect_with_green().await?;
 
+
+
     // Print some feedback for button presses. Both red buttons together to exit.
     let button_feedback = tokio::spawn(async move {
         let mut red_down: (bool, bool) = (false, false); 
@@ -49,6 +51,7 @@ async fn main() -> anyhow::Result<()> {
             if red_down == (true, true) { break }
         }
     });
+
 
     button_feedback.await?;
 

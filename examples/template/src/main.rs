@@ -59,3 +59,20 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
+
+// let rc_control = tokio::spawn(async move {
+//     while let Ok(data) = rc_rx.recv().await {
+//         match data {
+//             RcButtonState::Aup => {  println!("A released"); }
+//             RcButtonState::Aplus => { println!("A plus") }
+//             RcButtonState::Ared => { println!("A red"); }
+//             RcButtonState::Aminus => { println!("A minus") }
+//             RcButtonState::Bup => { println!("B released"); 
+//             RcButtonState::Bplus => { println!("B plus") }
+//             RcButtonState::Bred => { println!("B red");  }
+//             RcButtonState::Bminus => { println!("B minus") }
+//             RcButtonState::Green => { println!("Green pressed") }
+//             RcButtonState::GreenUp => { println!("Green released") }
+//         }
+//     }
+// });

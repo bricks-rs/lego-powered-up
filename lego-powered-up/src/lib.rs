@@ -327,12 +327,14 @@ pub struct ConnectedHub {
     pub name: String,
     pub mutex: HubMutex,
     pub kind: HubType,
+    // foo: Box<dyn Hub>
 }
 impl ConnectedHub {
     pub async fn setup_hub (created_hub: Box<dyn Hub>) -> Result<ConnectedHub> {    
         let connected_hub = ConnectedHub {
             kind: created_hub.kind(),
-            name: created_hub.name().await?,                                                    
+            name: created_hub.name().await?, 
+            // foo: created_hub,                                                   
             mutex: Arc::new(Mutex::new(created_hub)),
         };
         // Create forwarding channels and store in hub so we can create receivers on demand 
@@ -367,7 +369,7 @@ impl ConnectedHub {
             let lock = connected_hub.mutex.lock().await;
             lock.peripheral().subscribe(&lock.characteristic()).await.unwrap();
         }
-        tokio::time::sleep(Duration::from_millis(1500)).await; //Wait for devices to be collected
+        tokio::time::sleep(Duration::from_millis(3500)).await; //Wait for devices to be collected
         Ok(connected_hub)
     }
 }

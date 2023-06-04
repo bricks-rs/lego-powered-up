@@ -76,7 +76,7 @@ async fn main() -> anyhow::Result<()> {
     let (mut voltage_rx, jh) = rc_volt.enable_16bit_sensor(0x00, 1).await.unwrap();
     tokio::spawn(async move {
         while let Ok(data) = voltage_rx.recv().await {
-            println!("Voltage: {:?}  {:?}", data, data[0] as u16)
+            // println!("Voltage: {:?}  {:?}", data, data[0] as u16)
         }
     });
 
@@ -149,6 +149,20 @@ async fn main() -> anyhow::Result<()> {
     //         println!("Vision: {:?} ", data, )
     //     }
     // });
+
+    let mut vision: IoDevice;
+    {
+        let lock = rc_hub.mutex.lock().await;
+        vision = lock.io_from_kind(IoTypeId::VisionSensor).await?;
+    }   
+    let sensormode = modes::VisionSensor::RGB_I ;
+    let (mut vision_rx, jh) = vision.enable_16bit_sensor(sensormode, 1).await.unwrap();
+    let sensor_task = tokio::spawn(async move {
+        while let Ok(data) = vision_rx.recv().await {
+            println!("Vision {:?}  {:?}", sensormode, data);
+        }
+    });
+    sensor_task.await?;
 
 
     // Start ui

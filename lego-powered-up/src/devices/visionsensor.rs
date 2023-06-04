@@ -7,9 +7,13 @@ use tokio::sync::broadcast;
 use tokio::task::JoinHandle;
 
 use crate::IoTypeId;
+use crate::devices::modes;
 use crate::error::{Error, OptionContext, Result};
-use crate::notifications::{NotificationMessage, ValueFormatType, PortValueSingleFormat, DatasetType, InputSetupSingle};
+use crate::notifications::{NotificationMessage, ValueFormatType, PortValueSingleFormat, DatasetType, InputSetupSingle, PortOutputSubcommand, WriteDirectModeDataPayload, PortOutputCommandFormat, StartupInfo, CompletionInfo};
 use crate::devices::modes::VisionSensor as visionmode;
+use crate::consts::Color;
+
+
 // #[macro_use]
 // use crate::notifications::macros::*;
 
@@ -59,7 +63,7 @@ pub trait VisionSensor: Debug + Send + Sync {
                 let task = tokio::spawn(async move {
                     while let Ok(msg) = rx_from_main.recv().await {
                         match msg.port_id {
-                            0x0 => {
+                            port => {
                                 match msg.data[0] as i8 {
                                     0 => { tx.send(DetectedColor::Black); }
                                     1 => { tx.send(DetectedColor::Magenta); }
@@ -81,6 +85,40 @@ pub trait VisionSensor: Debug + Send + Sync {
                 });
             
                 Ok((rx, task))
+    }
+
+    async fn visionsensor_light_mode(&self) -> Result<()> {
+        let pc = match self.check() {
+            Some(handles) => handles,
+            None => return Err(Error::NoneError((String::from("Not a Vision sensor"))))
+        };
+        let msg =
+            NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
+                port_id: self.port(),
+                mode: modes::VisionSensor::COL_O,
+                delta: 1,
+                notification_enabled: true,
+            });
+        crate::hubs::send(pc.0, pc.1, msg).await
+    }
+
+
+    async fn visionsensor_set_color(&self, color: i8) -> Result<()> {
+        let pc = match self.check() {
+            Some(handles) => handles,
+            None => return Err(Error::NoneError((String::from("Not a Vision sensor"))))
+        };
+        let subcommand = PortOutputSubcommand::WriteDirectModeData(
+            WriteDirectModeDataPayload::SetRgbColorNo(color as i8));
+
+        let msg =
+            NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
+                port_id: self.port(),
+                startup_info: StartupInfo::ExecuteImmediately,
+                completion_info: CompletionInfo::NoAction,
+                subcommand,
+            });
+        crate::hubs::send(pc.0, pc.1, msg).await
     }
 
 }
