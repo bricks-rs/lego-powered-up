@@ -23,8 +23,8 @@ async fn main() -> anyhow::Result<()> {
     let hub = setup::single_hub().await?;
 
     // Do stuff
-    use lego_powered_up::devices::iodevice::definition::ModeKind;
-    use lego_powered_up::devices::iodevice::definition::PortMode;
+    use lego_powered_up::devices::definition::ModeKind;
+    use lego_powered_up::devices::definition::PortMode;
     let mut d_list: Vec<IoDevice> = Vec::new(); 
     {
         let mut lock = hub.mutex.lock().await;

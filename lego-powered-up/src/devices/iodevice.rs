@@ -30,15 +30,14 @@ use crate::devices::visionsensor::*;
 use crate::{Error, Result};
 use crate::hubs::Channels;
 
-pub mod definition;
-use definition::Definition;
+use super::definition::Definition;
 type ModeId = u8;
 
 #[derive(Debug, Default, Clone)]
 pub struct IoDevice {
     kind: IoTypeId,
     port: u8,
-    pub def: definition::Definition,
+    pub def: Definition,
     pub handles: Handles,
     channels: Channels,
 }
