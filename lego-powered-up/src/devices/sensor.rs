@@ -15,29 +15,28 @@ use crate::notifications::{NotificationMessage, ValueFormatType, PortValueSingle
 
 #[async_trait]
 pub trait GenericSensor: Debug + Send + Sync {
-    fn p(&self) -> Option<Peripheral>;
-    fn c(&self) -> Option<Characteristic>;
-    fn pc(&self) -> (Peripheral, Characteristic);
     fn port(&self) -> u8;
-    fn check(&self, mode: u8, datasettype: DatasetType) -> Result<()>;
+    fn tokens(&self) -> (&Peripheral, &Characteristic);
     fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>>;
-    fn dataset(&self, mode: u8) -> Option<DatasetType>;
+    fn check(&self, mode: u8, datasettype: DatasetType) -> Result<()>;
+    async fn commit(&self, msg: NotificationMessage) -> Result<()> {
+        let tokens = self.tokens();
+        match crate::hubs::send2(tokens.0, tokens.1, msg).await { 
+            Ok(()) => Ok(()),
+            Err(e)  => { Err(e) }
+        }
+    }
 
-
-    async fn set_device_mode(&self, mode: u8, delta: u32) -> Result<()>{
-        let mode_set_msg =
+    async fn set_device_mode(&self, mode: u8, delta: u32, notification_enabled:bool) -> Result<()>{
+        let msg =
             NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
                 port_id: self.port(),
                 mode: mode as u8,
                 delta,
-                notification_enabled: true,
+                notification_enabled,
             });
 
-        let setmode = crate::hubs::send(self.p().unwrap(), self.c().unwrap(), mode_set_msg).await;
-            match setmode {
-                Ok(()) => Ok(()),
-                Err(e) => { return Err(Error::HubError((String::from("Error setting mode on device")))); }
-            }
+        self.commit(msg).await
     }
 
     async fn enable_8bit_sensor(&self, mode: u8, delta: u32) -> Result<(broadcast::Receiver<Vec<i8>>, JoinHandle<()> )> {
@@ -45,7 +44,7 @@ pub trait GenericSensor: Debug + Send + Sync {
             Ok(()) => (),
             _ => return Err(Error::NoneError((String::from("Not an 8-bit sensor mode"))))
         }
-        self.set_device_mode(mode, delta).await?;
+        self.set_device_mode(mode, delta, true).await?;
 
         // Set up channel
         let port_id = self.port();
@@ -76,7 +75,7 @@ pub trait GenericSensor: Debug + Send + Sync {
             Ok(()) => (),
             _ => return Err(Error::NoneError((String::from("Not a 16-bit sensor mode"))))
         }
-        self.set_device_mode(mode, delta).await?;
+        self.set_device_mode(mode, delta, true).await?;
 
         // Set up channel
         let port_id = self.port();
@@ -120,7 +119,7 @@ pub trait GenericSensor: Debug + Send + Sync {
             Ok(()) => (),
             _ => return Err(Error::NoneError((String::from("Not a 32-bit sensor mode"))))
         }
-        self.set_device_mode(mode, delta).await?;
+        self.set_device_mode(mode, delta, true).await?;
 
         // Set up channel
         let port_id = self.port();

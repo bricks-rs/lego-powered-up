@@ -190,7 +190,7 @@ pub async fn ui(mutex: HubMutex) -> () {
         else if line.contains("l") {
             let mut lock = mutex.lock().await;
             for device in lock.connected_io().values() {
-                println!("{}", device);
+                println!("{}", device.def);
             }
             continue;
         } 

@@ -12,12 +12,12 @@ pub struct GenericHub {
     pub channels: Channels
 }
 
-#[derive(Debug, Default, Clone)]
-pub struct Channels {
-    pub singlevalue_sender: Option<tokio::sync::broadcast::Sender<PortValueSingleFormat>>, 
-    pub combinedvalue_sender: Option<tokio::sync::broadcast::Sender<PortValueCombinedFormat>>,
-    pub networkcmd_sender: Option<tokio::sync::broadcast::Sender<NetworkCommand>>,
-}
+// #[derive(Debug, Default, Clone)]
+// pub struct Channels {
+//     pub singlevalue_sender: Option<tokio::sync::broadcast::Sender<PortValueSingleFormat>>, 
+//     pub combinedvalue_sender: Option<tokio::sync::broadcast::Sender<PortValueCombinedFormat>>,
+//     pub networkcmd_sender: Option<tokio::sync::broadcast::Sender<NetworkCommand>>,
+// }
 
 #[async_trait::async_trait]
 impl Hub for GenericHub {
@@ -38,7 +38,7 @@ impl Hub for GenericHub {
     fn channels(&mut self) -> &mut Channels {&mut self.channels}
 
     fn attach_io(&mut self, device_to_insert: IoDevice) -> Result<()> {
-        self.connected_io.insert(device_to_insert.port, device_to_insert );
+        self.connected_io.insert(device_to_insert.port(), device_to_insert );
         Ok(())
     }
     async fn disconnect(&self) -> Result<()> {
@@ -72,8 +72,7 @@ impl Hub for GenericHub {
     //     ret
     // }
 
-    // Deprecated. Some earlier examples uses this, new examples should 
-    // use enable_from_port or enable_from_kind
+    // Deprecated,  use enable_from_port or enable_from_kind
     // async fn port(&self, port_id: Port) -> Result<Box<dyn Device>> {
     //     let port =
     //         *self.properties.port_map.get(&port_id).ok_or_else(|| {
@@ -101,10 +100,12 @@ impl Hub for GenericHub {
 
     /// Cache handles held by hub on device so we don't need to lock hub mutex as often    
     fn device_cache(&self, mut d: IoDevice) -> IoDevice {
+        use crate::hubs::Channels;
         // Channels that forward some notification message types
-        d.channels.rx_singlevalue_sender = self.channels.singlevalue_sender.clone();
-        d.channels.rx_combinedvalue_sender = self.channels.combinedvalue_sender.clone();
-        d.channels.rx_networkcmd_sender = self.channels.networkcmd_sender.clone();
+        d.set_channels( (self.channels.singlevalue_sender.clone(),
+            self.channels.combinedvalue_sender.clone(),
+            self.channels.networkcmd_sender.clone()) );
+       
         // BT handles for calling send
         d.handles.p = Some(self.peripheral().clone());
         d.handles.c = Some(self.characteristic().clone());
@@ -126,7 +127,7 @@ impl Hub for GenericHub {
     }
 
     async fn io_from_kind(&self, req_kind: IoTypeId) -> Result<IoDevice> {
-        let found: Vec<&IoDevice> = self.connected_io.values().filter(|&x| x.kind == req_kind).collect();
+        let found: Vec<&IoDevice> = self.connected_io.values().filter(|&x| *x.kind() == req_kind).collect();
         match found.len() {
             0 => {
                 Err(Error::NoneError(format!("No device of kind: {req_kind:?}")))   
@@ -140,14 +141,14 @@ impl Hub for GenericHub {
             }
             _ => { 
                 eprintln!("Found {:#?} {:#?} on {:?}, use enable_from_port()", found.len(), req_kind, 
-                    found.iter().map(|x|x.port).collect::<Vec<_>>());
+                    found.iter().map(|x|x.port()).collect::<Vec<_>>());
                 // Err(Error::HubError(String::from("Found {count} {kind} on {list of ports}, use enable_from_port()"))) 
-                Err(Error::HubError(format!("Found {:?} {req_kind:?} on {:?}, use io_from_port()", found.len(), found.iter().map(|x|x.port).collect::<Vec<_>>()) )) 
+                Err(Error::HubError(format!("Found {:?} {req_kind:?} on {:?}, use io_from_port()", found.len(), found.iter().map(|x|x.port()).collect::<Vec<_>>()) )) 
             }
         }
     }
     async fn io_multi_from_kind(&self, req_kind: IoTypeId) -> Result<Vec<IoDevice>> {
-        let found: Vec<IoDevice> = self.connected_io.values().filter(|&x| x.kind == req_kind).map(|x|x.clone()).collect();
+        let found: Vec<IoDevice> = self.connected_io.values().filter(|&x| *x.kind() == req_kind).map(|x|x.clone()).collect();
         match found.len() {
             0 => {
                 Err(Error::NoneError(format!("No device of kind: {req_kind:?}")))   
@@ -161,8 +162,8 @@ impl Hub for GenericHub {
             }
             _ => { 
                 eprintln!("Found {:#?} {:#?} on {:?}, use enable_from_port()", found.len(), req_kind, 
-                    found.iter().map(|x|x.port).collect::<Vec<_>>());
-                Err(Error::HubError(format!("Found {:?} {req_kind:?} on {:?}, use io_from_port()", found.len(), found.iter().map(|x|x.port).collect::<Vec<_>>()) )) 
+                    found.iter().map(|x|x.port()).collect::<Vec<_>>());
+                Err(Error::HubError(format!("Found {:?} {req_kind:?} on {:?}, use io_from_port()", found.len(), found.iter().map(|x|x.port()).collect::<Vec<_>>()) )) 
             }
         }
     }

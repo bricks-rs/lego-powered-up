@@ -36,14 +36,19 @@ pub enum DetectedColor {
 #[async_trait]
 pub trait VisionSensor: Debug + Send + Sync {
     fn port(&self) -> u8;
+    fn tokens(&self) -> (&Peripheral, &Characteristic);
     fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>>;
-    fn check(&self) -> Option<(Peripheral, Characteristic)>;
+    fn check(&self) -> Result<()>;
+    async fn commit(&self, msg: NotificationMessage) -> Result<()> {
+        let tokens = self.tokens();
+        match crate::hubs::send2(tokens.0, tokens.1, msg).await { 
+            Ok(()) => Ok(()),
+            Err(e)  => { Err(e) }
+        }
+    }
 
     async fn vison_sensor_single_enable(&self, mode: u8, delta: u32) -> Result<()> {
-        let pc = match self.check() {
-            Some(handles) => handles,
-            None => return Err(Error::NoneError((String::from("Not a Vision sensor"))))
-        };
+        self.check()?;
         let msg =
             NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
                 port_id: self.port(),
@@ -51,7 +56,7 @@ pub trait VisionSensor: Debug + Send + Sync {
                 delta,
                 notification_enabled: true,
             });
-        crate::hubs::send(pc.0, pc.1, msg).await
+        self.commit(msg).await
     }
 
     async fn visionsensor_color(&self) -> Result<(broadcast::Receiver<DetectedColor>, JoinHandle<()> )> {
@@ -87,11 +92,12 @@ pub trait VisionSensor: Debug + Send + Sync {
                 Ok((rx, task))
     }
 
+
+    /// This (light mode and set color) is supposed to set the light in the sensor.
+    /// Setting it to black turns it off (as the hubled) but other colors don't seem
+    /// to have an effect.
     async fn visionsensor_light_mode(&self) -> Result<()> {
-        let pc = match self.check() {
-            Some(handles) => handles,
-            None => return Err(Error::NoneError((String::from("Not a Vision sensor"))))
-        };
+        self.check()?;
         let msg =
             NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
                 port_id: self.port(),
@@ -99,15 +105,10 @@ pub trait VisionSensor: Debug + Send + Sync {
                 delta: 1,
                 notification_enabled: true,
             });
-        crate::hubs::send(pc.0, pc.1, msg).await
+        self.commit(msg).await
     }
-
-
     async fn visionsensor_set_color(&self, color: i8) -> Result<()> {
-        let pc = match self.check() {
-            Some(handles) => handles,
-            None => return Err(Error::NoneError((String::from("Not a Vision sensor"))))
-        };
+        self.check()?;
         let subcommand = PortOutputSubcommand::WriteDirectModeData(
             WriteDirectModeDataPayload::SetRgbColorNo(color as i8));
 
@@ -118,7 +119,7 @@ pub trait VisionSensor: Debug + Send + Sync {
                 completion_info: CompletionInfo::NoAction,
                 subcommand,
             });
-        crate::hubs::send(pc.0, pc.1, msg).await
+        self.commit(msg).await
     }
 
 }

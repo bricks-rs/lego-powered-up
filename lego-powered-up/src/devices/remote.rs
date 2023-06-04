@@ -26,52 +26,42 @@ pub enum RcButtonState {
 
 #[async_trait]
 pub trait RcDevice: Debug + Send + Sync {
-    fn p(&self) -> Option<Peripheral>;
-    fn c(&self) -> Option<Characteristic>;
     fn port(&self) -> u8;
-    fn check(&self) -> Result<()>;
+    fn tokens(&self) -> (&Peripheral, &Characteristic);
     fn get_rx_pvs(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>>;
     fn get_rx_nwc(&self) -> Result<broadcast::Receiver<NetworkCommand>>;
+    fn check(&self) -> Result<()>;
 
-    fn fetch_handles(&self) -> (Peripheral, Characteristic) {
-        let p = self.p().expect("Peripheral not in device cache");
-        let c = self.c().expect("Charactheristic not in device cache");
-
-        (p, c)
+    async fn commit(&self, msg: NotificationMessage) -> Result<()> {
+        let tokens = self.tokens();
+        match crate::hubs::send2(tokens.0, tokens.1, msg).await { 
+            Ok(()) => Ok(()),
+            Err(e)  => { Err(e) }
+        }
     }
 
     async fn remote_buttons_enable(&self, mode: u8, delta: u32) -> Result<()> {
-        match self.check() {
-            Ok(()) => (),
-            _ => return Err(Error::NoneError((String::from("Not a remote control device"))))
-        }
-        let (p, c) = self.fetch_handles();
-        let mode_set_msg =
+        self.check()?;
+        let msg =
             NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
                 port_id: self.port(),
                 mode: mode as u8,
                 delta,
                 notification_enabled: true,
             });
-        crate::hubs::send2(&self.p().unwrap(), &self.c().unwrap(), mode_set_msg).await
+        self.commit(msg).await
     }
 
     async fn remote_buttons_enable_by_port(&self, port_id: u8) -> Result<()> {
-        match self.check() {
-            Ok(()) => (),
-            _ => return Err(Error::NoneError((String::from("Not a remote control device"))))
-        }
-        let (p, c) = self.fetch_handles();
-        let mode_set_msg =
+        self.check()?;
+        let msg =
             NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
                 port_id,
                 mode: 0,                // Not sure what the usecases for the different button modes are, 0 seems fine
                 delta: 1,
                 notification_enabled: true,
             });
-        crate::hubs::send2(&p, &c, mode_set_msg).await.expect("Error while setting mode");
-
-        Ok(())
+        self.commit(msg).await
     }
 
     async fn remote_connect(&self) -> Result<(broadcast::Receiver<RcButtonState>, JoinHandle<()> )> {

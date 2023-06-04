@@ -76,7 +76,7 @@ pub async fn attached_device_info(mutex: HubMutex) -> () {
         else if line.contains("l") {
             let mut lock = mutex.lock().await;
             for device in lock.connected_io().values() {
-                println!("{}", device);
+                println!("{}", device.def);
             }
             continue;
         } 
@@ -90,7 +90,8 @@ pub async fn attached_device_info(mutex: HubMutex) -> () {
                     let mut lock = mutex.lock().await;
                     let device = lock.connected_io().get(&num);
                     match device {
-                        Some(device) => { println!("{:#?}", device) }  //{dbg!(device);}
+                        Some(device) => { println!("{:#?}", device.def) }  //{dbg!(device);}
+                        // Some(device) => {dbg!(&device.def); }  //{dbg!(device);}
                         None => { println!("Device not found"); }
                     }
                 }

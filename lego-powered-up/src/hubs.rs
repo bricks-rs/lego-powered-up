@@ -38,7 +38,7 @@ pub trait Hub: Debug + Send + Sync {
     fn characteristic(&self) -> &Characteristic;
     fn kind(&self) -> HubType;
     fn connected_io(&mut self) -> &mut BTreeMap<u8, IoDevice>;
-    fn channels(&mut self) -> &mut crate::hubs::generic_hub::Channels;
+    fn channels(&mut self) -> &mut crate::hubs::Channels;
     fn device_cache(&self, d: IoDevice) -> IoDevice;
     fn attach_io(&mut self, device_to_insert: IoDevice) -> Result<()>;
     async fn subscribe(&self, char: Characteristic) -> Result<()>;
@@ -214,4 +214,11 @@ pub async fn send2(p: &Peripheral, c: &Characteristic, msg: NotificationMessage)
         p.write(&c, &buf, WriteType::WithoutResponse)
         .await?;
     Ok(())
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct Channels {
+    pub singlevalue_sender: Option<tokio::sync::broadcast::Sender<PortValueSingleFormat>>, 
+    pub combinedvalue_sender: Option<tokio::sync::broadcast::Sender<PortValueCombinedFormat>>,
+    pub networkcmd_sender: Option<tokio::sync::broadcast::Sender<NetworkCommand>>,
 }

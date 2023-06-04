@@ -17,41 +17,32 @@ use crate::notifications::CompletionInfo;
 
 #[async_trait]
 pub trait HubLed: Debug + Send + Sync {
-    fn p(&self) -> Option<Peripheral>;
-    fn c(&self) -> Option<Characteristic>;
     fn port(&self) -> u8;
+    fn tokens(&self) -> (&Peripheral, &Characteristic);
+    fn check(&self) -> Result<()>;
 
-    async fn set_port_mode(&self, mode: u8, delta: u32, notification_enabled: bool) -> Result<()> {
-        let mode_set_msg =
-            NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
-                port_id: self.port(),
-                mode, 
-                delta,
-                notification_enabled,
-            });
-        crate::hubs::send(self.p().unwrap(), self.c().unwrap(), mode_set_msg).await
+    async fn commit(&self, msg: NotificationMessage) -> Result<()> {
+        let tokens = self.tokens();
+        match crate::hubs::send2(tokens.0, tokens.1, msg).await { 
+            Ok(()) => Ok(()),
+            Err(e)  => { Err(e) }
+        }
     }
 
     async fn set_hubled_mode(&self, mode: HubLedMode) -> Result<()> {
-        // TODO: check
-        let mode_set_msg =
+        self.check()?;
+        let msg =
             NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
                 port_id: self.port(),
                 mode: mode as u8,
                 delta: 1,
                 notification_enabled: false,
             });
-        let p = match self.p() {
-            Some(p) => p,
-            None => return {
-                eprintln!("Command error: Not a Hub LED");
-                Err(Error::NoneError(String::from("Not a Hub LED")))
-            }
-        };
-        crate::hubs::send(p, self.c().unwrap(), mode_set_msg).await
+        self.commit(msg).await
     }
 
     async fn set_hubled_rgb(&self, rgb: &[u8; 3]) -> Result<()> {
+        // self.check()?;  // Possible performance hit?
         let subcommand = PortOutputSubcommand::WriteDirectModeData(
             WriteDirectModeDataPayload::SetRgbColors {
                 red: rgb[0],
@@ -67,14 +58,11 @@ pub trait HubLed: Debug + Send + Sync {
                 completion_info: CompletionInfo::NoAction,
                 subcommand,
             });
-        let p = match self.p() {
-            Some(p) => p,
-            None => return Err(Error::NoneError((String::from("Not a Hub LED"))))
-        };
-        crate::hubs::send(p, self.c().unwrap(), msg).await
+        self.commit(msg).await
     }
 
     async fn set_hubled_color(&self, color: Color) -> Result<()> {
+        self.check()?;
         let subcommand = PortOutputSubcommand::WriteDirectModeData(
             WriteDirectModeDataPayload::SetRgbColorNo(color as i8));
 
@@ -85,11 +73,7 @@ pub trait HubLed: Debug + Send + Sync {
                 completion_info: CompletionInfo::NoAction,
                 subcommand,
             });
-        let p = match self.p() {
-            Some(p) => p,
-            None => return Err(Error::NoneError((String::from("Not a Hub LED"))))
-        };
-        crate::hubs::send(p, self.c().unwrap(), msg).await
+        self.commit(msg).await
     }
 }
 

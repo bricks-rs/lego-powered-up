@@ -23,8 +23,8 @@ async fn main() -> anyhow::Result<()> {
     let hub = setup::single_hub().await?;
 
     // Do stuff
-    use lego_powered_up::devices::iodevice::ModeKind;
-    use lego_powered_up::devices::iodevice::PortMode;
+    use lego_powered_up::devices::iodevice::definition::ModeKind;
+    use lego_powered_up::devices::iodevice::definition::PortMode;
     let mut d_list: Vec<IoDevice> = Vec::new(); 
     {
         let mut lock = hub.mutex.lock().await;
@@ -33,13 +33,13 @@ async fn main() -> anyhow::Result<()> {
         //     .map(|x|x.clone()).collect();
         let temp: Vec<IoDevice> = lock.connected_io().values().map(|x|x.clone()).collect();
         for mut d in temp {
-            if d.modes.pop_first().unwrap().1.kind == ModeKind::Sensor {
-                d_list.push(d);
-            }
+            // if d.def.modes().pop_first().unwrap().1.kind == ModeKind::Sensor {
+            //     d_list.push(d);
+            // }
         }
     }
     for mut d in d_list {
-        let mode_count = &d.modes.len();
+        let mode_count = &d.def.modes().len();
         let (mut d_rx, _) = d.raw_channel().await.unwrap();
         tokio::spawn(async move {
             // let m: Vec<&PortMode> = d.modes.values().collect();
