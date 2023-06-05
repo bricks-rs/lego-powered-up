@@ -1,17 +1,17 @@
+/// Support for
+/// https://rebrickable.com/parts/26912/sensor-color-and-distance-powered-up-2-x-4-x-2/
+
 use async_trait::async_trait;
 use core::fmt::Debug;
-
-use btleplug::api::{Characteristic, Peripheral as _, WriteType};
-use btleplug::platform::Peripheral;
+use btleplug::{ api::{Characteristic}, platform::Peripheral };
 use tokio::sync::broadcast;
 use tokio::task::JoinHandle;
 
-use crate::IoTypeId;
-use crate::devices::modes;
-use crate::error::{Error, OptionContext, Result};
-use crate::notifications::{NotificationMessage, ValueFormatType, PortValueSingleFormat, DatasetType, InputSetupSingle, PortOutputSubcommand, WriteDirectModeDataPayload, PortOutputCommandFormat, StartupInfo, CompletionInfo};
-use crate::devices::modes::VisionSensor as visionmode;
-use crate::consts::Color;
+use super::modes;
+use crate::error::{Result};
+use crate::notifications::{NotificationMessage,  PortValueSingleFormat,  InputSetupSingle, PortOutputSubcommand, WriteDirectModeDataPayload, PortOutputCommandFormat, StartupInfo, CompletionInfo};
+use super::modes::VisionSensor as visionmode;
+// use crate::consts::Color;
 
 
 // #[macro_use]
@@ -35,17 +35,17 @@ pub enum DetectedColor {
 
 #[async_trait]
 pub trait VisionSensor: Debug + Send + Sync {
-    fn port(&self) -> u8;
-    fn tokens(&self) -> (&Peripheral, &Characteristic);
-    fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>>;
-    fn check(&self) -> Result<()>;
-    async fn commit(&self, msg: NotificationMessage) -> Result<()> {
-        let tokens = self.tokens();
-        match crate::hubs::send2(tokens.0, tokens.1, msg).await { 
-            Ok(()) => Ok(()),
-            Err(e)  => { Err(e) }
-        }
-    }
+
+
+
+
+
+
+
+
+
+
+
 
     async fn vison_sensor_single_enable(&self, mode: u8, delta: u32) -> Result<()> {
         self.check()?;
@@ -61,14 +61,14 @@ pub trait VisionSensor: Debug + Send + Sync {
 
     async fn visionsensor_color(&self) -> Result<(broadcast::Receiver<DetectedColor>, JoinHandle<()> )> {
         self.vison_sensor_single_enable(visionmode::COLOR, 1).await?;
-        let port = self.port();
+        let port_id = self.port();
         // Set up channel
-        let (tx, mut rx) = broadcast::channel::<DetectedColor>(8);
+        let (tx,  rx) = broadcast::channel::<DetectedColor>(8);
         let mut rx_from_main = self.get_rx().expect("Single value sender not in device cache");
                 let task = tokio::spawn(async move {
                     while let Ok(msg) = rx_from_main.recv().await {
                         match msg.port_id {
-                            port => {
+                             port_id => {
                                 match msg.data[0] as i8 {
                                     0 => { tx.send(DetectedColor::Black); }
                                     1 => { tx.send(DetectedColor::Magenta); }
@@ -120,6 +120,18 @@ pub trait VisionSensor: Debug + Send + Sync {
                 subcommand,
             });
         self.commit(msg).await
+    }
+
+    /// Device trait boilerplate
+    fn port(&self) -> u8;
+    fn tokens(&self) -> (&Peripheral, &Characteristic);
+    fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>>;
+    fn check(&self) -> Result<()>;
+    async fn commit(&self, msg: NotificationMessage) -> Result<()> {
+        match crate::hubs::send(self.tokens(), msg).await { 
+            Ok(()) => Ok(()),
+            Err(e)  => { Err(e) }
+        }
     }
 
 }

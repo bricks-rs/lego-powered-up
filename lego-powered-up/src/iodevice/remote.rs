@@ -1,12 +1,17 @@
+/// Support for the button devices in
+/// https://rebrickable.com/parts/28739/control-unit-powered-up/
+/// The unit as a whole functions as a hub that connects the
+/// two button devices, hubled and voltage and rssi sensors.
+
 use async_trait::async_trait;
 use core::fmt::Debug;
-use crate::{Error, Result};
+use crate::{ Result};
 use btleplug::api::{Characteristic};
 use btleplug::platform::Peripheral;
 use tokio::sync::broadcast;
 // use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
-use crate::notifications::{ NetworkCommand::{self, ConnectionRequest}, PortValueSingleFormat, NotificationMessage,
+use crate::notifications::{ NetworkCommand::{self, }, PortValueSingleFormat, NotificationMessage,
                             InputSetupSingle, ButtonState};
 
 
@@ -26,15 +31,14 @@ pub enum RcButtonState {
 
 #[async_trait]
 pub trait RcDevice: Debug + Send + Sync {
+    /// Device trait boilerplate
     fn port(&self) -> u8;
     fn tokens(&self) -> (&Peripheral, &Characteristic);
     fn get_rx_pvs(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>>;
     fn get_rx_nwc(&self) -> Result<broadcast::Receiver<NetworkCommand>>;
     fn check(&self) -> Result<()>;
-
     async fn commit(&self, msg: NotificationMessage) -> Result<()> {
-        let tokens = self.tokens();
-        match crate::hubs::send2(tokens.0, tokens.1, msg).await { 
+        match crate::hubs::send(self.tokens(), msg).await { 
             Ok(()) => Ok(()),
             Err(e)  => { Err(e) }
         }
@@ -53,7 +57,7 @@ pub trait RcDevice: Debug + Send + Sync {
     }
 
     async fn remote_buttons_enable_by_port(&self, port_id: u8) -> Result<()> {
-        self.check()?;
+  self.check()?;
         let msg =
             NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
                 port_id,
@@ -69,7 +73,7 @@ pub trait RcDevice: Debug + Send + Sync {
         self.remote_buttons_enable_by_port(0x1).await?;
 
         // Set up channel
-        let (tx, mut rx) = broadcast::channel::<RcButtonState>(8);
+        let (tx, rx) = broadcast::channel::<RcButtonState>(8);
         let mut pvs_from_main = self.get_rx_pvs().expect("Single value sender not in device cache");
                 let task = tokio::spawn(async move {
                     while let Ok(msg) = pvs_from_main.recv().await {

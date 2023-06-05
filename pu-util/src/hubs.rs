@@ -7,8 +7,8 @@ use std::time::Duration;
 use crate::argparse::HubArgs;
 use lego_powered_up::{ HubFilter };
 use lego_powered_up::{PoweredUp, ConnectedHub, IoTypeId, IoDevice, consts,
-                        devices::light::{self, HubLed},
-                        devices::motor::{EncoderMotor, Power} 
+    iodevice::hubled::{self, HubLed},
+    iodevice::motor::{EncoderMotor, Power} 
 };
 
 pub async fn run(args: &HubArgs) -> Result<()> {
@@ -58,7 +58,7 @@ pub async fn run(args: &HubArgs) -> Result<()> {
             let lock = hub.mutex.lock().await;
             hub_led = lock.io_from_kind(IoTypeId::HubLed).await?;
         }
-        hub_led.set_hubled_mode(light::HubLedMode::Colour).await?;
+        hub_led.set_hubled_mode(hubled::HubLedMode::Colour).await?;
         for colour in [[0_u8, 0xff, 0], [0xff, 0, 0], [0, 0, 0xff]]
             .iter()
             .cycle()

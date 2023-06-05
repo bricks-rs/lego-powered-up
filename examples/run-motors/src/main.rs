@@ -3,8 +3,8 @@
 
 use lego_powered_up::{IoTypeId, IoDevice,
                     consts,
-                    devices::light::{self, HubLed},
-                    devices::motor::{EncoderMotor, Power} 
+                    iodevice::hubled::{self, HubLed},
+                    iodevice::motor::{EncoderMotor, Power} 
                 };
 use core::time::Duration;
 
@@ -24,7 +24,7 @@ async fn main() -> anyhow::Result<()> {
     }    
     
     println!("Change the hub LED to green");
-    hub_led.set_hubled_mode(light::HubLedMode::Colour).await?;
+    hub_led.set_hubled_mode(hubled::HubLedMode::Colour).await?;
     hub_led.set_hubled_color(consts::Color::Green).await?;
    
     println!("Run motors");

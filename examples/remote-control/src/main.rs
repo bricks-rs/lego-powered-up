@@ -4,7 +4,7 @@
 // #![allow(unused)]
 use lego_powered_up::IoDevice; 
 use lego_powered_up::consts::named_port;
-use lego_powered_up::devices::remote::{RcDevice, RcButtonState};
+use lego_powered_up::iodevice::remote::{RcDevice, RcButtonState};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

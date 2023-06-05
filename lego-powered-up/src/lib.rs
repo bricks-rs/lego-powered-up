@@ -1,6 +1,6 @@
 #![feature(exclusive_range_pattern)]
+// #![allow(unused)]
 
-#![allow(unused)]
 use btleplug::api::{
     Central, CentralEvent, Manager as _, Peripheral as _, PeripheralProperties,
     ScanFilter, 
@@ -26,16 +26,17 @@ use core::pin::Pin;
 
 // Crate
 pub mod consts;
-pub mod devices;
+// pub mod devices;
 pub mod error;
 pub mod hubs;
 pub mod notifications;
 pub mod setup;
+pub mod iodevice;
 mod tests;
 
 pub use hubs::Hub;
 pub use crate::consts::IoTypeId;
-pub use crate::devices::iodevice::IoDevice;
+pub use crate::iodevice::IoDevice;
 
 use notifications::{PortValueSingleFormat, PortValueCombinedFormat, NetworkCommand};
 use consts::{BLEManufacturerData, HubType};

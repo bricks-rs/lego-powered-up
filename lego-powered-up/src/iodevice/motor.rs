@@ -1,18 +1,23 @@
+/// Support for the Powered Up encoder motors, aka. tacho motors.
+/// The ones I've had available for testing are:
+/// https://rebrickable.com/parts/22169/motor-large-powered-up/
+/// https://rebrickable.com/parts/22172/motor-xl-powered-up/
+/// And the internal motors in: https://rebrickable.com/parts/26910/hub-move-powered-up-6-x-16-x-4/
+/// The start_power commands should work with train motors.
+
 use async_trait::async_trait;
 use core::fmt::Debug;
-
-use btleplug::api::{Characteristic};
-use btleplug::platform::Peripheral;
+use btleplug::{ api::{Characteristic}, platform::Peripheral };
 use tokio::sync::broadcast;
 use tokio::task::JoinHandle;
 
-use crate::error::{Error, OptionContext, Result};
+use crate::error::{Error,  Result};
 use crate::notifications::NotificationMessage;
 use crate::notifications::InputSetupSingle;
-use crate::notifications::{ WriteDirectModeDataPayload, WriteDirectPayload};
+use crate::notifications::{ WriteDirectModeDataPayload, };
 use crate::notifications::{PortOutputSubcommand, PortOutputCommandFormat, StartupInfo, CompletionInfo};
 use crate::consts::{MotorSensorMode};
-use crate::notifications::{InputSetupCombined, PortInputFormatCombinedFormat, InputSetupCombinedSubcommand};
+use crate::notifications::{InputSetupCombined,  InputSetupCombinedSubcommand};
 use crate::notifications::{PortValueSingleFormat, PortValueCombinedFormat};
 pub use crate::notifications::{Power, EndState};
 
@@ -26,20 +31,6 @@ pub use crate::notifications::{Power, EndState};
 
 #[async_trait]
 pub trait EncoderMotor: Debug + Send + Sync {
-    fn port(&self) -> u8;
-    fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>>;
-    fn get_rx_combined(&self) -> Result<broadcast::Receiver<PortValueCombinedFormat>>;
-    fn tokens(&self) -> (&Peripheral, &Characteristic);
-    fn check(&self) -> Result<()>;
-    
-    async fn commit(&self, msg: NotificationMessage) -> Result<()> {
-        let tokens = self.tokens();
-        match crate::hubs::send2(tokens.0, tokens.1, msg).await { //.expect("Error while sending command")
-            Ok(()) => Ok(()),
-            Err(e)  => { Err(e) }
-        }
-    }
-
     // Motor settings
     async fn preset_encoder(&self, position: i32) -> Result<()> {
         // let msg =
@@ -50,7 +41,7 @@ pub trait EncoderMotor: Debug + Send + Sync {
         //         notification_enabled: false,
         //     });
         // let tokens = self.tokens();
-        // crate::hubs::send2(tokens.0, tokens.1, msg).await.expect("Error while setting mode");
+        // crate::hubs::send(tokens.0, tokens.1, msg).await.expect("Error while setting mode");
 
         self.check()?;
         let subcommand = PortOutputSubcommand::WriteDirectModeData(
@@ -163,7 +154,7 @@ pub trait EncoderMotor: Debug + Send + Sync {
 
     // Encoder sensor data 
     async fn motor_sensor_enable(&self, mode: MotorSensorMode, delta: u32) -> Result<()> {
-        self.check();
+        self.check()?;
         let msg =
             NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
                 port_id: self.port(),
@@ -195,16 +186,16 @@ pub trait EncoderMotor: Debug + Send + Sync {
                 port_id: self.port(),
                 subcommand,
             });
-        self.commit(msg).await;
+        self.commit(msg).await?;
 
         // Step 2: Set up modes
-        self.motor_sensor_enable(MotorSensorMode::Speed, speed_delta).await;
+        self.motor_sensor_enable(MotorSensorMode::Speed, speed_delta).await?;
         // self.motor_sensor_enable(MotorSensorMode::APos, position_delta).await;    // Availablie on TechnicLinear motors, not on InternalTacho (MoveHub)
-        self.motor_sensor_enable(MotorSensorMode::Pos, position_delta).await;        // POS available on either
+        self.motor_sensor_enable(MotorSensorMode::Pos, position_delta).await?;        // POS available on either
 
         // Step 3: Set up combination
-        let mut sensor0_mode_nibble: u8;
-        let mut sensor1_mode_nibble: u8;
+        let sensor0_mode_nibble: u8;
+        let sensor1_mode_nibble: u8;
         // let mut sensor2_mode_nibble: u8;
         let dataset_nibble: u8 = 0x00;     // All motor modes have 1 dataset only 
         match primary_mode {
@@ -238,7 +229,7 @@ pub trait EncoderMotor: Debug + Send + Sync {
                 port_id: self.port(),
                 subcommand,
             });
-        self.commit(msg).await;
+        self.commit(msg).await?;
  
         // Step 4: Unlock device and enable multi updates 
         let subcommand = InputSetupCombinedSubcommand::UnlockAndStartMultiEnabled {};     
@@ -247,12 +238,12 @@ pub trait EncoderMotor: Debug + Send + Sync {
                 port_id: self.port(),
                 subcommand,
             });
-        self.commit(msg).await;
+        self.commit(msg).await?;
 
 
         // Set up channel
         let port_id = self.port();
-        let (tx, mut rx) = broadcast::channel::<Vec<u8>>(8);
+        let (tx, rx) = broadcast::channel::<Vec<u8>>(8);
         match self.get_rx_combined() {
             Ok(mut rx_from_main) => { 
                 let task = tokio::spawn(async move {
@@ -260,7 +251,7 @@ pub trait EncoderMotor: Debug + Send + Sync {
                         if data.port_id != port_id {
                             continue;
                         }
-                        tx.send(data.data);
+                        tx.send(data.data).expect("Error sending");
                         
                         // let converted_data = data.data.into_iter().map(|x| x as i8).collect();
                         // tx.send(converted_data);
@@ -269,11 +260,24 @@ pub trait EncoderMotor: Debug + Send + Sync {
 
                 Ok((rx, task))
             }
-            _ => { Err(Error::NoneError((String::from("Something went wrong")))) }
+            _ => { Err(Error::NoneError(String::from("Something went wrong"))) }
         }
 
 
     }    
+
+    /// Device trait boilerplate
+    fn port(&self) -> u8;
+    fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>>;
+    fn get_rx_combined(&self) -> Result<broadcast::Receiver<PortValueCombinedFormat>>;
+    fn tokens(&self) -> (&Peripheral, &Characteristic);
+    fn check(&self) -> Result<()>;
+    async fn commit(&self, msg: NotificationMessage) -> Result<()> {
+        match crate::hubs::send(self.tokens(), msg).await { 
+            Ok(()) => Ok(()),
+            Err(e)  => { Err(e) }
+        }
+    }
 
 }
 

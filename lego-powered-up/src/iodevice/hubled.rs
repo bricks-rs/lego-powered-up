@@ -1,12 +1,14 @@
+/// Support for the RGB light in various hubs. Tested with:
+/// https://rebrickable.com/parts/85824/hub-powered-up-4-port-technic-control-screw-opening/
+/// https://rebrickable.com/sets/88006-1/move-hub/
+/// https://rebrickable.com/parts/28739/control-unit-powered-up/
+
 use async_trait::async_trait;
 use core::fmt::Debug;
-
-use btleplug::api::{Characteristic, };
-use btleplug::platform::Peripheral;
+use btleplug::{ api::{Characteristic}, platform::Peripheral };
 
 pub use crate::consts::Color;
-use crate::devices::modes;
-use crate::{Error, Result};
+use crate::{Result};
 use crate::notifications::NotificationMessage;
 use crate::notifications::InputSetupSingle;
 use crate::notifications::PortOutputSubcommand;
@@ -15,20 +17,9 @@ use crate::notifications::WriteDirectModeDataPayload;
 use crate::notifications::StartupInfo;
 use crate::notifications::CompletionInfo;
 
+
 #[async_trait]
 pub trait HubLed: Debug + Send + Sync {
-    fn port(&self) -> u8;
-    fn tokens(&self) -> (&Peripheral, &Characteristic);
-    fn check(&self) -> Result<()>;
-
-    async fn commit(&self, msg: NotificationMessage) -> Result<()> {
-        let tokens = self.tokens();
-        match crate::hubs::send2(tokens.0, tokens.1, msg).await { 
-            Ok(()) => Ok(()),
-            Err(e)  => { Err(e) }
-        }
-    }
-
     async fn set_hubled_mode(&self, mode: HubLedMode) -> Result<()> {
         self.check()?;
         let msg =
@@ -75,6 +66,18 @@ pub trait HubLed: Debug + Send + Sync {
             });
         self.commit(msg).await
     }
+    
+    /// Device trait boilerplate
+    fn port(&self) -> u8;
+    fn tokens(&self) -> (&Peripheral, &Characteristic);
+    fn check(&self) -> Result<()>;
+    async fn commit(&self, msg: NotificationMessage) -> Result<()> {
+        match crate::hubs::send(self.tokens(), msg).await { 
+            Ok(()) => Ok(()),
+            Err(e)  => { Err(e) }
+        }
+    }
+
 }
 
 pub enum HubLedMode {
@@ -82,8 +85,6 @@ pub enum HubLedMode {
     Colour = 0x0,
     /// Colour may be set to any 12-bit RGB value
     Rgb = 0x01,
+    
 }
 
-#[async_trait]
-pub trait HeadLights: Debug + Send + Sync {
-}

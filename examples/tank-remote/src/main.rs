@@ -3,8 +3,8 @@
 
 use lego_powered_up::{IoTypeId, IoDevice,
     consts,
-    devices::light::{self, HubLed},
-    devices::motor::{EncoderMotor, Power},
+    iodevice::hubled::{self, HubLed},
+    iodevice::motor::{EncoderMotor, Power},
     Result as LpuResult 
 };
 use console_engine::{pixel, Color, ConsoleEngine, KeyCode};
@@ -98,7 +98,7 @@ async fn main() -> Result<()> {
     }    
     
     println!("Change the hub LED to green");
-    hub_led.set_hubled_mode(light::HubLedMode::Colour).await?;
+    hub_led.set_hubled_mode(hubled::HubLedMode::Colour).await?;
     hub_led.set_hubled_color(consts::Color::Green).await?;
 
     // initializes a screen of 20x10 characters with a target of 3 frames

@@ -200,20 +200,18 @@ pub struct HubProperties {
 
 
 
-
-
-// Deprecated in favor of the ref-taking version below, but a bit of work to update the functions that use this 
-pub async fn send(p: Peripheral, c: Characteristic, msg: NotificationMessage) -> Result<()> {
+/// Devices can use this with cached tokens and not need to mutex-lock hub
+pub async fn send(tokens: (&Peripheral, &Characteristic), msg: NotificationMessage) -> Result<()> {
     let buf = msg.serialise();
-        p.write(&c, &buf, WriteType::WithoutResponse)
+        tokens.0.write(&tokens.1, &buf, WriteType::WithoutResponse)
         .await?;
     Ok(())
 }
-pub async fn send2(p: &Peripheral, c: &Characteristic, msg: NotificationMessage) -> Result<()> {
-    let buf = msg.serialise();
-        p.write(&c, &buf, WriteType::WithoutResponse)
-        .await?;
-    Ok(())
+
+#[derive(Debug, Default, Clone)]
+pub struct Tokens {
+   pub p: Option<Peripheral>,
+   pub c: Option<Characteristic>,
 }
 
 #[derive(Debug, Default, Clone)]

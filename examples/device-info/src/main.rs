@@ -11,7 +11,7 @@ use tokio::sync::Mutex;
 use lego_powered_up::{IoDevice, IoTypeId};
 use lego_powered_up::Hub; 
 use lego_powered_up::consts::{LEGO_COLORS};
-use lego_powered_up::devices::{light::*};
+use lego_powered_up::iodevice::{hubled::*};
 
 type HubMutex = Arc<Mutex<Box<dyn Hub>>>;
 

@@ -6,8 +6,8 @@ use crate::argparse::MotorTestArgs;
 use anyhow::Result;
 use lego_powered_up::{HubFilter, PoweredUp};
 use lego_powered_up::{ConnectedHub, IoDevice, IoTypeId, consts,
-                      devices::light::{HubLed},
-                      devices::motor::{EncoderMotor, Power} };
+    iodevice::hubled::{HubLed},
+    iodevice::motor::{EncoderMotor, Power} };
 
 use std::time::Duration;
 

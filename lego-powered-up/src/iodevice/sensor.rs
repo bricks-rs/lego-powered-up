@@ -1,27 +1,30 @@
+/// Support for generic sensors. Can be used with simple sensors
+/// like hub temp, voltage etc., or other devices without
+/// higher level support. 
+
 use async_trait::async_trait;
 use core::fmt::Debug;
 
-use btleplug::api::{Characteristic, Peripheral as _, WriteType};
+use btleplug::api::{Characteristic, };
 use btleplug::platform::Peripheral;
 use tokio::sync::broadcast;
 use tokio::task::JoinHandle;
 
-use crate::IoTypeId;
-use crate::error::{Error, OptionContext, Result};
-use crate::notifications::{NotificationMessage, ValueFormatType, PortValueSingleFormat, DatasetType, InputSetupSingle};
+use crate::error::{Error,  Result};
+use crate::notifications::{NotificationMessage,  PortValueSingleFormat, DatasetType, InputSetupSingle};
 
 // #[macro_use]
 // use crate::notifications::macros::*;
 
 #[async_trait]
 pub trait GenericSensor: Debug + Send + Sync {
+    /// Device trait boilerplate
     fn port(&self) -> u8;
     fn tokens(&self) -> (&Peripheral, &Characteristic);
     fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>>;
     fn check(&self, mode: u8, datasettype: DatasetType) -> Result<()>;
     async fn commit(&self, msg: NotificationMessage) -> Result<()> {
-        let tokens = self.tokens();
-        match crate::hubs::send2(tokens.0, tokens.1, msg).await { 
+        match crate::hubs::send(self.tokens(), msg).await { 
             Ok(()) => Ok(()),
             Err(e)  => { Err(e) }
         }
@@ -42,13 +45,13 @@ pub trait GenericSensor: Debug + Send + Sync {
     async fn enable_8bit_sensor(&self, mode: u8, delta: u32) -> Result<(broadcast::Receiver<Vec<i8>>, JoinHandle<()> )> {
         match self.check(mode, DatasetType::Bits8) {
             Ok(()) => (),
-            _ => return Err(Error::NoneError((String::from("Not an 8-bit sensor mode"))))
+            _ => return Err(Error::NoneError(String::from("Not an 8-bit sensor mode")))
         }
         self.set_device_mode(mode, delta, true).await?;
 
         // Set up channel
         let port_id = self.port();
-        let (tx, mut rx) = broadcast::channel::<Vec<i8>>(8);
+        let (tx, rx) = broadcast::channel::<Vec<i8>>(8);
         match self.get_rx() {
             Ok(mut rx_from_main) => { 
                 let task = tokio::spawn(async move {
@@ -65,7 +68,7 @@ pub trait GenericSensor: Debug + Send + Sync {
 
                 Ok((rx, task))
             }
-            _ => Err(Error::NoneError((String::from("No sender in device cache"))))
+            _ => Err(Error::NoneError(String::from("No sender in device cache")))
         }
 
     }
@@ -73,13 +76,13 @@ pub trait GenericSensor: Debug + Send + Sync {
     async fn enable_16bit_sensor(&self, mode: u8, delta: u32) -> Result<(broadcast::Receiver<Vec<i16>>, JoinHandle<()> )> {
         match self.check(mode, DatasetType::Bits16) {
             Ok(()) => (),
-            _ => return Err(Error::NoneError((String::from("Not a 16-bit sensor mode"))))
+            _ => return Err(Error::NoneError(String::from("Not a 16-bit sensor mode")))
         }
         self.set_device_mode(mode, delta, true).await?;
 
         // Set up channel
         let port_id = self.port();
-        let (tx, mut rx) = broadcast::channel::<Vec<i16>>(8);
+        let (tx, rx) = broadcast::channel::<Vec<i16>>(8);
         match self.get_rx() {
             Ok(mut rx_from_main) => { 
                 let task = tokio::spawn(async move {
@@ -110,7 +113,7 @@ pub trait GenericSensor: Debug + Send + Sync {
 
                 Ok((rx, task))
             }
-            _ => Err(Error::NoneError((String::from("No sender in device cache"))))
+            _ => Err(Error::NoneError(String::from("No sender in device cache")))
         }
     }
 

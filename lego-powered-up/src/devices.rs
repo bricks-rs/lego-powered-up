@@ -28,14 +28,16 @@
 // abstractions for e.g. motors vs. sensors & LEDs.
 
 // New design in modules below this:
-pub mod definition;
-pub mod iodevice;
-pub mod remote;
-pub mod sensor;
-pub mod motor;
-pub mod light;
-pub mod modes;
-pub mod visionsensor;
+// pub mod definition;
+// pub mod iodevice;
+// pub mod basic;
+// pub mod headlight;
+// pub mod hubled;
+// pub mod modes;
+// pub mod motor;
+// pub mod remote;
+// pub mod sensor;
+// pub mod visionsensor;
 
 
 // #[async_trait]

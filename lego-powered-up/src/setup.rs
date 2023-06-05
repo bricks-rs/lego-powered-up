@@ -6,9 +6,9 @@ use crate::error::{Result, };
 
 // use crate::{IoDevice, IoTypeId}; 
 // use crate::consts::named_port;
-// use crate::devices::modes;
-// use crate::devices::remote::{RcDevice, RcButtonState};
-// use crate::devices::{light::*, sensor::*, motor::*};
+// use crate::iodevice::modes;
+// use crate::iodevice::remote::{RcDevice, RcButtonState};
+// use crate::iodevice::{light::*, sensor::*, motor::*};
 
 /// Setup single hub
 pub async fn single_hub() -> Result<ConnectedHub> {

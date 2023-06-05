@@ -9,10 +9,10 @@
 use lego_powered_up::{PoweredUp, HubFilter, ConnectedHub, IoDevice}; 
 use lego_powered_up::consts::MotorSensorMode;
 use lego_powered_up::consts::named_port;
-use lego_powered_up::devices::motor::EncoderMotor;
-use lego_powered_up::devices::remote::{RcDevice, RcButtonState};
-use lego_powered_up::devices::sensor::GenericSensor;
-use lego_powered_up::devices::modes;
+use lego_powered_up::iodevice::motor::EncoderMotor;
+use lego_powered_up::iodevice::remote::{RcDevice, RcButtonState};
+use lego_powered_up::iodevice::sensor::GenericSensor;
+use lego_powered_up::iodevice::modes;
 use lego_powered_up::notifications::Power;
 
 #[tokio::main]

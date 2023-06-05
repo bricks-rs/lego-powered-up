@@ -5,7 +5,7 @@
 mod tests {
     use btleplug::api::{Characteristic, Peripheral as _, WriteType};
     use std::collections::BTreeMap;
-    use crate::devices::iodevice::IoDevice;
+    use crate::iodevice::IoDevice;
     use crate::consts::IoTypeId;
     use crate::hubs::generic_hub::GenericHub;
     use crate::hubs;

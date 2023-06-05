@@ -12,9 +12,9 @@ use lego_powered_up::error::{Error, Result, OptionContext};
 use lego_powered_up::consts::named_port;
 use lego_powered_up::notifications::Power;
 use lego_powered_up::consts::{LEGO_COLORS, };
-use lego_powered_up::devices::modes;
-use lego_powered_up::devices::remote::{RcDevice, RcButtonState};
-use lego_powered_up::devices::{light::*, sensor::*, motor::*};
+use lego_powered_up::iodevice::modes;
+use lego_powered_up::iodevice::remote::{RcDevice, RcButtonState};
+use lego_powered_up::iodevice::{hubled::*, sensor::*, motor::*};
 
 
 #[tokio::main]

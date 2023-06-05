@@ -12,13 +12,6 @@ pub struct GenericHub {
     pub channels: Channels
 }
 
-// #[derive(Debug, Default, Clone)]
-// pub struct Channels {
-//     pub singlevalue_sender: Option<tokio::sync::broadcast::Sender<PortValueSingleFormat>>, 
-//     pub combinedvalue_sender: Option<tokio::sync::broadcast::Sender<PortValueCombinedFormat>>,
-//     pub networkcmd_sender: Option<tokio::sync::broadcast::Sender<NetworkCommand>>,
-// }
-
 #[async_trait::async_trait]
 impl Hub for GenericHub {
     async fn name(&self) -> Result<String> {
@@ -100,17 +93,16 @@ impl Hub for GenericHub {
 
     /// Cache handles held by hub on device so we don't need to lock hub mutex as often    
     fn device_cache(&self, mut d: IoDevice) -> IoDevice {
-        use crate::hubs::Channels;
         // Channels that forward some notification message types
-        d.set_channels( (self.channels.singlevalue_sender.clone(),
+        d.cache_channels( (self.channels.singlevalue_sender.clone(),
             self.channels.combinedvalue_sender.clone(),
             self.channels.networkcmd_sender.clone()) );
        
         // BT handles for calling send
-        d.handles.p = Some(self.peripheral().clone());
-        d.handles.c = Some(self.characteristic().clone());
+        d.cache_tokens( (Some(self.peripheral().clone()),
+            Some(self.characteristic().clone())) );
 
-        d
+        d   
     }
 
     //TODO: Put actual port_id / kind in error msgs

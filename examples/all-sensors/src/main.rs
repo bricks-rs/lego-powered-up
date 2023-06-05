@@ -5,16 +5,16 @@
 use core::time::Duration;
 use tokio::time::sleep as sleep;
 
-use lego_powered_up::{setup, devices};
+use lego_powered_up::{setup, iodevice};
 use lego_powered_up::{PoweredUp, ConnectedHub, IoDevice, IoTypeId}; 
 use lego_powered_up::{Hub, HubFilter, }; 
 use lego_powered_up::error::{Error, Result, OptionContext}; 
 use lego_powered_up::consts::named_port;
 use lego_powered_up::notifications::Power;
 use lego_powered_up::consts::{LEGO_COLORS, };
-use lego_powered_up::devices::modes;
-use lego_powered_up::devices::remote::{RcDevice, RcButtonState};
-use lego_powered_up::devices::{light::*, sensor::*, motor::*};
+use lego_powered_up::iodevice::modes;
+use lego_powered_up::iodevice::remote::{RcDevice, RcButtonState};
+use lego_powered_up::iodevice::{hubled::*, sensor::*, motor::*};
 
 
 #[tokio::main]
@@ -23,8 +23,8 @@ async fn main() -> anyhow::Result<()> {
     let hub = setup::single_hub().await?;
 
     // Do stuff
-    use lego_powered_up::devices::definition::ModeKind;
-    use lego_powered_up::devices::definition::PortMode;
+    use lego_powered_up::iodevice::definition::ModeKind;
+    use lego_powered_up::iodevice::definition::PortMode;
     let mut d_list: Vec<IoDevice> = Vec::new(); 
     {
         let mut lock = hub.mutex.lock().await;

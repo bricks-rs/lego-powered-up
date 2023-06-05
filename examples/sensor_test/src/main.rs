@@ -3,16 +3,16 @@
 
 #![allow(unused)]
 use std::time::Duration;
-use lego_powered_up::devices::iodevice::IoDevice;
-use lego_powered_up::devices::visionsensor::VisionSensor;
+use lego_powered_up::iodevice::IoDevice;
+use lego_powered_up::iodevice::visionsensor::VisionSensor;
 use lego_powered_up::notifications::Power;
 use tokio::time::sleep as sleep;
 
 // Powered up
 use lego_powered_up::{PoweredUp, Hub, HubFilter, ConnectedHub,}; 
 use lego_powered_up::consts::{IoTypeId, LEGO_COLORS};
-use lego_powered_up::devices::remote::RcDevice;
-use lego_powered_up::devices::{light::*, sensor::*, motor::*};
+use lego_powered_up::iodevice::remote::RcDevice;
+use lego_powered_up::iodevice::{hubled::*, sensor::*, motor::*};
 
 
 // Access hub 
@@ -23,7 +23,7 @@ type HubMutex = Arc<Mutex<Box<dyn Hub>>>;
 // / Access devices
 use lego_powered_up::{ error::Error};  //devices::Device,
 use tokio::sync::broadcast;
-use lego_powered_up::devices::modes;
+use lego_powered_up::iodevice::modes;
 
 // RC
 // use lego_powered_up::hubs::remote::*;

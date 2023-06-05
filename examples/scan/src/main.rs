@@ -18,8 +18,8 @@ use lego_powered_up::DiscoveredHub;
 
 use lego_powered_up::{PoweredUp, HubFilter, ConnectedHub, IoDevice}; 
 use lego_powered_up::consts::named_port;
-use lego_powered_up::devices::remote::RcDevice;
-use lego_powered_up::devices::remote::RcButtonState;
+use lego_powered_up::iodevice::remote::RcDevice;
+use lego_powered_up::iodevice::remote::RcButtonState;
 
 type DiscoStream = Pin<Box<dyn Stream<Item = DiscoveredHub> + Send>>;
 // type DiscoStream2 = dyn Stream<Item = DiscoveredHub> + Send;
