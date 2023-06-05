@@ -1,7 +1,19 @@
+/// Generic hub implementation, tested compatible with:
+/// 
+/// Technic Medium hub, aka. Control+ 
+/// https://rebrickable.com/parts/85824/hub-powered-up-4-port-technic-control-screw-opening/
+/// Move hub, aka. Boost
+/// https://rebrickable.com/sets/88006-1/move-hub/
+/// Remote control handset
+/// https://rebrickable.com/parts/28739/control-unit-powered-up/
+/// 
+/// The Spike and Dacta hubs have not been tested, but there's no
+/// no obvious reason why they shouldn't work as long as they
+/// use the LEGO Wireless Protocol 3.0.00.
+
+
 use std::collections::BTreeMap;
-
 use super::*;
-
 #[derive(Debug, )]
 pub struct GenericHub {
     peripheral: Peripheral,
@@ -118,7 +130,7 @@ impl Hub for GenericHub {
     }
 
     async fn io_from_kind(&self, req_kind: IoTypeId) -> Result<IoDevice> {
-        let found: Vec<&IoDevice> = self.connected_io.values().filter(|&x| *x.kind() == req_kind).collect();
+        let found: Vec<&IoDevice> = self.connected_io.values().filter(|&device| *device.kind() == req_kind).collect();
         match found.len() {
             0 => {
                 Err(Error::HubError(format!("No device of kind: {req_kind:?}")))   

@@ -1,11 +1,26 @@
+//! Specific implementations for each of the supported hubs.
 
+
+/// Models a hub with hub-related properties and commands, as well as 
+/// accessing connected devices (internal and external).
+///
+/// Accessing devices through the hub has changed; instead of a fixed port map,
+/// the map connected_io is populated with attached devices and their available
+/// options and we can select a device from there. 
+/// The io_from_.. methods wrap some useful calls on ConnectedIo(), for example;
+/// io_from_kind(IoTypeId::HubLed) 
+/// accesses the LED on any hub type though hardware addresses differ, 
+/// io_multiple_from_kind(IoTypeId::Motor) 
+/// accesses all motors indifferent to where they are connected.
+/// 
+/// This also reduces the need for specific implementations, all three
+/// types I have available are supported by generic_hub.  
 
 
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-//! Specific implementations for each of the supported hubs.
 
 // #![allow(unused)]
 
@@ -22,11 +37,11 @@ use crate::notifications::{NotificationMessage, ModeInformationRequest, ModeInfo
                         InformationRequest, InformationType, HubAction, HubActionRequest, InputSetupSingle,
                         PortValueSingleFormat, PortValueCombinedFormat, NetworkCommand};
 
-// pub mod technic_hub;
-// pub mod remote;
-// pub mod move_hub;
-pub mod generic_hub;
 pub mod io_event;
+pub mod generic_hub;
+// pub mod technic_hub;
+// pub mod rc_hub;
+// pub mod move_hub;
 
 /// Trait describing a generic hub.
 #[async_trait::async_trait]
