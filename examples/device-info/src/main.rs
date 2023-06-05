@@ -4,7 +4,11 @@
 #![allow(unused)]
 use core::time::Duration;
 
+use std::collections::HashMap;
 use std::sync::{Arc};
+use std::task;
+use lego_powered_up::notifications::DatasetType;
+use tokio::task::JoinHandle;
 use tokio::time::sleep as sleep;
 use tokio::sync::Mutex;
 
@@ -13,7 +17,7 @@ use lego_powered_up::Hub;
 use lego_powered_up::consts::{LEGO_COLORS};
 use lego_powered_up::iodevice::{hubled::*};
 use lego_powered_up::iodevice::basic::Basic;
-
+use lego_powered_up::iodevice::sensor::GenericSensor;
 
 type HubMutex = Arc<Mutex<Box<dyn Hub>>>;
 
@@ -50,7 +54,6 @@ async fn main() -> anyhow::Result<()> {
             }
         }
     });
-
     // Start attached io ui
     let mutex = hub.mutex.clone();
     attached_device_info(mutex).await;
@@ -69,6 +72,7 @@ async fn main() -> anyhow::Result<()> {
 
 pub async fn attached_device_info(mutex: HubMutex) -> () {
     use text_io::read;
+    let mut tasks: HashMap<u8, JoinHandle<()>> = HashMap::new();
     loop {
         print!("(l)ist, <port>, (s)et or (q)uit > ");
         let line: String = read!("{}\n");
@@ -89,7 +93,8 @@ pub async fn attached_device_info(mutex: HubMutex) -> () {
             let input = line.trim().parse::<u8>();
             port_id = input.unwrap();// _or_else(println!("Not a number: {}");)
             let mut lock = mutex.lock().await;
-            if let Some(device) = lock.connected_io().get(&port_id) {
+            if let Some(device) = lock.connected_io().get(&port_id).clone() {
+                let device = lock.device_cache(device.clone());
                 print!("Set mode; mode > ");
                 let line: String = read!("{}\n");
                 mode_id = line.trim().parse::<u8>().unwrap();
@@ -98,12 +103,15 @@ pub async fn attached_device_info(mutex: HubMutex) -> () {
                 delta = line.trim().parse::<u32>().unwrap();
                 print!("Set mode; enable notifications (Y / n) > ");
                 let line: String = read!("{}\n");
-                if ( line.len() > 1) & ( line.contains("n") ) {
-                    enable = false 
+                if ( line.len() > 1) & ( line.contains("n") ) { 
+                    device.device_mode(mode_id, delta, false).await;
                 } 
-                else { enable = true }
-
-                device.device_mode(mode_id, delta, enable).await;
+                else { 
+                    match tasks.insert(port_id, reader(&device, port_id, mode_id, delta).await) {
+                        Some(task) => task.abort(), 
+                        None => ()
+                    }
+                } 
             } else {
                println!("Device not found");
                continue; 
@@ -130,6 +138,36 @@ pub async fn attached_device_info(mutex: HubMutex) -> () {
     }
 }
 
+async fn reader(device: &IoDevice, port_id: u8, mode_id: u8, delta:u32) -> JoinHandle<()> {
+    match device.def.modes().get(&mode_id).unwrap().value_format.dataset_type {     // panics on non-existant mode_id
+        DatasetType::Bits8 => {
+            let (mut rx, _) = device.enable_8bit_sensor(mode_id, delta).await.unwrap();
+            tokio::spawn(async move {
+                while let Ok(data) = rx.recv().await {
+                    println!("Port {:?} mode {:?} sent: {:?}", port_id, mode_id, &data);
+                }})
+        }
+        DatasetType::Bits16 => {
+            let (mut rx, _) = device.enable_16bit_sensor(mode_id, delta).await.unwrap();
+            tokio::spawn(async move {
+                while let Ok(data) = rx.recv().await {
+                    println!("Port {:?} mode {:?} sent: {:?}", port_id, mode_id, &data);
+                }})
+        }
+        DatasetType::Bits32 => {
+            let (mut rx, _) = device.enable_32bit_sensor(mode_id, delta).await.unwrap();
+            tokio::spawn(async move {
+                while let Ok(data) = rx.recv().await {
+                    println!("Port {:?} mode {:?} sent: {:?}", port_id, mode_id, &data);
+                }})
+        }
+        DatasetType::Float => {    let (mut rx, _) = device.enable_32bit_sensor(mode_id, delta).await.unwrap();
+            tokio::spawn(async move {
+                while let Ok(data) = rx.recv().await {
+                    println!("Port {:?} mode {:?} sent: {:?}", port_id, mode_id, &data);
+                }})}
+    } 
+}
 
 const RAINBOW_TABLE: [u8; 360] = [
     0,   0,   0,   0,   0,   1,   1,   2, 
