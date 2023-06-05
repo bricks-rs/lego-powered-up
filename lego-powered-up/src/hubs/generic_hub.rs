@@ -145,11 +145,7 @@ impl Hub for GenericHub {
             0 => {
                 Err(Error::NoneError(format!("No device of kind: {req_kind:?}")))   
             }
-            1..10 =>  {
-                // let device_deref = *found.first().unwrap();
-                // let mut d = device_deref.clone();
-                // d = self.device_cache(d);
-            
+            1..=10 =>  {
                 Ok(found) 
             }
             _ => { 

@@ -1,4 +1,4 @@
-#![allow(unused)]
+// #![allow(unused)]
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -26,18 +26,6 @@
 // evice may implement. Having a single trait covering
 // every device is probably the wrong design, and we should have better
 // abstractions for e.g. motors vs. sensors & LEDs.
-
-// New design in modules below this:
-// pub mod definition;
-// pub mod iodevice;
-// pub mod basic;
-// pub mod headlight;
-// pub mod hubled;
-// pub mod modes;
-// pub mod motor;
-// pub mod remote;
-// pub mod sensor;
-// pub mod visionsensor;
 
 
 // #[async_trait]

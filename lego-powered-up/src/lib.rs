@@ -1,5 +1,5 @@
-#![feature(exclusive_range_pattern)]
-// #![allow(unused)]
+// #![feature(exclusive_range_pattern)]
+#![allow(unused)]
 
 use btleplug::api::{
     Central, CentralEvent, Manager as _, Peripheral as _, PeripheralProperties,
