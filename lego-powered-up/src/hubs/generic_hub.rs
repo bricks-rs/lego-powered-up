@@ -38,7 +38,8 @@ impl Hub for GenericHub {
     fn properties(&self) -> &HubProperties { &self.properties }
     fn characteristic(&self) -> &Characteristic { &self.lpf_characteristic }
     fn peripheral(&self) -> &Peripheral { &self.peripheral }
-    fn connected_io(&mut self) -> &mut BTreeMap<u8, IoDevice> { &mut self.connected_io }
+    fn connected_io(&self) -> &BTreeMap<u8, IoDevice> { &self.connected_io }
+    fn connected_io_mut(&mut self) -> &mut BTreeMap<u8, IoDevice> { &mut self.connected_io }
     fn kind(&self) -> HubType { self.kind } 
     fn channels(&mut self) -> &mut Channels {&mut self.channels}
 

@@ -55,7 +55,8 @@ pub trait Hub: Debug + Send + Sync {
     fn peripheral(&self) -> &Peripheral;
     fn characteristic(&self) -> &Characteristic;
     fn kind(&self) -> HubType;
-    fn connected_io(&mut self) -> &mut BTreeMap<u8, IoDevice>;
+    fn connected_io(&self) -> &BTreeMap<u8, IoDevice>;
+    fn connected_io_mut(&mut self) -> &mut BTreeMap<u8, IoDevice>;
     fn channels(&mut self) -> &mut crate::hubs::Channels;
     fn device_cache(&self, d: IoDevice) -> IoDevice;
     fn attach_io(&mut self, device_to_insert: IoDevice) -> Result<()>;
