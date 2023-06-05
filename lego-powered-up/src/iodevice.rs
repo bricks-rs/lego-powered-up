@@ -82,8 +82,13 @@ impl IoDevice {
 //
 impl Basic for IoDevice {
     fn port(&self) -> u8 { self.def.port() }
-    fn tokens(&self) -> (&Peripheral, &Characteristic) {
-        (&self.tokens.p.as_ref().unwrap(), &self.tokens.c.as_ref().unwrap())
+    fn tokens(&self) -> Result<(&Peripheral, &Characteristic)> {
+        // (&self.tokens.p.as_ref().unwrap(), &self.tokens.c.as_ref().unwrap())
+       
+        match ( &self.tokens.p.as_ref(), &self.tokens.c.as_ref() )  {
+            (Some(p), Some(c) ) => { Ok((p,c)) },
+            _ => { Err(Error::NoneError(String::from("Token not in device cache"))) }
+        }   
     } 
 }
 impl GenericSensor for IoDevice {

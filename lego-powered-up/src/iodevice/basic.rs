@@ -49,9 +49,9 @@ pub trait Basic: Debug + Send + Sync {
 
     /// Device trait boilerplate
     fn port(&self) -> u8;
-    fn tokens(&self) -> (&Peripheral, &Characteristic);
+    fn tokens(&self) -> Result<(&Peripheral, &Characteristic)>;
     async fn commit(&self, msg: NotificationMessage) -> Result<()> {
-        match crate::hubs::send(self.tokens(), msg).await { 
+        match crate::hubs::send(self.tokens().unwrap(), msg).await { 
             Ok(()) => Ok(()),
             Err(e)  => { Err(e) }
         }

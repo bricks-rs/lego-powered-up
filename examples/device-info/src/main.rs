@@ -121,7 +121,6 @@ pub async fn attached_device_info(mutex: HubMutex) -> () {
                     let device = lock.connected_io().get(&num);
                     match device {
                         Some(device) => { println!("{:#?}", device.def) }  //{dbg!(device);}
-                        // Some(device) => {dbg!(&device.def); }  //{dbg!(device);}
                         None => { println!("Device not found"); }
                     }
                 }
