@@ -13,7 +13,7 @@ use lego_powered_up::{PoweredUp, Hub, HubFilter, ConnectedHub,};
 use lego_powered_up::consts::{IoTypeId, LEGO_COLORS};
 use lego_powered_up::iodevice::remote::RcDevice;
 use lego_powered_up::iodevice::{hubled::*, sensor::*, motor::*};
-
+use lego_powered_up::iodevice::definition::*;
 
 // Access hub 
 use std::sync::{Arc};
@@ -72,7 +72,8 @@ async fn main() -> anyhow::Result<()> {
     {
         let lock = rc_hub.mutex.lock().await;
         rc_volt = lock.io_from_kind(IoTypeId::Voltage).await?;
-    }    
+    }  
+    // rc_volt.def.port();
     let (mut voltage_rx, jh) = rc_volt.enable_16bit_sensor(0x00, 1).await.unwrap();
     tokio::spawn(async move {
         while let Ok(data) = voltage_rx.recv().await {

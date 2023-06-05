@@ -105,7 +105,6 @@ impl Hub for GenericHub {
         d   
     }
 
-    //TODO: Put actual port_id / kind in error msgs
     async fn io_from_port(&self, port_id: u8) -> Result<IoDevice> {
         match self.connected_io.get(&port_id) {
                 Some(connected_device) => { 
@@ -114,7 +113,7 @@ impl Hub for GenericHub {
                     
                     Ok(d)
                  }
-                None => { Err(Error::HubError(String::from("No device on port {port_id}"))) }
+                None => { Err(Error::HubError(format!("No device on port: {} ({:#x}) ", &port_id, &port_id))) }
             }
     }
 
@@ -122,7 +121,7 @@ impl Hub for GenericHub {
         let found: Vec<&IoDevice> = self.connected_io.values().filter(|&x| *x.kind() == req_kind).collect();
         match found.len() {
             0 => {
-                Err(Error::NoneError(format!("No device of kind: {req_kind:?}")))   
+                Err(Error::HubError(format!("No device of kind: {req_kind:?}")))   
             }
             1 =>  {
                 let device_deref = *found.first().unwrap();
@@ -132,10 +131,8 @@ impl Hub for GenericHub {
                 Ok(d) 
             }
             _ => { 
-                eprintln!("Found {:#?} {:#?} on {:?}, use enable_from_port()", found.len(), req_kind, 
-                    found.iter().map(|x|x.port()).collect::<Vec<_>>());
-                // Err(Error::HubError(String::from("Found {count} {kind} on {list of ports}, use enable_from_port()"))) 
-                Err(Error::HubError(format!("Found {:?} {req_kind:?} on {:?}, use io_from_port()", found.len(), found.iter().map(|x|x.port()).collect::<Vec<_>>()) )) 
+                Err(Error::HubError(format!("Found {:?} {req_kind:?} on {:?}, use io_from_port or io_multi_from_kind",
+                    found.len(), found.iter().map(|x|x.port()).collect::<Vec<_>>()) )) 
             }
         }
     }
@@ -143,15 +140,14 @@ impl Hub for GenericHub {
         let found: Vec<IoDevice> = self.connected_io.values().filter(|&x| *x.kind() == req_kind).map(|x|x.clone()).collect();
         match found.len() {
             0 => {
-                Err(Error::NoneError(format!("No device of kind: {req_kind:?}")))   
+                Err(Error::HubError(format!("No device of kind: {req_kind:?}")))   
             }
-            1..=10 =>  {
+            1..=4 =>  {
                 Ok(found) 
             }
             _ => { 
-                eprintln!("Found {:#?} {:#?} on {:?}, use enable_from_port()", found.len(), req_kind, 
-                    found.iter().map(|x|x.port()).collect::<Vec<_>>());
-                Err(Error::HubError(format!("Found {:?} {req_kind:?} on {:?}, use io_from_port()", found.len(), found.iter().map(|x|x.port()).collect::<Vec<_>>()) )) 
+                Err(Error::HubError(format!("Sanity check: > 4 devices of same kind. Found {:?} {req_kind:?} on {:?}", 
+                    found.len(), found.iter().map(|x|x.port()).collect::<Vec<_>>()) )) 
             }
         }
     }

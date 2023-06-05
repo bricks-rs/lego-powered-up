@@ -1,4 +1,11 @@
-#![allow(unused)]
+/// Models the hub acting on the messages parsed by 
+/// notification module. The 3 main messagetypes for
+/// device comms are forwarded to channels for devices
+/// to subscribe. Device info messagetypes are handed
+/// to iodevice::definition mod. The rest are available
+/// as error messages for now. 
+
+// #![allow(unused)]
 
 use core::pin::Pin;
 use futures::stream::{Stream, StreamExt};
@@ -68,7 +75,7 @@ pub async fn io_event_handler(mut stream: PinnedStream, mutex: HubMutex,
                                             let mut hub = mutex.lock().await;
                                             hub.attach_io(IoDevice::new(io_type_id, port_id))?;
                                             hub.request_port_info(port_id, InformationType::ModeInfo).await?;
-                                            // hub.request_port_info(port_id, InformationType::PossibleModeCombinations).await?;
+                                            // hub.request_port_info(port_id, InformationType::PossibleModeCombinations).await?; // conditional req in PortInformation-arm
                                         }
                                     }
                                     IoAttachEvent::DetachedIo{} => {}
@@ -85,12 +92,12 @@ pub async fn io_event_handler(mut stream: PinnedStream, mutex: HubMutex,
                                     PortInformationType::ModeInfo{capabilities, mode_count, input_modes, output_modes} => {
                                         {
                                             let mut hub = mutex.lock().await;
-                                            let port = hub.connected_io().get_mut(&port_id).unwrap();
-                                            port.def.set_mode_count(mode_count);
-                                            port.def.set_capabilities(capabilities.0);
-                                            port.def.set_modes(input_modes, output_modes);
+                                            let device = hub.connected_io().get_mut(&port_id).unwrap();
+                                            device.def.set_mode_count(mode_count);
+                                            device.def.set_capabilities(capabilities.0);
+                                            device.def.set_modes(input_modes, output_modes);
                                             
-                                            // Req combinations if LogicalCombinable or LogicalSynchronizable
+                                            // Req combinations if capability LogicalCombinable or LogicalSynchronizable
                                             if ((capabilities.0 >> 2) & 1 == 1) | ((capabilities.0 >> 3) & 1 == 1) {
                                                 hub.request_port_info(port_id, InformationType::PossibleModeCombinations).await?;
                                             }

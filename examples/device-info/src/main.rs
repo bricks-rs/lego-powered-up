@@ -1,7 +1,7 @@
 // Any copyright is dedicated to the Public Domain.
 // https://creativecommons.org/publicdomain/zero/1.0/
 
-// #![allow(unused)]
+#![allow(unused)]
 use core::time::Duration;
 
 use std::sync::{Arc};
@@ -12,6 +12,8 @@ use lego_powered_up::{IoDevice, IoTypeId};
 use lego_powered_up::Hub; 
 use lego_powered_up::consts::{LEGO_COLORS};
 use lego_powered_up::iodevice::{hubled::*};
+use lego_powered_up::iodevice::basic::Basic;
+
 
 type HubMutex = Arc<Mutex<Box<dyn Hub>>>;
 
@@ -68,7 +70,7 @@ async fn main() -> anyhow::Result<()> {
 pub async fn attached_device_info(mutex: HubMutex) -> () {
     use text_io::read;
     loop {
-        print!("(l)ist, <port> or (q)uit > ");
+        print!("(l)ist, <port>, (s)et or (q)uit > ");
         let line: String = read!("{}\n");
         if line.len() == 1 {
             continue;
@@ -77,6 +79,34 @@ pub async fn attached_device_info(mutex: HubMutex) -> () {
             let mut lock = mutex.lock().await;
             for device in lock.connected_io().values() {
                 println!("{}", device.def);
+            }
+            continue;
+        }
+        else if line.contains("s") {
+            let port_id: u8; let mode_id: u8; let delta: u32; let enable: bool;
+            print!("Set mode; port > ");
+            let line: String = read!("{}\n");
+            let input = line.trim().parse::<u8>();
+            port_id = input.unwrap();// _or_else(println!("Not a number: {}");)
+            let mut lock = mutex.lock().await;
+            if let Some(device) = lock.connected_io().get(&port_id) {
+                print!("Set mode; mode > ");
+                let line: String = read!("{}\n");
+                mode_id = line.trim().parse::<u8>().unwrap();
+                print!("Set mode; delta > ");
+                let line: String = read!("{}\n");
+                delta = line.trim().parse::<u32>().unwrap();
+                print!("Set mode; enable notifications (Y / n) > ");
+                let line: String = read!("{}\n");
+                if ( line.len() > 1) & ( line.contains("n") ) {
+                    enable = false 
+                } 
+                else { enable = true }
+
+                device.device_mode(mode_id, delta, enable).await;
+            } else {
+               println!("Device not found");
+               continue; 
             }
             continue;
         } 

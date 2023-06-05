@@ -1,3 +1,7 @@
+/// Models the information available about a device from
+/// the AttachedIo, PortInformation and PortModeInformation
+/// message types. 
+
 use std::collections::BTreeMap;
 use std::fmt;
 
@@ -15,11 +19,21 @@ pub struct Definition {
     modes: std::collections::BTreeMap<ModeId, PortMode>,
     valid_combos: Vec<Vec<u8>>,
 }
+impl fmt::Display for Definition {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:#?} on port {} ({:#x}) with {} modes: {:#?}", 
+        self.kind, self.port, self.port, self.mode_count,
+        self.modes.values().map(|mode|&mode.name[..]).collect::<Vec<_>>() ) 
+    }
+}
 
 impl Definition {
     pub fn kind(&self) -> &IoTypeId { &self.kind }
     pub fn port(&self) -> u8 { self.port }
-    pub fn modes(&self) -> &BTreeMap<u8, PortMode> { &self.modes }
+    pub fn capabilities(&self) -> &Vec<Capability> {&self.capabilities}
+    pub fn mode_count(&self) -> &u8 {&self.mode_count}
+    pub fn modes(&self) -> &BTreeMap<ModeId, PortMode> { &self.modes }
+    pub fn valid_combos(&self) -> &Vec<Vec<u8>> {&self.valid_combos}
 
     pub fn new(kind: IoTypeId, port: u8) -> Self {
         Self {
@@ -55,9 +69,9 @@ impl Definition {
         } 
         self.modes = r;
     }
-    pub fn get_modes(&self) -> &BTreeMap<ModeId, PortMode> {
-        &self.modes
-    } 
+    // pub fn get_modes(&self) -> &BTreeMap<ModeId, PortMode> {
+    //     &self.modes
+    // } 
 
     pub fn set_capabilities(&mut self, capabilities: u8) -> () {
         let mut r: Vec<Capability> = Vec::new();
@@ -240,16 +254,4 @@ pub enum Mapping {
     Discrete = 0b0000_0100              // DIS (Discrete [0, 1, 2, 3])
     // bit 1 not used
     // bit 0 not used
-}
-impl fmt::Display for Definition {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let modes: Vec<&PortMode> = self.modes.values().collect();
-        let mut names: Vec<&str> = Vec::new();
-        for m in modes.iter() {
-            names.push(&m.name);
-        }
-        
-        write!(f, "{:#?} on port {} ({:#x}) with {} modes: {:#?}", 
-        self.kind, self.port, self.port, self.mode_count, names)
-    }
 }
