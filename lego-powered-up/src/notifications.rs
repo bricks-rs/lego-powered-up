@@ -1007,6 +1007,16 @@ pub struct ValueFormatType {
     pub total_figures: u8,
     pub decimals: u8,
 }
+impl fmt::Display for ValueFormatType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:>4} value(s) of {:<8}   Figures: {:<3} Decimals: {:<3}", 
+            self.number_of_datasets, 
+            self.dataset_type, 
+            self.total_figures,
+            self.decimals 
+        )
+    }
+}
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct MappingValue(pub u8);
@@ -1026,6 +1036,19 @@ pub enum DatasetType {
     Bits16 = 0b01,
     Bits32 = 0b10,
     Float = 0b11,
+}
+impl fmt::Display for DatasetType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            DatasetType::Bits8 => { write!(f, " 8 bit") },
+            DatasetType::Bits16 => { write!(f, "16 bit") },
+            DatasetType::Bits32 => { write!(f, "32 bit") },
+            DatasetType::Float => { write!(f, "float ") },
+        } 
+        // write!(f, "{}", 
+            // *self, 
+        // )
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]

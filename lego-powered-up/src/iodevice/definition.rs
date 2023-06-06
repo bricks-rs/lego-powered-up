@@ -200,6 +200,16 @@ pub struct PortMode {
     // pub sensor_cabability: [u8; 6],  // Sensor capabilities as bits. No help from docs how to interpret, just ignore it for now.
     pub value_format: ValueFormatType,
 }
+impl fmt::Display for PortMode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:<10?} {:<10} {:<10} {:}", 
+            self.kind, 
+            self.name, 
+            self.symbol,
+            self.value_format 
+        )
+    }
+}
 
 impl PortMode {
     pub fn new(mode_kind: ModeKind) -> Self {
