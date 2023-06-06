@@ -1,0 +1,60 @@
+
+
+Hub support
+Accessing devices through the hub has changed; instead of a fixed port map,
+the map connected_io is populated with attached devices and their available
+options, and we can select a device from there. 
+The io_from_.. methods wrap some useful calls on connected_io(), for example;
+io_from_kind(IoTypeId::HubLed) 
+accesses the LED on any hub type though hardware addresses differ, and
+io_multiple_from_kind(IoTypeId::Motor) 
+accesses all motors indifferent to where they are connected.
+There is less need for specific hub support; a generic hub implementation
+has been tested to success with:
+    Technic Medium hub, aka. Control+ 
+    Move hub, aka. Boost
+    Remote control handset
+Other hubs that follow the the available documentation of LEGO Wireless
+Protocol should just work.
+
+Device support
+Basic device trait gives access to low level mode set and output commands.
+Generic sensor trait gives one-liners for setting device modes and 
+returning a channel receiver. Specific support traits for encoder motors
+(position/angle commands, speed and position feedback), the 28739 remote
+handset and 26912 multi-sensor. 
+
+Examples
+The previous examples have been updated to the api changes. New examples:
+device-info     
+    Dev util; display configuration details for devices and interactively
+    set device modes. With a colourful easter egg.
+remote-control
+    Setup and basic demo of the 28739 remote handset.
+motor-closed-loop
+    Uses position feedback to enforce software defined travel limits. 
+    Additionally demos connection to multiple hubs (main hub and rc).
+vision-sensor
+    Demo of the 26912 Vision multi-functional sensor; interactive mode 
+    selection. (Work in progress.)
+
+Redesigned device abstraction
+Devices have been split into: a struct Definition that holds available 
+configuration data and related functions, and: specific device
+support as default functions in device traits, that a device type may 
+implement to access the functionality. This is currently held together 
+in the simplest way; a single IoDevice type that implements all device
+traits, with some runtime checks for compatibility. The actual device kind
+is currently only encoded as a IoTypeId variant in Definition.kind - it
+would be preferable to encode this in types that implement only relevant device
+traits, to get compile checking of usage. Separated abstractions for device
+data (Definition) and Lego-interfacing functions (device traits) is meant
+to facilitate improvement in this area.
+
+
+
+    
+    
+
+
+
