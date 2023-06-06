@@ -44,7 +44,7 @@ use consts::{BLEManufacturerData, HubType};
 pub use error::{Error, OptionContext, Result};
 // pub use consts::IoTypeId;
 
-type HubMutex = Arc<Mutex<Box<dyn Hub>>>;
+pub type HubMutex = Arc<Mutex<Box<dyn Hub>>>;
 type NotificationStream = Pin<Box<dyn Stream<Item = ValueNotification> + Send>>;
 
 pub struct PoweredUp {
