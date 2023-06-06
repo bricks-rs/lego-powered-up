@@ -217,7 +217,7 @@ impl AttachedIo {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum IoAttachEvent {
     DetachedIo {
-        // io_type_id: IoTypeId,        //Not included in detached event 
+        // io_type_id: IoTypeId,        //Not included in detached event
     },
     AttachedIo {
         io_type_id: IoTypeId,

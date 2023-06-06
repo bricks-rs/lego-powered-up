@@ -77,9 +77,18 @@ pub async fn io_event_handler(mut stream: PinnedStream, mutex: HubMutex,
                                             hub.request_port_info(port_id, InformationType::ModeInfo).await?;
                                             // hub.request_port_info(port_id, InformationType::PossibleModeCombinations).await?; // conditional req in PortInformation-arm
                                         }
+                                        if DIAGNOSTICS { eprintln!("AttachedIo: {:?} {:?}", port_id, event); }
                                     }
-                                    IoAttachEvent::DetachedIo{} => {}
-                                    IoAttachEvent::AttachedVirtualIo {port_a, port_b }=> {}
+                                    IoAttachEvent::DetachedIo{} => { 
+                                        {
+                                            let mut hub = mutex.lock().await;
+                                            hub.connected_io_mut().remove(&port_id);
+                                        }
+                                        if DIAGNOSTICS { eprintln!("DetachedIo: {:?} {:?}", port_id, event); }
+                                    }  
+                                    IoAttachEvent::AttachedVirtualIo {port_a, port_b }=> {
+                                        if DIAGNOSTICS { eprintln!("AttachedVirtualIo: {:?} {:?}", port_id, event); }
+                                    }  
                                 }
                             }
                         }

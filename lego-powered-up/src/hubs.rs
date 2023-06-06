@@ -7,7 +7,7 @@
 /// Accessing devices through the hub has changed; instead of a fixed port map,
 /// the map connected_io is populated with attached devices and their available
 /// options and we can select a device from there. 
-/// The io_from_.. methods wrap some useful calls on ConnectedIo(), for example;
+/// The io_from_.. methods wrap some useful calls on connected_io(), for example;
 /// io_from_kind(IoTypeId::HubLed) 
 /// accesses the LED on any hub type though hardware addresses differ, 
 /// io_multiple_from_kind(IoTypeId::Motor) 
@@ -60,6 +60,7 @@ pub trait Hub: Debug + Send + Sync {
     fn channels(&mut self) -> &mut crate::hubs::Channels;
     fn device_cache(&self, d: IoDevice) -> IoDevice;
     fn attach_io(&mut self, device_to_insert: IoDevice) -> Result<()>;
+    // fn detach_io(&mut self, ) -> Result<()>;
     async fn subscribe(&self, char: Characteristic) -> Result<()>;
     async fn io_from_port(&self, port_id: u8) -> Result<IoDevice>;   
     async fn io_from_kind(&self, kind: IoTypeId) -> Result<IoDevice>;   
