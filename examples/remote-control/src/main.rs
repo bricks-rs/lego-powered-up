@@ -8,7 +8,7 @@ use lego_powered_up::iodevice::remote::{RcDevice, RcButtonState};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let rc_hub = lego_powered_up::setup::single_hub().await.unwrap();
+    let rc_hub = lego_powered_up::setup::single_hub().await?;
 
     // Set up RC input 
     let rc: IoDevice;
@@ -18,11 +18,9 @@ async fn main() -> anyhow::Result<()> {
     }    
     let (mut rc_rx, _rc_task) = rc.remote_connect_with_green().await?;
 
-
-
     // Print some feedback for button presses. Both red buttons together to exit.
     let button_feedback = tokio::spawn(async move {
-        let mut red_down: (bool, bool) = (false, false); 
+        let mut red_down = (false, false); 
         while let Ok(data) = rc_rx.recv().await {
             match data {
                 RcButtonState::Aup => { 
@@ -51,8 +49,6 @@ async fn main() -> anyhow::Result<()> {
             if red_down == (true, true) { break }
         }
     });
-
-
     button_feedback.await?;
 
     // Cleanup 
