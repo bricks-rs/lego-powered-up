@@ -179,10 +179,10 @@ async fn vision_to_hub_color(device: &IoDevice, mutex: HubMutex, ) -> JoinHandle
             println!("Color: {:?} ", data, );
             match data {
                 DetectedColor::Black => { hubled.set_hubled_color(Color::Black).await; },
-                DetectedColor::Color1 => { hubled.set_hubled_color(Color::Pink).await; },
-                DetectedColor::Color2 => { hubled.set_hubled_color(Color::Magenta).await; },
+                // DetectedColor::Color1 => { hubled.set_hubled_color(Color::Pink).await; },
+                // DetectedColor::Color2 => { hubled.set_hubled_color(Color::Magenta).await; },
                 DetectedColor::Blue => { hubled.set_hubled_color(Color::Blue).await; },
-                DetectedColor::Color4 => { hubled.set_hubled_color(Color::LightBlue).await; },
+                // DetectedColor::Color4 => { hubled.set_hubled_color(Color::LightBlue).await; },
                 DetectedColor::Green => { hubled.set_hubled_color(Color::Green).await; },
                 // DetectedColor::Color6 => { hubled.set_hubled_color(Color::Green).await; },
                 DetectedColor::Yellow => { hubled.set_hubled_color(Color::Yellow).await; },
