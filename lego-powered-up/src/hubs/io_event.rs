@@ -111,8 +111,8 @@ pub async fn io_event_handler(mut stream: PinnedStream, mutex: HubMutex,
                                             device.def.set_capabilities(capabilities.0);
                                             device.def.set_modes(input_modes, output_modes);
                                             
-                                            // Req combinations if capability LogicalCombinable or LogicalSynchronizable
-                                            if ((capabilities.0 >> 2) & 1 == 1) | ((capabilities.0 >> 3) & 1 == 1) {
+                                            // Req combinations if capability LogicalCombinable
+                                            if (capabilities.0 >> 2) & 1 == 1  {
                                                 hub.request_port_info(port_id, InformationType::PossibleModeCombinations).await?;
                                             }
                                       
