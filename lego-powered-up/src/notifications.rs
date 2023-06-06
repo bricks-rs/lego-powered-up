@@ -225,6 +225,7 @@ pub enum IoAttachEvent {
         fw_rev: VersionNumber,
     },
     AttachedVirtualIo {
+        io_type_id: IoTypeId,
         port_a: u8,
         port_b: u8,
     },
@@ -249,9 +250,10 @@ impl IoAttachEvent {
                 IoAttachEvent::AttachedIo { io_type_id, hw_rev, fw_rev }
             }
             Event::AttachedVirtualIo => {
+                let io_type_id = ok!(IoTypeId::from_u16(next_u16!(msg)));
                 let port_a = next!(msg);
                 let port_b = next!(msg);
-                IoAttachEvent::AttachedVirtualIo { port_a, port_b }
+                IoAttachEvent::AttachedVirtualIo { io_type_id, port_a, port_b }
             }
         })
     }

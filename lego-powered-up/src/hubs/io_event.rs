@@ -86,7 +86,12 @@ pub async fn io_event_handler(mut stream: PinnedStream, mutex: HubMutex,
                                         }
                                         if DIAGNOSTICS { eprintln!("DetachedIo: {:?} {:?}", port_id, event); }
                                     }  
-                                    IoAttachEvent::AttachedVirtualIo {port_a, port_b }=> {
+                                    IoAttachEvent::AttachedVirtualIo {io_type_id, port_a, port_b }=> {
+                                        {
+                                            let mut hub = mutex.lock().await;
+                                            hub.attach_io(IoDevice::new(io_type_id, port_id))?;
+                                            hub.request_port_info(port_id, InformationType::ModeInfo).await?;
+                                        }
                                         if DIAGNOSTICS { eprintln!("AttachedVirtualIo: {:?} {:?}", port_id, event); }
                                     }  
                                 }
