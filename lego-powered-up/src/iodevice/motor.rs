@@ -100,13 +100,10 @@ pub trait EncoderMotor: Debug + Send + Sync {
     }
     async fn start_power2(&self, power1: Power, power2: Power) -> Result<()> {
         self.check()?;
-        let subcommand = PortOutputSubcommand::WriteDirectModeData(
-            WriteDirectModeDataPayload::StartPower2 {
-                power1,
-                power2
-            } 
-        );
-
+        let subcommand = PortOutputSubcommand::StartPower2 {
+            power1,
+            power2,
+        };
         let msg =
             NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
                 port_id: self.port(),

@@ -1450,7 +1450,7 @@ impl PortOutputSubcommand {
         let subcomm = next!(msg);
         trace!("Port output subcommand: {:x}", subcomm);
         Ok(match subcomm {
-                0x02 => {
+            0x02 => {
                 // StartPower(Power1, Power2)
                 let power1 = Power::parse(&mut msg)?;
                 let power2 = Power::parse(&mut msg)?;
@@ -1779,10 +1779,12 @@ impl EndState {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum WriteDirectModeDataPayload {
     StartPower(Power),
-    StartPower2{
-        power1: Power,
-        power2: Power
-    },
+    // StartPower2 has the "Encoded through WriteDirectModeData"-tag, but it also has a subcommand-id (0x02)
+    // and is not listed among the WriteDirectModeData-commands. I think the tag is a doc error, so:
+    // StartPower2{
+        // power1: Power,
+        // power2: Power
+    // },
     // i32 as four bytes
     PresetEncoder(i32),
     TiltImpactPreset(i32),
@@ -1791,6 +1793,7 @@ pub enum WriteDirectModeDataPayload {
         impact_threshold: i8,
         bump_holdoff: i8,
     },
+    TiltFactoryCalibration(i8),
     SetHubColor(i8),
     SetHubRgb {
         red: u8,
@@ -1837,13 +1840,20 @@ impl WriteDirectModeDataPayload {
                     bump_holdoff,
                 }
             }
+            0x07 => {
+                // TiltFactoryCalibration(Orientation, CalibrationPassCode)  Passcode is 12 chars: Calib-Sensor
+                // "Mode 7"
+                let orientation = next_i8!(msg);  
+                // let passcode = next_i8!(msg);
+                TiltFactoryCalibration((orientation)) 
+            }
             0x08 => {
-                // SetRgbColorNo(ColorNo)
+                // SetHubColor(ColorNo)
                 let col = next_i8!(msg);
                 SetHubColor(col)
             }
             0x09 => {
-                // SetRgbColors(RedColor, GreenColor, BlueColor)
+                // SetHubRgb(RedColor, GreenColor, BlueColor)
                 let red = next!(msg);
                 let green = next!(msg);
                 let blue = next!(msg);
@@ -1871,6 +1881,7 @@ impl WriteDirectModeDataPayload {
                     meta.port_id,
                     startup_and_completion,
                     0x51, // WriteDirect
+                    // Docs says to insert an 0x00 and then an extra 0x51 here, but works without it 
                     HubLedMode::Rgb as u8,
                     *red,
                     *green,
@@ -1909,8 +1920,7 @@ impl WriteDirectModeDataPayload {
             PresetEncoder(position ) => {
                 let startup_and_completion =
                     meta.startup_info.serialise(&meta.completion_info);
-                // i32 sent as 4 bytes
-                let pos_bytes: [u8; 4] = position.to_le_bytes();
+                let pos_bytes: [u8; 4] = position.to_le_bytes(); // i32 sent as 4 bytes
                 vec![
                     0,
                     0, // hub id
@@ -1919,14 +1929,80 @@ impl WriteDirectModeDataPayload {
                     startup_and_completion,
                     0x51, // WriteDirect
                     0x02, // magic value from docs
-                    // position,
                     pos_bytes[0],
                     pos_bytes[1],
                     pos_bytes[2],
                     pos_bytes[3]
                 ]
             }
-            _ => todo!(),
+            // Set the Tilt into TiltImpactCount mode (0x03) and change (preset) the value to PresetValue.
+            TiltImpactPreset(preset_value) => { 
+                let startup_and_completion =
+                meta.startup_info.serialise(&meta.completion_info);
+                let val_bytes: [u8; 4] = preset_value.to_le_bytes(); // i32 sent as 4 bytes
+                vec![
+                    0,
+                    0, // hub id
+                    MessageType::PortOutputCommand as u8,
+                    meta.port_id,
+                    startup_and_completion,
+                    0x51, // WriteDirect
+                    0x03, // magic value from docs
+                    val_bytes[0],
+                    val_bytes[1],
+                    val_bytes[2],
+                    val_bytes[3]
+                ] 
+            }
+            // Set the Tilt into TiltOrientation mode (0x05) and set the Orientation value to Orientation
+            TiltConfigOrientation(orientation) => { 
+                let startup_and_completion =
+                meta.startup_info.serialise(&meta.completion_info);
+                vec![
+                    0,
+                    0, // hub id
+                    MessageType::PortOutputCommand as u8,
+                    meta.port_id,
+                    startup_and_completion,
+                    0x51, // WriteDirect
+                    0x05, // magic value from docs
+                    *orientation as u8,   
+                ] 
+            }
+            // Setup Tilt ImpactThreshold and BumpHoldoff by entering mode 6 and use the payload ImpactThreshold and BumpHoldoff.
+            TiltConfigImpact{impact_threshold, bump_holdoff} => {
+                let startup_and_completion =
+                meta.startup_info.serialise(&meta.completion_info);
+                vec![
+                    0,
+                    0, // hub id
+                    MessageType::PortOutputCommand as u8,
+                    meta.port_id,
+                    startup_and_completion,
+                    0x51, // WriteDirect
+                    0x06, // magic value from docs
+                    *impact_threshold as u8,
+                    *bump_holdoff as u8,
+                ] 
+            }
+            //  Sets the actual orientation in the montage automat.  0: XY (laying flat) 1: Z (standing long direction)
+            TiltFactoryCalibration(orientation) => { 
+                let startup_and_completion =
+                meta.startup_info.serialise(&meta.completion_info);
+                vec![
+                    0,
+                    0, // hub id
+                    MessageType::PortOutputCommand as u8,
+                    meta.port_id,
+                    startup_and_completion,
+                    0x51, // WriteDirect
+                    0x07, // magic value from docs
+                    *orientation as u8,
+                    'C' as u8, 'a' as u8, 'l' as u8, 'i' as u8, 'b' as u8, '-' as u8,
+                    'S' as u8, 'e' as u8, 'n' as u8, 's' as u8, 'o' as u8, 'r' as u8,
+                ] 
+            }
+            // _ => todo!(),
         }
     }
 }
