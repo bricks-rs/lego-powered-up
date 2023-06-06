@@ -32,21 +32,16 @@ pub enum DetectedColor {
     Red = 9,
     White = 10
 }
+pub enum OutputColor {
+    Off = 0,
+    Blue = 3,
+    Green = 5,
+    Red = 9,
+    White = 10
+}
 
 #[async_trait]
 pub trait VisionSensor: Debug + Send + Sync {
-
-
-
-
-
-
-
-
-
-
-
-
     async fn vison_sensor_single_enable(&self, mode: u8, delta: u32) -> Result<()> {
         self.check()?;
         let msg =
@@ -93,10 +88,8 @@ pub trait VisionSensor: Debug + Send + Sync {
     }
 
 
-    /// This (light mode and set color) is supposed to set the light in the sensor.
-    /// Setting it to black turns it off (as the hubled) but other colors don't seem
-    /// to have an effect.
-    async fn visionsensor_light_mode(&self) -> Result<()> {
+    // Just setting output mode turns the light off, which may be useful
+    async fn visionsensor_light_output_mode(&self) -> Result<()> {
         self.check()?;
         let msg =
             NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
@@ -107,10 +100,11 @@ pub trait VisionSensor: Debug + Send + Sync {
             });
         self.commit(msg).await
     }
-    async fn visionsensor_set_color(&self, color: i8) -> Result<()> {
+    // Output colors are limited to R, G, B and W (all three)
+    async fn visionsensor_set_color(&self, color: OutputColor) -> Result<()> {
         self.check()?;
         let subcommand = PortOutputSubcommand::WriteDirectModeData(
-            WriteDirectModeDataPayload::SetHubColor(color as i8));
+            WriteDirectModeDataPayload::SetVisionSensorColor(color as i8));
 
         let msg =
             NotificationMessage::PortOutputCommand(PortOutputCommandFormat {

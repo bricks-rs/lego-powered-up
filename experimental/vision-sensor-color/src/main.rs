@@ -38,14 +38,22 @@ async fn main() -> anyhow::Result<()> {
         vision = lock.io_from_kind(IoTypeId::VisionSensor).await?;
     }    
     let (mut vision_rx, _) = vision.visionsensor_color().await.unwrap();
-    vision.visionsensor_light_mode().await.expect("Error setting mode");
-    // vision.visionsensor_set_color(Color::Black).await?;
+    vision.visionsensor_light_output_mode().await.expect("Error setting mode");
 
-    for c in 0..20 {
-        println!("Set color: {:?}", c);
-        vision.visionsensor_set_color(c as i8).await?;
-        tokio::time::sleep(core::time::Duration::from_millis(1000)).await;
-    }
+    vision.visionsensor_set_color(OutputColor::Blue).await?;
+    tokio::time::sleep(core::time::Duration::from_millis(2000)).await;
+
+    vision.visionsensor_set_color(OutputColor::Green).await?;
+    tokio::time::sleep(core::time::Duration::from_millis(2000)).await;
+
+    vision.visionsensor_set_color(OutputColor::Red).await?;
+    tokio::time::sleep(core::time::Duration::from_millis(2000)).await;
+
+    vision.visionsensor_set_color(OutputColor::White).await?;
+    tokio::time::sleep(core::time::Duration::from_millis(2000)).await;
+
+    vision.visionsensor_set_color(OutputColor::Off).await?;
+    tokio::time::sleep(core::time::Duration::from_millis(2000)).await;
 
 
     // Control task

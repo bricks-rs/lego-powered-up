@@ -1800,6 +1800,7 @@ pub enum WriteDirectModeDataPayload {
         green: u8,
         blue: u8,
     },
+    SetVisionSensorColor(i8)
 }
 
 impl WriteDirectModeDataPayload {
@@ -1882,7 +1883,7 @@ impl WriteDirectModeDataPayload {
                     startup_and_completion,
                     0x51, // WriteDirect
                     // Docs says to insert an 0x00 and then an extra 0x51 here, but works without it 
-                    HubLedMode::Rgb as u8,
+                    crate::iodevice::modes::HubLed::RGB_O as u8,
                     *red,
                     *green,
                     *blue,
@@ -1898,7 +1899,7 @@ impl WriteDirectModeDataPayload {
                     meta.port_id,
                     startup_and_completion,
                     0x51, // WriteDirect
-                    HubLedMode::Colour as u8,
+                    crate::iodevice::modes::HubLed::COL_O as u8,
                     *c as u8
                 ]
             }
@@ -1913,7 +1914,7 @@ impl WriteDirectModeDataPayload {
                     meta.port_id,
                     startup_and_completion,
                     0x51, // WriteDirect
-                    0x00, // magic value from docs
+                    crate::iodevice::modes::InternalMotorTacho::POWER as u8,
                     power,
                 ]
             }
@@ -1928,7 +1929,7 @@ impl WriteDirectModeDataPayload {
                     meta.port_id,
                     startup_and_completion,
                     0x51, // WriteDirect
-                    0x02, // magic value from docs
+                    crate::iodevice::modes::InternalMotorTacho::POS as u8,
                     pos_bytes[0],
                     pos_bytes[1],
                     pos_bytes[2],
@@ -1947,7 +1948,7 @@ impl WriteDirectModeDataPayload {
                     meta.port_id,
                     startup_and_completion,
                     0x51, // WriteDirect
-                    0x03, // magic value from docs
+                    crate::iodevice::modes::InternalTilt::IMPCT as u8,
                     val_bytes[0],
                     val_bytes[1],
                     val_bytes[2],
@@ -1965,7 +1966,7 @@ impl WriteDirectModeDataPayload {
                     meta.port_id,
                     startup_and_completion,
                     0x51, // WriteDirect
-                    0x05, // magic value from docs
+                    crate::iodevice::modes::InternalTilt::OR_CF as u8,
                     *orientation as u8,   
                 ] 
             }
@@ -1980,7 +1981,7 @@ impl WriteDirectModeDataPayload {
                     meta.port_id,
                     startup_and_completion,
                     0x51, // WriteDirect
-                    0x06, // magic value from docs
+                    crate::iodevice::modes::InternalTilt::IM_CF as u8,
                     *impact_threshold as u8,
                     *bump_holdoff as u8,
                 ] 
@@ -1996,11 +1997,25 @@ impl WriteDirectModeDataPayload {
                     meta.port_id,
                     startup_and_completion,
                     0x51, // WriteDirect
-                    0x07, // magic value from docs
+                    crate::iodevice::modes::InternalTilt::CALIB as u8,
                     *orientation as u8,
                     'C' as u8, 'a' as u8, 'l' as u8, 'i' as u8, 'b' as u8, '-' as u8,
                     'S' as u8, 'e' as u8, 'n' as u8, 's' as u8, 'o' as u8, 'r' as u8,
                 ] 
+            }
+            SetVisionSensorColor(c)=> {
+                let startup_and_completion =
+                    meta.startup_info.serialise(&meta.completion_info);
+                vec![
+                    0,
+                    0, // hub id
+                    MessageType::PortOutputCommand as u8,
+                    meta.port_id,
+                    startup_and_completion,
+                    0x51, // WriteDirect
+                    crate::iodevice::modes::VisionSensor::COL_O as u8,
+                    *c as u8
+                ]
             }
             // _ => todo!(),
         }
