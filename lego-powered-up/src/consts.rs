@@ -180,6 +180,7 @@ pub mod named_port {
     pub const B: u8 = 0x01;
     pub const C: u8 = 0x02;
     pub const D: u8 = 0x03;
+    pub const MOVE_AB: u8 = 0x10;
 }
 
 // @typedef ButtonState

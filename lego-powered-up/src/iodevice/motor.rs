@@ -16,10 +16,11 @@ use crate::notifications::NotificationMessage;
 use crate::notifications::InputSetupSingle;
 use crate::notifications::{ WriteDirectModeDataPayload, };
 use crate::notifications::{PortOutputSubcommand, PortOutputCommandFormat, StartupInfo, CompletionInfo};
-use crate::consts::{MotorSensorMode};
 use crate::notifications::{InputSetupCombined,  InputSetupCombinedSubcommand};
 use crate::notifications::{PortValueSingleFormat, PortValueCombinedFormat};
+
 pub use crate::notifications::{Power, EndState};
+pub use crate::consts::{MotorSensorMode};
 
 
 // #[derive(Debug, Copy, Clone)]
