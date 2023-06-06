@@ -32,7 +32,7 @@ async fn main() -> anyhow::Result<()> {
     let motor: IoDevice;
     {
         let lock = main_hub.mutex.lock().await;
-        motor = lock.io_from_port(named_port::MOVE_AB).await?;
+        motor = lock.io_from_port(named_port::A).await?;
     }
     let (mut motor_rx, position_task) = motor.enable_32bit_sensor(modes::InternalMotorTacho::POS, 1).await?;
 
