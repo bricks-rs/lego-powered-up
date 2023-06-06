@@ -21,10 +21,10 @@ use super::modes::VisionSensor as visionmode;
 pub enum DetectedColor {
     NoObject = -1,
     Black = 0,
-    Magenta = 1,
+    Color1 = 1,
     Color2 = 2,
     Blue = 3,
-    Teal = 4,
+    Color4 = 4,
     Green = 5,
     Color6 = 6,
     Yellow = 7,
@@ -66,10 +66,10 @@ pub trait VisionSensor: Debug + Send + Sync {
                              port_id => {
                                 match msg.data[0] as i8 {
                                     0 => { tx.send(DetectedColor::Black); }
-                                    1 => { tx.send(DetectedColor::Magenta); }
+                                    1 => { tx.send(DetectedColor::Color1); }
                                     2 => { tx.send(DetectedColor::Color2); }
                                     3 => { tx.send(DetectedColor::Blue); }
-                                    4 => { tx.send(DetectedColor::Teal); }
+                                    4 => { tx.send(DetectedColor::Color4); }
                                     5 => { tx.send(DetectedColor::Green); }
                                     6 => { tx.send(DetectedColor::Color6); }
                                     7 => { tx.send(DetectedColor::Yellow); }
