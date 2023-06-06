@@ -13,3 +13,4 @@ futures = "0.3"
 
 #text_io = "0.1.12"
 anyhow = "1.0"
+text_io = "0.1.12"
