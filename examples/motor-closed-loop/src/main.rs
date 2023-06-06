@@ -103,8 +103,10 @@ async fn main() -> anyhow::Result<()> {
 
                         // RcButtonState::Bup => { println!("B side released"); }
                         RcButtonState::Green => { 
-                            println!("Exiting");
-                            break;
+                            println!("Reset pos");
+                            motor.preset_encoder(0).await;
+                            // println!("Exiting");
+                            // break;
                         }
                         // RcButtonState::GreenUp => { println!("Green released") }
                         _ => ()

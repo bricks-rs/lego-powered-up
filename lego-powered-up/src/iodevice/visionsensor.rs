@@ -110,7 +110,7 @@ pub trait VisionSensor: Debug + Send + Sync {
     async fn visionsensor_set_color(&self, color: i8) -> Result<()> {
         self.check()?;
         let subcommand = PortOutputSubcommand::WriteDirectModeData(
-            WriteDirectModeDataPayload::SetRgbColorNo(color as i8));
+            WriteDirectModeDataPayload::SetHubColor(color as i8));
 
         let msg =
             NotificationMessage::PortOutputCommand(PortOutputCommandFormat {

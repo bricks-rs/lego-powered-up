@@ -35,7 +35,7 @@ pub trait HubLed: Debug + Send + Sync {
     async fn set_hubled_rgb(&self, rgb: &[u8; 3]) -> Result<()> {
         // self.check()?;  // Possible performance hit?
         let subcommand = PortOutputSubcommand::WriteDirectModeData(
-            WriteDirectModeDataPayload::SetRgbColors {
+            WriteDirectModeDataPayload::SetHubRgb {
                 red: rgb[0],
                 green: rgb[1],
                 blue: rgb[2],
@@ -55,7 +55,7 @@ pub trait HubLed: Debug + Send + Sync {
     async fn set_hubled_color(&self, color: Color) -> Result<()> {
         self.check()?;
         let subcommand = PortOutputSubcommand::WriteDirectModeData(
-            WriteDirectModeDataPayload::SetRgbColorNo(color as i8));
+            WriteDirectModeDataPayload::SetHubColor(color as i8));
 
         let msg =
             NotificationMessage::PortOutputCommand(PortOutputCommandFormat {

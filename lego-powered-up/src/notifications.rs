@@ -1783,6 +1783,7 @@ pub enum WriteDirectModeDataPayload {
         power1: Power,
         power2: Power
     },
+    // i32 as four bytes
     PresetEncoder(i32),
     TiltImpactPreset(i32),
     TiltConfigOrientation(Orientation),
@@ -1790,8 +1791,8 @@ pub enum WriteDirectModeDataPayload {
         impact_threshold: i8,
         bump_holdoff: i8,
     },
-    SetRgbColorNo(i8),
-    SetRgbColors {
+    SetHubColor(i8),
+    SetHubRgb {
         red: u8,
         green: u8,
         blue: u8,
@@ -1804,7 +1805,7 @@ impl WriteDirectModeDataPayload {
 
         let mode = next!(msg);
         Ok(match mode {
-            0x01 => {   //should be 0x00 according to docs, test if it works
+            0x01 => {   //Should be 0x00 according to docs? Seems to work, I may be misreading.
                 // StartPower(Power)
                 let power = Power::parse(&mut msg)?;
                 StartPower(power)
@@ -1839,14 +1840,14 @@ impl WriteDirectModeDataPayload {
             0x08 => {
                 // SetRgbColorNo(ColorNo)
                 let col = next_i8!(msg);
-                SetRgbColorNo(col)
+                SetHubColor(col)
             }
             0x09 => {
                 // SetRgbColors(RedColor, GreenColor, BlueColor)
                 let red = next!(msg);
                 let green = next!(msg);
                 let blue = next!(msg);
-                SetRgbColors { red, green, blue }
+                SetHubRgb { red, green, blue }
             }
             m => {
                 return Err(Error::ParseError(format!(
@@ -1860,7 +1861,7 @@ impl WriteDirectModeDataPayload {
     pub fn serialise(&self, meta: &PortOutputCommandFormat) -> Vec<u8> {
         use WriteDirectModeDataPayload::*;
         match self {
-            SetRgbColors { red, green, blue } => {
+            SetHubRgb { red, green, blue } => {
                 let startup_and_completion =
                     meta.startup_info.serialise(&meta.completion_info);
                 vec![
@@ -1876,7 +1877,7 @@ impl WriteDirectModeDataPayload {
                     *blue,
                 ]
             }
-            SetRgbColorNo(c)=> {
+            SetHubColor(c)=> {
                 let startup_and_completion =
                     meta.startup_info.serialise(&meta.completion_info);
                 vec![
@@ -1903,6 +1904,26 @@ impl WriteDirectModeDataPayload {
                     0x51, // WriteDirect
                     0x00, // magic value from docs
                     power,
+                ]
+            }
+            PresetEncoder(position ) => {
+                let startup_and_completion =
+                    meta.startup_info.serialise(&meta.completion_info);
+                // i32 sent as 4 bytes
+                let pos_bytes: [u8; 4] = position.to_le_bytes();
+                vec![
+                    0,
+                    0, // hub id
+                    MessageType::PortOutputCommand as u8,
+                    meta.port_id,
+                    startup_and_completion,
+                    0x51, // WriteDirect
+                    0x02, // magic value from docs
+                    // position,
+                    pos_bytes[0],
+                    pos_bytes[1],
+                    pos_bytes[2],
+                    pos_bytes[3]
                 ]
             }
             _ => todo!(),
