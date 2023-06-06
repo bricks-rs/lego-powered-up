@@ -65,6 +65,7 @@ pub trait VisionSensor: Debug + Send + Sync {
                         match msg.port_id {
                              port_id => {
                                 match msg.data[0] as i8 {
+                                   -1 => { tx.send(DetectedColor::NoObject); }
                                     0 => { tx.send(DetectedColor::Black); }
                                     1 => { tx.send(DetectedColor::Color1); }
                                     2 => { tx.send(DetectedColor::Color2); }

@@ -217,9 +217,9 @@ dependencies = [
 
 [[package]]
 name = "console_engine"
-version = "2.5.0"
+version = "2.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cf286a839de660f109df3434f8f2dfef3f54e8e5b8464ee59e8f70000746b7b5"
+checksum = "b05723615fd3ab8251764e161f1a6c65cce538d3d7902b94ee3290a0c5811e24"
 dependencies = [
  "crossterm",
  "unicode-width",
@@ -268,9 +268,9 @@ dependencies = [
 
 [[package]]
 name = "crossterm"
-version = "0.24.0"
+version = "0.26.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab9f7409c70a38a56216480fba371ee460207dd8926ccf5b4160591759559170"
+checksum = "a84cda67535339806297f1b331d6dd6320470d2a0fe65381e79ee9e156dd3d13"
 dependencies = [
  "bitflags",
  "crossterm_winapi",
@@ -334,6 +334,19 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "btleplug",
+ "futures",
+ "lego-powered-up",
+ "text_io",
+ "tokio",
+]
+
+[[package]]
+name = "device-info-split"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "btleplug",
+ "console_engine",
  "futures",
  "lego-powered-up",
  "text_io",
@@ -516,6 +529,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee512640fe35acbfb4bb779db6f0d80704c2cacfa2e39b601ef3e3f47d1ae4c7"
 dependencies = [
  "libc",
+]
+
+[[package]]
+name = "hub-props"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "btleplug",
+ "futures",
+ "lego-powered-up",
+ "tokio",
 ]
 
 [[package]]
@@ -1198,6 +1222,7 @@ dependencies = [
  "btleplug",
  "futures",
  "lego-powered-up",
+ "text_io",
  "tokio",
 ]
 

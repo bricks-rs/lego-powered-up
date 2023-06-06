@@ -178,6 +178,7 @@ async fn vision_to_hub_color(device: &IoDevice, mutex: HubMutex, ) -> JoinHandle
         while let Ok(data) = vision_rx.recv().await {
             println!("Color: {:?} ", data, );
             match data {
+                DetectedColor::NoObject => { hubled.set_hubled_color(Color::Black).await; },
                 DetectedColor::Black => { hubled.set_hubled_color(Color::Black).await; },
                 // DetectedColor::Color1 => { hubled.set_hubled_color(Color::Pink).await; },
                 // DetectedColor::Color2 => { hubled.set_hubled_color(Color::Magenta).await; },

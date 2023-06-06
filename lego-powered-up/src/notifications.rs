@@ -4,7 +4,7 @@
 
 //! Parser and data structure for hub notification messages
 
-use crate::consts::*;
+use crate::consts::{*,};
 use crate::error::{Error, OptionContext, Result};
 use log::{debug, trace};
 use lpu_macros::Parse;
@@ -35,8 +35,8 @@ pub enum HubLedMode {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HubProperty {
-    property: HubPropertyValue,
-    operation: HubPropertyOperation,
+   pub(crate) property: HubPropertyValue,
+   pub(crate) operation: HubPropertyOperation,
 }
 
 impl HubProperty {
@@ -44,17 +44,67 @@ impl HubProperty {
         let property_int = next!(msg);
         let operation = ok!(HubPropertyOperation::from_u8(next!(msg)));
         let property = HubPropertyValue::parse(property_int, &mut msg)?;
+        let prop_ref = HubPropertyReference::ManufacturerName; // just need something
 
         Ok(Self {
             operation,
             property,
         })
     }
+    pub fn serialise(&self) -> Vec<u8> {
+        let prop_ref:u8 = match self.property {
+            HubPropertyValue::AdvertisingName(_) => 0x01,
+            HubPropertyValue::Button(_) => 0x02,
+            HubPropertyValue::FwVersion(_) => 0x03,
+            HubPropertyValue::HwVersion(_) => 0x04,
+            HubPropertyValue::Rssi(_) => 0x05,
+            HubPropertyValue::BatteryVoltage(_) => 0x06,
+            HubPropertyValue::BatteryType(_) => 0x07,
+            HubPropertyValue::ManufacturerName(_) => 0x08,
+            HubPropertyValue::RadioFirmwareVersion(_) => 0x09,
+            HubPropertyValue::LegoWirelessProtocolVersion(_) => 0x0a,
+            HubPropertyValue::SystemTypeId(_) => 0x0b,
+            HubPropertyValue::HwNetworkId(_) => 0x0c,
+            HubPropertyValue::PrimaryMacAddress(_) => 0x0d,
+            HubPropertyValue::SecondaryMacAddress => 0x0e,
+            HubPropertyValue::HardwareNetworkFamily(_) => 0x0f,
+
+            _ => 0x00 
+        };
+        
+        let mut msg = Vec::with_capacity(10);
+        msg.extend_from_slice(&[
+            0,
+            0,
+            MessageType::HubProperties as u8,
+            prop_ref,
+            self.operation as u8,
+
+        ]);
+        msg
+    }
 }
 
-pub struct HubPropertiesRequest {
+// #[derive(Clone, Debug, PartialEq, Eq)]
+// pub struct HubPropertyReq {
+//     pub(crate) prop_ref: HubPropertyReference, 
+//     pub(crate) operation: HubPropertyOperation, 
+// }
+// impl HubPropertyReq {
+//     pub fn serialise(&self) -> Vec<u8> {
+//         let mut msg = Vec::with_capacity(10);
+//         msg.extend_from_slice(&[
+//             0,
+//             0,
+//             MessageType::HubProperties as u8,
+//             self.prop_ref as u8,
+//             self.operation as u8,
 
-}
+//         ]);
+//         msg
+//     }
+// }
+
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum HubPropertyValue {
@@ -197,6 +247,53 @@ pub enum AlertType {
     HighCurrent = 0x02,
     LowSignalStrength = 0x03,
     OverPowerCondition = 0x04,
+}
+
+#[repr(u8)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive, Parse)]
+pub enum AlertOperation {
+    EnableUpdates = 0x01,
+    DisableUpdates = 0x02,
+    RequestUpdate = 0x03,
+    Update = 0x04,
+}
+
+#[repr(u8)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive, Parse)]
+pub enum AlertPayload {
+    StatusOk = 0x00,
+    Alert = 0xFF,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct HubAlertRequest {
+    pub(crate) alert_type: AlertType,
+    pub(crate) operation: AlertOperation,
+    pub(crate) payload: AlertPayload
+}
+
+impl HubAlertRequest {
+    pub fn parse<'a>(mut msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
+        let alert_type = AlertType::parse(&mut msg)?;
+        let operation = AlertOperation::parse(&mut msg)?;
+        let payload = AlertPayload::parse(&mut msg)?;
+        Ok(HubAlertRequest {
+            alert_type,
+            operation,
+            payload
+        })
+    }
+    pub fn serialise(&self) -> Vec<u8> {
+        let mut msg = Vec::with_capacity(10);
+        msg.extend_from_slice(&[
+            0,
+            0,
+            MessageType::HubAlerts as u8,
+            self.alert_type as u8,
+            self.operation as u8,
+        ]);
+        msg
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

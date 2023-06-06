@@ -16,6 +16,9 @@ has been tested to success with:
     Remote control handset
 Other hubs that follow the the available documentation of LEGO Wireless
 Protocol should just work.
+Enabled commands for Hub Actions, commands to request Hub Property updates
+and to request Hub Alert updates. Parsing for these messages was already
+implemented; now we can request something to parse. 
 
 Device support
 Basic device trait gives access to low level mode set and output commands.
@@ -36,7 +39,7 @@ motor-closed-loop
     Additionally demos connection to multiple hubs (main hub and rc).
 vision-sensor
     Demo of the 26912 Vision multi-functional sensor; interactive mode 
-    selection. (Work in progress.)
+    selection.
 
 Redesigned device abstraction
 Devices have been split into: a struct Definition that holds available 
@@ -48,13 +51,8 @@ traits, with some runtime checks for compatibility. The actual device kind
 is currently only encoded as a IoTypeId variant in Definition.kind - it
 would be preferable to encode this in types that implement only relevant device
 traits, to get compile checking of usage. Separated abstractions for device
-data (Definition) and Lego-interfacing functions (device traits) is meant
-to facilitate improvement in this area.
-
-
-
-    
-    
+data (Definition) and Lego-interfacing functions (device traits) should
+hopefully facilitate improvement in this area.
 
 
 

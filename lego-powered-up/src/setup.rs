@@ -14,7 +14,7 @@ use crate::error::{Result, };
 pub async fn single_hub() -> Result<ConnectedHub> {
     println!("Discovering BT adapter and initializing PoweredUp");
     let mut pu = PoweredUp::init().await?;
-    println!("Waiting for hubs...");
+    println!("Waiting for hub...");
     let hub= pu.wait_for_hub().await?;
     println!("Connecting to hub...");
      

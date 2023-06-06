@@ -31,11 +31,13 @@ use std::collections::{BTreeMap};
 use std::fmt::Debug;
 
 use crate::{IoDevice, IoTypeId};
-use crate::consts::{HubType, };
+use crate::consts::{HubType, HubPropertyReference, HubPropertyOperation, };
 use crate::error::{Error, OptionContext, Result};
 use crate::notifications::{NotificationMessage, ModeInformationRequest, ModeInformationType,
-                        InformationRequest, InformationType, HubAction, HubActionRequest, InputSetupSingle,
-                        PortValueSingleFormat, PortValueCombinedFormat, NetworkCommand};
+                        InformationRequest, InformationType, HubAction, HubActionRequest, 
+                        InputSetupSingle, PortValueSingleFormat, PortValueCombinedFormat, 
+                        NetworkCommand, HubProperty, HubPropertyValue, AlertType, HubAlertRequest,
+                        AlertOperation, AlertPayload};
 
 pub mod io_event;
 pub mod generic_hub;
@@ -97,6 +99,16 @@ pub trait Hub: Debug + Send + Sync {
         self.send(mode_set_msg).await
     }
 
+    /// Hub properties: Single request, enable/disable notifications, reset 
+    async fn hub_props(&self, property: HubPropertyValue, operation:HubPropertyOperation) -> Result<()> {
+        let msg =
+        NotificationMessage::HubProperties(HubProperty {
+            property,
+            operation,
+        });
+        self.send(msg).await
+    }
+    /// Perform Hub actionss
     async fn hub_action(&self, action_type: HubAction) -> Result<()> {
         let msg =
         NotificationMessage::HubActions(HubActionRequest {
@@ -104,7 +116,18 @@ pub trait Hub: Debug + Send + Sync {
         });
         self.send(msg).await
     }
-   
+    
+    /// Hub alerts: Single request, enable/disable notifications
+    async fn hub_alerts(&self, alert_type:AlertType, operation:AlertOperation) -> Result<()> {
+        let msg =
+        NotificationMessage::HubAlerts(HubAlertRequest {
+            alert_type,
+            operation,
+            payload: AlertPayload::StatusOk
+        });
+        self.send(msg).await
+    }
+
     async fn send(&self, msg: NotificationMessage) -> Result<()> {
         let buf = msg.serialise();
         self.peripheral()
@@ -113,17 +136,11 @@ pub trait Hub: Debug + Send + Sync {
         Ok(())
     }
 
-
-    // async fn port_map(&self) -> &PortMap {
-    //     &self.properties().await.port_map
-    // }
-
-    // cannot provide a default implementation without access to the
-    // Peripheral trait from here
+    // Cannot provide a default implementation without access to the Peripheral trait from here
     async fn send_raw(&self, msg: &[u8]) -> Result<()>;
 
-    // fn send(&self, msg: NotificationMessage) -> Result<()>;
 
+    // fn send(&self, msg: NotificationMessage) -> Result<()>;
 
     // Ideally the vec should be sorted somehow
     // async fn attached_io(&self) -> Vec<IoDevice>;
@@ -132,13 +149,13 @@ pub trait Hub: Debug + Send + Sync {
 
     // async fn port(&self, port_id: Port) -> Result<Box<dyn Device>>;             //Deprecated
 
-    
-        
+    // async fn port_map(&self) -> &PortMap {
+    //     &self.properties().await.port_map
+    // }
 
 }
 
 pub type VersionNumber = u8;
-
 /// Propeties of a hub
 #[derive(Debug, Default)]
 pub struct HubProperties {
@@ -156,12 +173,32 @@ pub struct HubProperties {
     pub rssi: i16,
     // Mapping from port type to port ID. Internally (to the hub) each
     // port has a hardcoded identifier
-    // pub port_map: PortMap,
+    // pub port_map: PortMap,   // Deprecated
 }
+
+/// Devices can use this with cached tokens and not need to mutex-lock hub
+pub async fn send(tokens: (&Peripheral, &Characteristic), msg: NotificationMessage) -> Result<()> {
+    let buf = msg.serialise();
+        tokens.0.write(&tokens.1, &buf, WriteType::WithoutResponse)
+        .await?;
+    Ok(())
+}
+#[derive(Debug, Default, Clone)]
+pub struct Tokens {
+   pub p: Option<Peripheral>,
+   pub c: Option<Characteristic>,
+}
+#[derive(Debug, Default, Clone)]
+pub struct Channels {
+    pub singlevalue_sender: Option<tokio::sync::broadcast::Sender<PortValueSingleFormat>>, 
+    pub combinedvalue_sender: Option<tokio::sync::broadcast::Sender<PortValueCombinedFormat>>,
+    pub networkcmd_sender: Option<tokio::sync::broadcast::Sender<NetworkCommand>>,
+}
+
 
 // pub type PortMap = HashMap<Port, u8>;
 
-/// Ports supported by any hub
+// Ports supported by any hub
 // #[non_exhaustive]
 // #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 // pub enum Port {
@@ -188,7 +225,7 @@ pub struct HubProperties {
 //     RemoteA,
 //     RemoteB,
 //     Virtual(u8),
-//     Deprecated         // Port enum depreacated, have this for backwards comp
+//     Deprecated         // Port enum depreacated
 // }
 
 // impl Port {
@@ -198,7 +235,7 @@ pub struct HubProperties {
 //     }
 // }
 
-/// Struct representing a device connected to a port
+// Struct representing a device connected to a port
 // #[derive(Debug, Clone)]
 // pub struct ConnectedIo {
 //     /// Name/type of device
@@ -220,23 +257,3 @@ pub struct HubProperties {
 
 
 
-/// Devices can use this with cached tokens and not need to mutex-lock hub
-pub async fn send(tokens: (&Peripheral, &Characteristic), msg: NotificationMessage) -> Result<()> {
-    let buf = msg.serialise();
-        tokens.0.write(&tokens.1, &buf, WriteType::WithoutResponse)
-        .await?;
-    Ok(())
-}
-
-#[derive(Debug, Default, Clone)]
-pub struct Tokens {
-   pub p: Option<Peripheral>,
-   pub c: Option<Characteristic>,
-}
-
-#[derive(Debug, Default, Clone)]
-pub struct Channels {
-    pub singlevalue_sender: Option<tokio::sync::broadcast::Sender<PortValueSingleFormat>>, 
-    pub combinedvalue_sender: Option<tokio::sync::broadcast::Sender<PortValueCombinedFormat>>,
-    pub networkcmd_sender: Option<tokio::sync::broadcast::Sender<NetworkCommand>>,
-}
