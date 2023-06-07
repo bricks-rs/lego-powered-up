@@ -23,27 +23,23 @@ async fn main() -> anyhow::Result<()> {
         let mut red_down = (false, false); 
         while let Ok(data) = rc_rx.recv().await {
             match data {
-                RcButtonState::Aup => { 
-                    println!("A released");
+                RcButtonState::Aup => {    println!("A released");
                     red_down.0 = false;
                 }
-                RcButtonState::Aplus => { println!("A plus") }
-                RcButtonState::Ared => { 
-                    println!("A red"); 
+                RcButtonState::Aplus => {  println!("A plus") }
+                RcButtonState::Ared => {   println!("A red"); 
                     red_down.0 = true; 
                 }
                 RcButtonState::Aminus => { println!("A minus") }
-                RcButtonState::Bup => { 
-                    println!("B released");
+                RcButtonState::Bup => {    println!("B released");
                     red_down.1 = false; 
                 }
                 RcButtonState::Bplus => { println!("B plus") }
-                RcButtonState::Bred => { 
-                    println!("B red");
+                RcButtonState::Bred => {  println!("B red");
                     red_down.1 = true;
                 }
-                RcButtonState::Bminus => { println!("B minus") }
-                RcButtonState::Green => { println!("Green pressed") }
+                RcButtonState::Bminus => {  println!("B minus") }
+                RcButtonState::Green => {   println!("Green pressed") }
                 RcButtonState::GreenUp => { println!("Green released") }
             }
             if red_down == (true, true) { break }
