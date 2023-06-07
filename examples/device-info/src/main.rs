@@ -76,17 +76,18 @@ pub async fn attached_device_info(mutex: HubMutex) -> () {
     loop {
         print!("(l)ist, <port>, (s)et or (q)uit > ");
         let line: String = read!("{}\n");
-        if line.len() == 1 {
+        // println!("|{}| len: {}", line.trim(), line.len());
+        if (line.len() == 0) | ((line.len() == 1) & line.contains("\r") ) {
             continue;
         } 
-        else if line.contains("l") {
+        else if line.trim().contains("l") {
             let mut lock = mutex.lock().await;
             for device in lock.connected_io().values() {
                 println!("{}", device.def);
             }
             continue;
         }
-        else if line.contains("s") {
+        else if line.trim().contains("s") {
             let port_id: u8; let mode_id: u8; let delta: u32; let enable: bool;
             print!("Set mode; port > ");
             let line: String = read!("{}\n");
@@ -118,7 +119,7 @@ pub async fn attached_device_info(mutex: HubMutex) -> () {
             }
             continue;
         } 
-        else if line.contains("q") {
+        else if line.trim().contains("q") {
             break
         }
         else {
