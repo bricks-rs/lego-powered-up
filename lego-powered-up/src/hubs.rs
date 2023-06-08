@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 //! Specific implementations for each of the supported hubs.
 
 
@@ -22,7 +24,6 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 
-// #![allow(unused)]
 
 use btleplug::api::{Characteristic, Peripheral as _, WriteType};
 use btleplug::platform::Peripheral;

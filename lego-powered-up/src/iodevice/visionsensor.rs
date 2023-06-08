@@ -60,32 +60,29 @@ pub trait VisionSensor: Debug + Send + Sync {
         // Set up channel
         let (tx,  rx) = broadcast::channel::<DetectedColor>(8);
         let mut rx_from_main = self.get_rx().expect("Single value sender not in device cache");
-                let task = tokio::spawn(async move {
-                    while let Ok(msg) = rx_from_main.recv().await {
-                        match msg.port_id {
-                             port_id => {
-                                match msg.data[0] as i8 {
-                                   -1 => { tx.send(DetectedColor::NoObject); }
-                                    0 => { tx.send(DetectedColor::Black); }
-                                    1 => { tx.send(DetectedColor::Color1); }
-                                    2 => { tx.send(DetectedColor::Color2); }
-                                    3 => { tx.send(DetectedColor::Blue); }
-                                    4 => { tx.send(DetectedColor::Color4); }
-                                    5 => { tx.send(DetectedColor::Green); }
-                                    6 => { tx.send(DetectedColor::Color6); }
-                                    7 => { tx.send(DetectedColor::Yellow); }
-                                    8 => { tx.send(DetectedColor::Color8); }
-                                    9 => { tx.send(DetectedColor::Red); }
-                                    10 => { tx.send(DetectedColor::White); }
-                                    _  => ()
-                                }
-                            }
-                            _ => ()                                
-                        }
+        let task = tokio::spawn(async move {
+            while let Ok(msg) = rx_from_main.recv().await {
+                if msg.port_id == port_id {
+                    match msg.data[0] as i8 {
+                       -1 => { let _ = tx.send(DetectedColor::NoObject); }
+                        0 => { let _ = tx.send(DetectedColor::Black); }
+                        1 => { let _ = tx.send(DetectedColor::Color1); }
+                        2 => { let _ = tx.send(DetectedColor::Color2); }
+                        3 => { let _ = tx.send(DetectedColor::Blue); }
+                        4 => { let _ = tx.send(DetectedColor::Color4); }
+                        5 => { let _ = tx.send(DetectedColor::Green); }
+                        6 => { let _ = tx.send(DetectedColor::Color6); }
+                        7 => { let _ = tx.send(DetectedColor::Yellow); }
+                        8 => { let _ = tx.send(DetectedColor::Color8); }
+                        9 => { let _ = tx.send(DetectedColor::Red); }
+                        10 => { let _ = tx.send(DetectedColor::White); }
+                        _  => ()
                     }
-                });
-            
-                Ok((rx, task))
+                }
+            }
+        });
+        
+        Ok((rx, task))
     }
 
 

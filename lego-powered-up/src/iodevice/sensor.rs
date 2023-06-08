@@ -59,7 +59,7 @@ pub trait GenericSensor: Debug + Send + Sync {
                         if msg.port_id != port_id {
                             continue;
                         }
-                        tx.send(msg.data);
+                        let _ = tx.send(msg.data);
                         
                         // let converted_data = data.data.into_iter().map(|x| x as i8).collect();
                         // tx.send(converted_data);
@@ -107,7 +107,7 @@ pub trait GenericSensor: Debug + Send + Sync {
                             converted.push(i16::from_le_bytes([it.next().unwrap() as u8, it.next().unwrap() as u8]));
                         }    
 
-                        tx.send(converted);
+                        let _ = tx.send(converted);
                     }
                 });
 
@@ -120,13 +120,13 @@ pub trait GenericSensor: Debug + Send + Sync {
     async fn enable_32bit_sensor(&self, mode: u8, delta: u32) -> Result<(broadcast::Receiver<Vec<i32>>, JoinHandle<()> )> {
         match self.check(mode, DatasetType::Bits32) {
             Ok(()) => (),
-            _ => return Err(Error::NoneError((String::from("Not a 32-bit sensor mode"))))
+            _ => return Err(Error::NoneError(String::from("Not a 32-bit sensor mode")))
         }
         self.set_device_mode(mode, delta, true).await?;
 
         // Set up channel
         let port_id = self.port();
-        let (tx, mut rx) = broadcast::channel::<Vec<i32>>(16);
+        let (tx, rx) = broadcast::channel::<Vec<i32>>(16);
         match self.get_rx() {
             Ok(mut rx_from_main) => { 
                 let task = tokio::spawn(async move {
@@ -145,19 +145,19 @@ pub trait GenericSensor: Debug + Send + Sync {
                                                                it.next().unwrap() as u8, it.next().unwrap() as u8]));
                         }    
 
-                        tx.send(converted);
+                        let _ = tx.send(converted);
                     }
                 });
 
                 Ok((rx, task))
             }
-            _ => Err(Error::NoneError((String::from("No sender in device cache"))))
+            _ => Err(Error::NoneError(String::from("No sender in device cache")))
         }
     }
 
     async fn raw_channel(&self) -> Result<(broadcast::Receiver<Vec<i8>>, JoinHandle<()> )> {
         let port_id = self.port();
-        let (tx, mut rx) = broadcast::channel::<Vec<i8>>(8);
+        let (tx, rx) = broadcast::channel::<Vec<i8>>(8);
         match self.get_rx() {
             Ok(mut rx_from_main) => { 
                 let task = tokio::spawn(async move {
@@ -165,13 +165,13 @@ pub trait GenericSensor: Debug + Send + Sync {
                         if msg.port_id != port_id {
                             continue;
                         }
-                        tx.send(msg.data);
+                        let _ = tx.send(msg.data);
                     }
                 });
 
                 Ok((rx, task))
             }
-            _ => Err(Error::NoneError((String::from("No sender in device cache"))))
+            _ => Err(Error::NoneError(String::from("No sender in device cache")))
         }
     }
 
@@ -186,7 +186,7 @@ pub trait GenericSensor: Debug + Send + Sync {
     //     let port_id = self.port();
     //     match dataset {
     //         DatasetType::Bits8 => {
-    //             let (tx, mut rx) = broadcast::channel::<Vec<i8>>(8);
+    //             let (tx, rx) = broadcast::channel::<Vec<i8>>(8);
     //             match self.get_rx() {
     //                 Ok(mut rx_from_main) => { 
     //                     let task = tokio::spawn(async move {
@@ -194,7 +194,7 @@ pub trait GenericSensor: Debug + Send + Sync {
     //                             if msg.port_id != port_id {
     //                                 continue;
     //                             }
-    //                             tx.send(msg.data);
+    //                             let _ = tx.send(msg.data);
     //                         }
     //                     });
         
@@ -204,7 +204,7 @@ pub trait GenericSensor: Debug + Send + Sync {
     //             }
     //         },
     //         DatasetType::Bits16 => {
-    //             let (tx, mut rx) = broadcast::channel::<Vec<i16>>(8);
+    //             let (tx, rx) = broadcast::channel::<Vec<i16>>(8);
     //             match self.get_rx() {
     //                 Ok(mut rx_from_main) => { 
     //                     let task = tokio::spawn(async move {
@@ -218,7 +218,7 @@ pub trait GenericSensor: Debug + Send + Sync {
     //                             for _ in 0..cycles {
     //                                 converted.push(i16::from_le_bytes([it.next().unwrap() as u8, it.next().unwrap() as u8]));
     //                             }    
-    //                             tx.send(converted);
+    //                             let _ = tx.send(converted);
     //                         }
     //                     });
     //                     return Ok((rx, task))

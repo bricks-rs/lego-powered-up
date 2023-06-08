@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 /// Models the hub acting on the messages parsed by 
 /// notification module. The 3 main messagetypes for
 /// device comms are forwarded to channels for devices
@@ -5,19 +7,19 @@
 /// to iodevice::definition mod. The rest are available
 /// as error messages for now. 
 
-// #![allow(unused)]
+
 
 use core::pin::Pin;
 use futures::stream::{Stream, StreamExt};
 
-use std::fmt::Debug;
+
 use std::sync::{Arc};
 use tokio::sync::Mutex;
-use tokio::sync::broadcast::{self, Sender};
+use tokio::sync::broadcast::{ Sender};
 use btleplug::api::ValueNotification;
 
 use crate::IoDevice;
-use crate::error::{Error, Result, OptionContext};
+use crate::error::{ Result, };
 use crate::notifications::*;
 use crate::hubs::HubNotification;
 
@@ -36,7 +38,7 @@ pub async fn io_event_handler(mut stream: PinnedStream, mutex: HubMutex,
     const HUB: bool = true;
     const INPUT: bool = false;
     const OUTPUT: bool = false;
-    const VALUES: bool = false;
+    const _VALUES: bool = false;
     while let Some(data) = stream.next().await {
         // println!("Received data from {:?} [{:?}]: {:?}", hub_name, data.uuid, data.value);  // Dev use
 

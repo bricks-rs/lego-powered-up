@@ -1946,7 +1946,7 @@ impl WriteDirectModeDataPayload {
                 // "Mode 7"
                 let orientation = next_i8!(msg);  
                 // let passcode = next_i8!(msg);
-                TiltFactoryCalibration((orientation)) 
+                TiltFactoryCalibration(orientation) 
             }
             0x08 => {
                 // SetHubColor(ColorNo)
