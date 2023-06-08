@@ -37,9 +37,9 @@ async fn main() -> anyhow::Result<()> {
         hubled.set_hubled_mode(HubLedMode::Colour).await.expect("Error setting mode");
         for c in LEGO_COLORS {
                 hubled.set_hubled_color(c).await.expect("Error setting color");
-                sleep(Duration::from_millis(500)).await;
+                sleep(Duration::from_millis(1000)).await;
         }
-        sleep(Duration::from_millis(1000)).await;
+        sleep(Duration::from_millis(500)).await;
 
         // Rainbow
         hubled.set_hubled_mode(HubLedMode::Rgb).await.expect("Error setting mode");
@@ -76,8 +76,7 @@ pub async fn attached_device_info(mutex: HubMutex) -> () {
     loop {
         print!("(l)ist, <port>, (s)et or (q)uit > ");
         let line: String = read!("{}\n");
-        // println!("|{}| len: {}", line.trim(), line.len());
-        if (line.len() == 0) | ((line.len() == 1) & line.contains("\r") ) {
+        if (line.len() == 0) | line.starts_with("\r")  {
             continue;
         } 
         else if line.trim().contains("l") {
@@ -89,10 +88,10 @@ pub async fn attached_device_info(mutex: HubMutex) -> () {
         }
         else if line.trim().contains("s") {
             let port_id: u8; let mode_id: u8; let delta: u32; let enable: bool;
+            
             print!("Set mode; port > ");
             let line: String = read!("{}\n");
-            let input = line.trim().parse::<u8>();
-            port_id = input.unwrap();// _or_else(println!("Not a number: {}");)
+            port_id = line.trim().parse::<u8>().unwrap();
             let mut lock = mutex.lock().await;
             if let Some(device) = lock.connected_io().get(&port_id).clone() {
                 let device = lock.device_cache(device.clone());
@@ -114,7 +113,7 @@ pub async fn attached_device_info(mutex: HubMutex) -> () {
                     }
                 } 
             } else {
-               println!("Device not found");
+               println!("No device on port {} ({:#x})", port_id, port_id);
                continue; 
             }
             continue;
@@ -130,7 +129,7 @@ pub async fn attached_device_info(mutex: HubMutex) -> () {
                     let device = lock.connected_io().get(&num);
                     match device {
                         Some(device) => { println!("{:#?}", device.def) }  //{dbg!(device);}
-                        None => { println!("Device not found"); }
+                        None => { println!("No device on port {} ({:#x})", num, num); }
                     }
                 }
                 Err(e) => { println!("Not a number: {}", e); }

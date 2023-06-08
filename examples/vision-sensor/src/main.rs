@@ -48,7 +48,7 @@ pub async fn vision_sensor_ui(mutex: HubMutex) -> () {
     loop {
         print!("(l)ist, <mode>, or (q)uit > ");
         let line: String = read!("{}\n");
-        if line.len() == 1 {
+        if (line.len() == 0) | line.starts_with("\r")  {
             match tasks.remove(&port_id) {
                 Some(task) => task.abort(), 
                 None => ()

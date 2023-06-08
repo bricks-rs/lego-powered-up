@@ -12,3 +12,10 @@ repository= "https://github.com/bricks-rs/lego-powered-up"
 anyhow = "1.0"
 lego-powered-up = { path = "../../lego-powered-up" }
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros"] }
+
+
+# needed to crosscompile on WSL
+dbus = {version = "0.9.7", features = ["vendored"], optional = true}
+
+[features]
+wslcross = ["dep:dbus"]
