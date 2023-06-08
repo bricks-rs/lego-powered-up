@@ -17,6 +17,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "btleplug",
+ "dbus",
  "futures",
  "lego-powered-up",
  "tokio",
@@ -348,6 +349,7 @@ dependencies = [
  "anyhow",
  "btleplug",
  "console_engine",
+ "dbus",
  "futures",
  "lego-powered-up",
  "text_io",
@@ -533,11 +535,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "hub-props"
+name = "hub-commands"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "btleplug",
+ "dbus",
  "futures",
  "lego-powered-up",
  "tokio",
@@ -710,6 +713,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "btleplug",
+ "dbus",
  "futures",
  "lego-powered-up",
  "tokio",
@@ -748,6 +752,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "btleplug",
+ "dbus",
  "futures",
  "lego-powered-up",
  "tokio",
@@ -908,6 +913,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "btleplug",
+ "dbus",
  "futures",
  "lego-powered-up",
  "tokio",
@@ -918,6 +924,7 @@ name = "run-motors"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "dbus",
  "lego-powered-up",
  "tokio",
 ]
@@ -951,6 +958,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "btleplug",
+ "dbus",
  "futures",
  "lego-powered-up",
  "tokio",
@@ -968,6 +976,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "btleplug",
+ "dbus",
  "futures",
  "lego-powered-up",
  "text_io",
@@ -1089,6 +1098,7 @@ name = "tank-remote"
 version = "0.1.0"
 dependencies = [
  "console_engine",
+ "dbus",
  "eyre",
  "lego-powered-up",
  "tokio",
@@ -1211,6 +1221,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "btleplug",
+ "dbus",
  "futures",
  "lego-powered-up",
  "tokio",
@@ -1222,6 +1233,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "btleplug",
+ "dbus",
  "futures",
  "lego-powered-up",
  "text_io",
@@ -1234,6 +1246,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "btleplug",
+ "dbus",
  "futures",
  "lego-powered-up",
  "tokio",
