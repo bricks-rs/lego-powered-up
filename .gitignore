@@ -1,6 +1,4 @@
 /target
 Cargo.lock
-Cargo.lock
 .gitignore
-Cargo.lock
-.gitignore
+lego-powered-up.code-workspace
