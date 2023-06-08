@@ -352,7 +352,7 @@ pub enum MessageType {
 /// ```
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive)]
-pub enum HubPropertyReference {
+pub enum HubPropertyRef {
     AdvertisingName = 0x01,
     Button = 0x02,
     FwVersion = 0x03,

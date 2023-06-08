@@ -10,7 +10,7 @@ pub enum NotificationMessage {
     HubProperties(HubProperty),
     HubActions(HubActionRequest),
     // HubAlerts(AlertType),
-    HubAlerts(HubAlertRequest),
+    HubAlerts(HubAlert),
     HubAttachedIo(AttachedIo),
     GenericErrorMessages(ErrorMessageFormat),
     HwNetworkCommands(NetworkCommand),
@@ -68,7 +68,7 @@ impl NotificationMessage {
             }
             MessageType::HubAlerts => {
                 // let alert = AlertType::parse(&mut msg_iter)?;
-                let alert = HubAlertRequest::parse(&mut msg_iter)?;
+                let alert = HubAlert::parse(&mut msg_iter)?;
                 HubAlerts(alert)
             }
             MessageType::HubAttachedIo => {

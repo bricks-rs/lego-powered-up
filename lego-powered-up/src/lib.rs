@@ -12,6 +12,7 @@ pub use btleplug;
 // std
 use futures::{stream::StreamExt, Stream};
 pub use futures;
+use hubs::HubNotification;
 use std::sync::{Arc};
 use core::time::Duration;    
 use tokio::sync::Mutex;
@@ -345,6 +346,8 @@ impl ConnectedHub {
                 Some(broadcast::channel::<PortValueCombinedFormat>(16).0);
             lock.channels().networkcmd_sender =
                 Some(broadcast::channel::<NetworkCommand>(16).0);
+            lock.channels().hubnotification_sender =
+                Some(broadcast::channel::<HubNotification>(16).0);
         }
 
         // Set up notification handler
@@ -356,6 +359,7 @@ impl ConnectedHub {
                 lock.channels().singlevalue_sender.as_ref().unwrap().clone(),
                 lock.channels().combinedvalue_sender.as_ref().unwrap().clone(),
                 lock.channels().networkcmd_sender.as_ref().unwrap().clone(),
+                lock.channels().hubnotification_sender.as_ref().unwrap().clone(),
             );
             tokio::spawn(async move {
                 crate::hubs::io_event::io_event_handler(stream, hub_mutex, senders)
@@ -374,7 +378,10 @@ impl ConnectedHub {
                 Err(e) => { eprintln!("Error subscribing to peripheral notifications: {:#?}", e) }
             }
         }
-        tokio::time::sleep(Duration::from_millis(3500)).await; //Wait for devices to be collected
+        // Wait for devices to be collected. This is set to a very long time because notifications
+        // from the hub sometimes lag, and we don't know how many devices to expect.
+        tokio::time::sleep(Duration::from_millis(3000)).await; 
+        
         Ok(connected_hub)
     }
 }

@@ -19,6 +19,7 @@ use btleplug::api::ValueNotification;
 use crate::IoDevice;
 use crate::error::{Error, Result, OptionContext};
 use crate::notifications::*;
+use crate::hubs::HubNotification;
 
 type HubMutex = Arc<Mutex<Box<dyn crate::Hub>>>;
 type PinnedStream = Pin<Box<dyn Stream<Item = ValueNotification> + Send>>;
@@ -27,9 +28,15 @@ type PinnedStream = Pin<Box<dyn Stream<Item = ValueNotification> + Send>>;
 pub async fn io_event_handler(mut stream: PinnedStream, mutex: HubMutex, 
                             senders: (Sender<PortValueSingleFormat>, 
                                       Sender<PortValueCombinedFormat>,
-                                      Sender<NetworkCommand>)
+                                      Sender<NetworkCommand>,
+                                      Sender<HubNotification> )
                             ) -> Result<()> {
-    const DIAGNOSTICS: bool = true;
+    // Verbosity
+    const ATTACHED: bool = true;
+    const HUB: bool = true;
+    const INPUT: bool = false;
+    const OUTPUT: bool = false;
+    const VALUES: bool = false;
     while let Some(data) = stream.next().await {
         // println!("Received data from {:?} [{:?}]: {:?}", hub_name, data.uuid, data.value);  // Dev use
 
@@ -43,7 +50,7 @@ pub async fn io_event_handler(mut stream: PinnedStream, mutex: HubMutex,
                         match senders.0.send(val) {
                             Ok(_) => (),
                             Err(e) =>  {
-                                eprintln!("Error forwarding PortValueSingle: {:?}", e);
+                                eprintln!("No receiver? Error forwarding PortValueSingle: {:?}", e);
                             }
                         }
                     }
@@ -51,7 +58,7 @@ pub async fn io_event_handler(mut stream: PinnedStream, mutex: HubMutex,
                         match senders.1.send(val) {
                             Ok(_) => (),
                             Err(e) =>  {
-                                eprintln!("Error forwarding PortValueCombined: {:?}", e);
+                                eprintln!("No receiver? Error forwarding PortValueCombined: {:?}", e);
                             }
                         }
                     }
@@ -59,7 +66,7 @@ pub async fn io_event_handler(mut stream: PinnedStream, mutex: HubMutex,
                         match senders.2.send(val) {
                             Ok(_) => (),
                             Err(e) =>  {
-                                eprintln!("Error forwarding HwNetworkCommands: {:?}", e);
+                                eprintln!("No receiver? Error forwarding HwNetworkCommands: {:?}", e);
                             }
                         }
                     }
@@ -77,14 +84,14 @@ pub async fn io_event_handler(mut stream: PinnedStream, mutex: HubMutex,
                                             hub.request_port_info(port_id, InformationType::ModeInfo).await?;
                                             // hub.request_port_info(port_id, InformationType::PossibleModeCombinations).await?; // conditional req in PortInformation-arm
                                         }
-                                        if DIAGNOSTICS { eprintln!("AttachedIo: {:?} {:?}", port_id, event); }
+                                        if ATTACHED { eprintln!("AttachedIo: {:?} {:?}", port_id, event); }
                                     }
                                     IoAttachEvent::DetachedIo{} => { 
                                         {
                                             let mut hub = mutex.lock().await;
                                             hub.connected_io_mut().remove(&port_id);
                                         }
-                                        if DIAGNOSTICS { eprintln!("DetachedIo: {:?} {:?}", port_id, event); }
+                                        if ATTACHED { eprintln!("DetachedIo: {:?} {:?}", port_id, event); }
                                     }  
                                     IoAttachEvent::AttachedVirtualIo {io_type_id, port_a, port_b }=> {
                                         {
@@ -92,7 +99,7 @@ pub async fn io_event_handler(mut stream: PinnedStream, mutex: HubMutex,
                                             hub.attach_io(IoDevice::new(io_type_id, port_id))?;
                                             hub.request_port_info(port_id, InformationType::ModeInfo).await?;
                                         }
-                                        if DIAGNOSTICS { eprintln!("AttachedVirtualIo: {:?} {:?}", port_id, event); }
+                                        if ATTACHED { eprintln!("AttachedVirtualIo: {:?} {:?}", port_id, event); }
                                     }  
                                 }
                             }
@@ -184,30 +191,56 @@ pub async fn io_event_handler(mut stream: PinnedStream, mutex: HubMutex,
                         }
                     }
                     
-                    // Not doing anything with these yet. Alerts and error messages could be useful.
+                    // Forward hub notifications
                     NotificationMessage::HubProperties(val) => {
-                        if DIAGNOSTICS { eprintln!("{:?}", val); }
+                        if HUB { eprintln!("{:?}", &val); }
+                        match senders.3.send(HubNotification { hub_property: Some(val), hub_action: None, hub_alert: None, hub_error: None }) {
+                            Ok(_) => (),
+                            Err(e) =>  {
+                                if !HUB {eprintln!("No receiver? Error forwarding HubProperties: {:?}", e)};
+                            }
+                        }
                     }
                     NotificationMessage::HubActions(val) => {
-                        if DIAGNOSTICS { eprintln!("{:?}", val); }
+                        if HUB { eprintln!("{:?}", &val); }
+                        match senders.3.send(HubNotification { hub_property: None, hub_action: Some(val), hub_alert: None, hub_error: None }) {
+                            Ok(_) => (),
+                            Err(e) =>  {
+                                if !HUB {eprintln!("No receiver? Error forwarding HubActions: {:?}", e)};
+                            }
+                        }
                     }
                     NotificationMessage::HubAlerts(val) => {
-                        if DIAGNOSTICS { eprintln!("{:?}", val); }
+                        if HUB { eprintln!("{:?}", &val); }
+                        match senders.3.send(HubNotification { hub_property: None, hub_action: None, hub_alert: Some(val), hub_error: None }) {
+                            Ok(_) => (),
+                            Err(e) =>  {
+                                if !HUB {eprintln!("No receiver? Error forwarding HubAlerts: {:?}", e)};
+                            }
+                        }
                     }
                     NotificationMessage::GenericErrorMessages(val) => {
-                        if DIAGNOSTICS { eprintln!("{:?}", val); }
+                        if HUB { eprintln!("{:?}", &val); }
+                        match senders.3.send(HubNotification { hub_property: None, hub_action: None, hub_alert: None, hub_error: Some(val) }) {
+                            Ok(_) => (),
+                            Err(e) =>  {
+                                if !HUB {eprintln!("No receiver? Error forwarding GenericErrorMessages: {:?}", e)};
+                            }
+                        }
                     }
+
+                    // Not doing anything with these yet. 
                     NotificationMessage::FwLockStatus(val) => {
-                        if DIAGNOSTICS { eprintln!("{:?}", val); }
+                        if HUB { eprintln!("{:?}", val); }
                     }
                     NotificationMessage::PortInputFormatSingle(val) => {
-                        if DIAGNOSTICS { eprintln!("{:?}", val); }
+                        if INPUT { eprintln!("{:?}", val); }
                     }
                     NotificationMessage::PortInputFormatCombinedmode(val) => {
-                        if DIAGNOSTICS { eprintln!("{:?}", val); }
+                        if INPUT { eprintln!("{:?}", val); }
                     }
                     NotificationMessage::PortOutputCommandFeedback(val ) => {
-                        // if DIAGNOSTICS { eprintln!("{:?}", val); }
+                        if OUTPUT { eprintln!("{:?}", val); }
                     }
                     _ => ()
                 }
@@ -219,3 +252,4 @@ pub async fn io_event_handler(mut stream: PinnedStream, mutex: HubMutex,
     }
     Ok(())  
 }
+

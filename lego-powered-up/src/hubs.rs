@@ -31,13 +31,13 @@ use std::collections::{BTreeMap};
 use std::fmt::Debug;
 
 use crate::{IoDevice, IoTypeId};
-use crate::consts::{HubType, HubPropertyReference, HubPropertyOperation, };
+use crate::consts::{HubType, HubPropertyRef, HubPropertyOperation, };
 use crate::error::{Error, OptionContext, Result};
 use crate::notifications::{NotificationMessage, ModeInformationRequest, ModeInformationType,
                         InformationRequest, InformationType, HubAction, HubActionRequest, 
                         InputSetupSingle, PortValueSingleFormat, PortValueCombinedFormat, 
-                        NetworkCommand, HubProperty, HubPropertyValue, AlertType, HubAlertRequest,
-                        AlertOperation, AlertPayload};
+                        NetworkCommand, HubProperty, HubPropertyValue, AlertType, HubAlert,
+                        AlertOperation, AlertPayload, ErrorMessageFormat};
 
 pub mod io_event;
 pub mod generic_hub;
@@ -100,15 +100,19 @@ pub trait Hub: Debug + Send + Sync {
     }
 
     /// Hub properties: Single request, enable/disable notifications, reset 
-    async fn hub_props(&self, property: HubPropertyValue, operation:HubPropertyOperation) -> Result<()> {
+    async fn hub_props(&self, reference: HubPropertyRef, operation:HubPropertyOperation) -> Result<()> {
         let msg =
         NotificationMessage::HubProperties(HubProperty {
-            property,
+            reference,
             operation,
+            property: HubPropertyValue::SecondaryMacAddress,  // Not used in request
         });
         self.send(msg).await
     }
-    /// Perform Hub actionss
+
+
+
+    /// Perform Hub actions
     async fn hub_action(&self, action_type: HubAction) -> Result<()> {
         let msg =
         NotificationMessage::HubActions(HubActionRequest {
@@ -120,7 +124,7 @@ pub trait Hub: Debug + Send + Sync {
     /// Hub alerts: Single request, enable/disable notifications
     async fn hub_alerts(&self, alert_type:AlertType, operation:AlertOperation) -> Result<()> {
         let msg =
-        NotificationMessage::HubAlerts(HubAlertRequest {
+        NotificationMessage::HubAlerts(HubAlert {
             alert_type,
             operation,
             payload: AlertPayload::StatusOk
@@ -193,8 +197,16 @@ pub struct Channels {
     pub singlevalue_sender: Option<tokio::sync::broadcast::Sender<PortValueSingleFormat>>, 
     pub combinedvalue_sender: Option<tokio::sync::broadcast::Sender<PortValueCombinedFormat>>,
     pub networkcmd_sender: Option<tokio::sync::broadcast::Sender<NetworkCommand>>,
+    pub hubnotification_sender: Option<tokio::sync::broadcast::Sender<HubNotification>>
 }
 
+#[derive(Debug, Default, Clone)]
+pub struct HubNotification {
+    hub_property: Option<HubProperty>,
+    hub_action: Option<HubActionRequest>,
+    hub_alert: Option<HubAlert>,
+    hub_error: Option<ErrorMessageFormat>
+} 
 
 // pub type PortMap = HashMap<Port, u8>;
 

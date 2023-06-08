@@ -37,6 +37,7 @@ pub enum HubLedMode {
 pub struct HubProperty {
    pub(crate) property: HubPropertyValue,
    pub(crate) operation: HubPropertyOperation,
+   pub(crate) reference: HubPropertyRef
 }
 
 impl HubProperty {
@@ -44,66 +45,45 @@ impl HubProperty {
         let property_int = next!(msg);
         let operation = ok!(HubPropertyOperation::from_u8(next!(msg)));
         let property = HubPropertyValue::parse(property_int, &mut msg)?;
-        let prop_ref = HubPropertyReference::ManufacturerName; // just need something
+        let reference = match property {
+            HubPropertyValue::AdvertisingName(_) => HubPropertyRef::AdvertisingName,
+            HubPropertyValue::Button(_) => HubPropertyRef::Button,
+            HubPropertyValue::FwVersion(_) => HubPropertyRef::FwVersion,
+            HubPropertyValue::HwVersion(_) => HubPropertyRef::HwVersion,
+            HubPropertyValue::Rssi(_) => HubPropertyRef::Rssi,
+            HubPropertyValue::BatteryVoltage(_) => HubPropertyRef::BatteryVoltage,
+            HubPropertyValue::BatteryType(_) => HubPropertyRef::BatteryType,
+            HubPropertyValue::ManufacturerName(_) => HubPropertyRef::ManufacturerName,
+            HubPropertyValue::RadioFirmwareVersion(_) => HubPropertyRef::RadioFirmwareVersion,
+            HubPropertyValue::LegoWirelessProtocolVersion(_) => HubPropertyRef::LegoWirelessProtocolVersion,
+            HubPropertyValue::SystemTypeId(_) => HubPropertyRef::SystemTypeId,
+            HubPropertyValue::HwNetworkId(_) => HubPropertyRef::HwNetworkId,
+            HubPropertyValue::PrimaryMacAddress(_) => HubPropertyRef::PrimaryMacAddress,
+            HubPropertyValue::SecondaryMacAddress => HubPropertyRef::SecondaryMacAddress,
+            HubPropertyValue::HardwareNetworkFamily(_) => HubPropertyRef::HardwareNetworkFamily,
+        };
 
         Ok(Self {
+            reference,
             operation,
             property,
         })
     }
     pub fn serialise(&self) -> Vec<u8> {
-        let prop_ref:u8 = match self.property {
-            HubPropertyValue::AdvertisingName(_) => 0x01,
-            HubPropertyValue::Button(_) => 0x02,
-            HubPropertyValue::FwVersion(_) => 0x03,
-            HubPropertyValue::HwVersion(_) => 0x04,
-            HubPropertyValue::Rssi(_) => 0x05,
-            HubPropertyValue::BatteryVoltage(_) => 0x06,
-            HubPropertyValue::BatteryType(_) => 0x07,
-            HubPropertyValue::ManufacturerName(_) => 0x08,
-            HubPropertyValue::RadioFirmwareVersion(_) => 0x09,
-            HubPropertyValue::LegoWirelessProtocolVersion(_) => 0x0a,
-            HubPropertyValue::SystemTypeId(_) => 0x0b,
-            HubPropertyValue::HwNetworkId(_) => 0x0c,
-            HubPropertyValue::PrimaryMacAddress(_) => 0x0d,
-            HubPropertyValue::SecondaryMacAddress => 0x0e,
-            HubPropertyValue::HardwareNetworkFamily(_) => 0x0f,
-
-            _ => 0x00 
-        };
-        
         let mut msg = Vec::with_capacity(10);
         msg.extend_from_slice(&[
             0,
             0,
             MessageType::HubProperties as u8,
-            prop_ref,
+            // prop_ref,
+            self.reference as u8,
             self.operation as u8,
 
         ]);
+
         msg
     }
 }
-
-// #[derive(Clone, Debug, PartialEq, Eq)]
-// pub struct HubPropertyReq {
-//     pub(crate) prop_ref: HubPropertyReference, 
-//     pub(crate) operation: HubPropertyOperation, 
-// }
-// impl HubPropertyReq {
-//     pub fn serialise(&self) -> Vec<u8> {
-//         let mut msg = Vec::with_capacity(10);
-//         msg.extend_from_slice(&[
-//             0,
-//             0,
-//             MessageType::HubProperties as u8,
-//             self.prop_ref as u8,
-//             self.operation as u8,
-
-//         ]);
-//         msg
-//     }
-// }
 
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -128,54 +108,54 @@ pub enum HubPropertyValue {
 impl HubPropertyValue {
     pub fn parse<'a>(prop_type: u8, mut msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
         use HubPropertyValue::*;
-        let prop_type = ok!(HubPropertyReference::from_u8(prop_type));
+        let prop_type = ok!(HubPropertyRef::from_u8(prop_type));
 
         Ok(match prop_type {
-            HubPropertyReference::AdvertisingName => {
+            HubPropertyRef::AdvertisingName => {
                 // name is the rest of the data
                 let name = msg.copied().collect();
 
                 AdvertisingName(name)
             }
-            HubPropertyReference::Button => Button(next!(msg)),
-            HubPropertyReference::FwVersion => {
+            HubPropertyRef::Button => Button(next!(msg)),
+            HubPropertyRef::FwVersion => {
                 let vers = next_i32!(msg);
 
                 FwVersion(vers)
             }
-            HubPropertyReference::HwVersion => {
+            HubPropertyRef::HwVersion => {
                 let vers = next_i32!(msg);
 
                 HwVersion(vers)
             }
-            HubPropertyReference::Rssi => {
+            HubPropertyRef::Rssi => {
                 let bytes = [next!(msg)];
                 let rssi = i8::from_le_bytes(bytes);
 
                 Rssi(rssi)
             }
-            HubPropertyReference::BatteryVoltage => BatteryVoltage(next!(msg)),
-            HubPropertyReference::BatteryType => {
+            HubPropertyRef::BatteryVoltage => BatteryVoltage(next!(msg)),
+            HubPropertyRef::BatteryType => {
                 BatteryType(ok!(HubBatteryType::parse(&mut msg)))
             }
-            HubPropertyReference::ManufacturerName => {
+            HubPropertyRef::ManufacturerName => {
                 let name = msg.copied().collect();
 
                 ManufacturerName(name)
             }
-            HubPropertyReference::RadioFirmwareVersion => {
+            HubPropertyRef::RadioFirmwareVersion => {
                 let vers = msg.copied().collect();
 
                 RadioFirmwareVersion(vers)
             }
-            HubPropertyReference::LegoWirelessProtocolVersion => {
+            HubPropertyRef::LegoWirelessProtocolVersion => {
                 let vers = next_u16!(msg);
 
                 LegoWirelessProtocolVersion(vers)
             }
-            HubPropertyReference::SystemTypeId => SystemTypeId(next!(msg)),
-            HubPropertyReference::HwNetworkId => HwNetworkId(next!(msg)),
-            HubPropertyReference::PrimaryMacAddress => {
+            HubPropertyRef::SystemTypeId => SystemTypeId(next!(msg)),
+            HubPropertyRef::HwNetworkId => HwNetworkId(next!(msg)),
+            HubPropertyRef::PrimaryMacAddress => {
                 let mac = [
                     next!(msg),
                     next!(msg),
@@ -186,8 +166,8 @@ impl HubPropertyValue {
                 ];
                 PrimaryMacAddress(mac)
             }
-            HubPropertyReference::SecondaryMacAddress => SecondaryMacAddress,
-            HubPropertyReference::HardwareNetworkFamily => {
+            HubPropertyRef::SecondaryMacAddress => SecondaryMacAddress,
+            HubPropertyRef::HardwareNetworkFamily => {
                 HardwareNetworkFamily(next!(msg))
             }
         })
@@ -266,18 +246,18 @@ pub enum AlertPayload {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct HubAlertRequest {
+pub struct HubAlert {
     pub(crate) alert_type: AlertType,
     pub(crate) operation: AlertOperation,
     pub(crate) payload: AlertPayload
 }
 
-impl HubAlertRequest {
+impl HubAlert {
     pub fn parse<'a>(mut msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
         let alert_type = AlertType::parse(&mut msg)?;
         let operation = AlertOperation::parse(&mut msg)?;
         let payload = AlertPayload::parse(&mut msg)?;
-        Ok(HubAlertRequest {
+        Ok(HubAlert {
             alert_type,
             operation,
             payload
