@@ -1,13 +1,13 @@
 // Any copyright is dedicated to the Public Domain.
 // https://creativecommons.org/publicdomain/zero/1.0/
 
-#![allow(unused)]
+// #![allow(unused)]
 
 // use core::time::Duration;
 // use tokio::time::sleep as sleep;
 
-use lego_powered_up::{PoweredUp, HubFilter, ConnectedHub, IoDevice}; 
-use lego_powered_up::consts::MotorSensorMode;
+use lego_powered_up::{IoDevice}; 
+// use lego_powered_up::consts::MotorSensorMode;
 use lego_powered_up::consts::named_port;
 use lego_powered_up::iodevice::motor::EncoderMotor;
 use lego_powered_up::iodevice::remote::{RcDevice, RcButtonState};
@@ -26,7 +26,7 @@ async fn main() -> anyhow::Result<()> {
         rc = lock.io_from_port(named_port::A).await?;
         // rc = lock.io_from_port(16).await?;
     }    
-    let (mut rc_rx, rc_task) = rc.remote_connect_with_green().await?;
+    let (mut rc_rx, _rc_task) = rc.remote_connect_with_green().await?;
 
     // Set up motor feedback
     let motor: IoDevice;
@@ -34,7 +34,7 @@ async fn main() -> anyhow::Result<()> {
         let lock = main_hub.mutex.lock().await;
         motor = lock.io_from_port(named_port::A).await?;
     }
-    let (mut motor_rx, position_task) = motor.enable_32bit_sensor(modes::InternalMotorTacho::POS, 1).await?;
+    let (mut motor_rx, _position_task) = motor.enable_32bit_sensor(modes::InternalMotorTacho::POS, 1).await?;
 
     // Control task
     let motor_control = tokio::spawn(async move {
@@ -49,19 +49,19 @@ async fn main() -> anyhow::Result<()> {
                 Ok(msg) = rc_rx.recv() => {
                     match msg {
                         RcButtonState::Aup => { 
-                            motor.start_power(Power::Brake).await;
+                            let _ = motor.start_power(Power::Brake).await;
                             cmd = (false, false);
                         }
                         RcButtonState::Aminus => { 
                             if !at_limit.0 {
                                 cmd.0 = true;
-                                motor.start_speed(-set_speed, MAX_POWER).await;
+                                let _ = motor.start_speed(-set_speed, MAX_POWER).await;
                             }
                         }
                         RcButtonState::Aplus => { 
                             if !at_limit.1 { 
                                 cmd.1 = true;
-                                motor.start_speed(set_speed, MAX_POWER).await; 
+                                let _ = motor.start_speed(set_speed, MAX_POWER).await; 
                             }
                         }
                         RcButtonState::Ared => { 
@@ -118,7 +118,7 @@ async fn main() -> anyhow::Result<()> {
                         None => (),
                         Some(limit) => {
                             if (pos <= limit) & cmd.0 {
-                                motor.start_power(Power::Brake).await;
+                                let _ = motor.start_power(Power::Brake).await;
                                 at_limit.0 = true;
                                 println!("Left LIMIT: {}", limit);
                             } else {
@@ -130,7 +130,7 @@ async fn main() -> anyhow::Result<()> {
                         None => (),
                         Some(limit) => {
                             if (pos >= limit) & cmd.1 {
-                                motor.start_power(Power::Brake).await;
+                                let _ = motor.start_power(Power::Brake).await;
                                 at_limit.1 = true;
                                 println!("Right LIMIT: {}", limit);
                             } else {
@@ -146,7 +146,7 @@ async fn main() -> anyhow::Result<()> {
         }    
     });
 
-    motor_control.await;
+    motor_control.await?;
 
     // Cleanup 
     println!("Disconnect from hub `{}`", rc_hub.name);
