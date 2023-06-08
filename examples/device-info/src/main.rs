@@ -1,26 +1,21 @@
 // Any copyright is dedicated to the Public Domain.
 // https://creativecommons.org/publicdomain/zero/1.0/
 
-#![allow(unused)]
+// #![allow(unused)]
 use core::time::Duration;
 
 use std::collections::HashMap;
-use std::sync::{Arc};
-use std::task;
-use lego_powered_up::notifications::DatasetType;
 use tokio::task::JoinHandle;
 use tokio::time::sleep as sleep;
-use tokio::sync::Mutex;
 
 use lego_powered_up::{IoDevice, IoTypeId};
-use lego_powered_up::Hub; 
+use lego_powered_up::{HubMutex}; 
 use lego_powered_up::consts::{LEGO_COLORS};
 use lego_powered_up::iodevice::{hubled::*};
 use lego_powered_up::iodevice::basic::Basic;
 use lego_powered_up::iodevice::sensor::GenericSensor;
-
-type HubMutex = Arc<Mutex<Box<dyn Hub>>>;
-
+use lego_powered_up::notifications::DatasetType;
+use lego_powered_up::error::{Result, Error};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -56,7 +51,7 @@ async fn main() -> anyhow::Result<()> {
     });
     // Start attached io ui
     let mutex = hub.mutex.clone();
-    attached_device_info(mutex).await;
+    attached_device_info(mutex).await?;
 
     // Cleanup after ui exit
     println!("Disconnect from hub `{}`", hub.name);
@@ -70,7 +65,7 @@ async fn main() -> anyhow::Result<()> {
 }
 
 
-pub async fn attached_device_info(mutex: HubMutex) -> () {
+pub async fn attached_device_info(mutex: HubMutex) -> Result<()> {
     use text_io::read;
     let mut tasks: HashMap<u8, JoinHandle<()>> = HashMap::new();
     loop {
@@ -79,20 +74,20 @@ pub async fn attached_device_info(mutex: HubMutex) -> () {
         if (line.len() == 0) | line.starts_with("\r")  {
             continue;
         } 
-        else if line.trim().contains("l") {
-            let mut lock = mutex.lock().await;
+        else if line.contains("l") {
+            let lock = mutex.lock().await;
             for device in lock.connected_io().values() {
                 println!("{}", device.def);
             }
             continue;
         }
-        else if line.trim().contains("s") {
-            let port_id: u8; let mode_id: u8; let delta: u32; let enable: bool;
+        else if line.contains("s") {
+            let port_id: u8; let mode_id: u8; let delta: u32; 
             
             print!("Set mode; port > ");
             let line: String = read!("{}\n");
             port_id = line.trim().parse::<u8>().unwrap();
-            let mut lock = mutex.lock().await;
+            let lock = mutex.lock().await;
             if let Some(device) = lock.connected_io().get(&port_id).clone() {
                 let device = lock.device_cache(device.clone());
                 print!("Set mode; mode > ");
@@ -104,68 +99,79 @@ pub async fn attached_device_info(mutex: HubMutex) -> () {
                 print!("Set mode; enable notifications (Y / n) > ");
                 let line: String = read!("{}\n");
                 if ( line.len() > 1) & ( line.contains("n") ) { 
-                    device.device_mode(mode_id, delta, false).await;
+                    let _ = device.device_mode(mode_id, delta, false).await;
                 } 
                 else { 
-                    match tasks.insert(port_id, reader(&device, port_id, mode_id, delta).await) {
-                        Some(task) => task.abort(), 
-                        None => ()
+                    if let Ok(task) =  reader(&device, port_id, mode_id, delta).await {
+                        match tasks.insert(port_id, task) {
+                            Some(task) => task.abort(), 
+                            None => ()
+                        }
+                    } else {
+                        eprintln!("Mode {0} ({0:#x}) not found on port {1} ({1:#x})", mode_id, port_id);
                     }
                 } 
             } else {
-               println!("No device on port {} ({:#x})", port_id, port_id);
+               eprintln!("No device on port {0} ({0:#x})", port_id);
                continue; 
             }
             continue;
         } 
-        else if line.trim().contains("q") {
+        else if line.contains("q") {
             break
         }
         else {
             let input = line.trim().parse::<u8>();
             match input {
                 Ok(num) => {
-                    let mut lock = mutex.lock().await;
+                    let lock = mutex.lock().await;
                     let device = lock.connected_io().get(&num);
                     match device {
                         Some(device) => { println!("{:#?}", device.def) }  //{dbg!(device);}
-                        None => { println!("No device on port {} ({:#x})", num, num); }
+                        None => { eprintln!("No device on port {0} ({0:#x})", num); }
                     }
                 }
-                Err(e) => { println!("Not a number: {}", e); }
+                Err(e) => { eprintln!("Not a number: {}", e); }
             }
         }
     }
+    Ok(())
 }
 
-async fn reader(device: &IoDevice, port_id: u8, mode_id: u8, delta:u32) -> JoinHandle<()> {
-    match device.def.modes().get(&mode_id).unwrap().value_format.dataset_type {     // panics on non-existant mode_id
-        DatasetType::Bits8 => {
-            let (mut rx, _) = device.enable_8bit_sensor(mode_id, delta).await.unwrap();
-            tokio::spawn(async move {
-                while let Ok(data) = rx.recv().await {
-                    println!("Port {:?} mode {:?} sent: {:?}", port_id, mode_id, &data);
-                }})
+async fn reader(device: &IoDevice, port_id: u8, mode_id: u8, delta:u32) -> Result<JoinHandle<()>> {
+    if let Some(mode) = device.def.modes().get(&mode_id) {
+        match mode.value_format.dataset_type {
+            DatasetType::Bits8 => {
+                let (mut rx, _) = device.enable_8bit_sensor(mode_id, delta).await.unwrap();
+                Ok(tokio::spawn(async move {
+                    while let Ok(data) = rx.recv().await {
+                        println!("Port {:?} mode {:?} sent: {:?}", port_id, mode_id, &data);
+                    }}))
+            }
+            DatasetType::Bits16 => {
+                let (mut rx, _) = device.enable_16bit_sensor(mode_id, delta).await.unwrap();
+                Ok(tokio::spawn(async move {
+                    while let Ok(data) = rx.recv().await {
+                        println!("Port {:?} mode {:?} sent: {:?}", port_id, mode_id, &data);
+                    }}))
+            }
+            DatasetType::Bits32 => {
+                let (mut rx, _) = device.enable_32bit_sensor(mode_id, delta).await.unwrap();
+                Ok(tokio::spawn(async move {
+                    while let Ok(data) = rx.recv().await {
+                        println!("Port {:?} mode {:?} sent: {:?}", port_id, mode_id, &data);
+                    }}))
+            }
+            DatasetType::Float => {    
+                let (mut rx, _) = device.enable_32bit_sensor(mode_id, delta).await.unwrap();
+                Ok(tokio::spawn(async move {
+                    while let Ok(data) = rx.recv().await {
+                        println!("Port {:?} mode {:?} sent: {:?}", port_id, mode_id, &data);
+                    }}))
+            }
         }
-        DatasetType::Bits16 => {
-            let (mut rx, _) = device.enable_16bit_sensor(mode_id, delta).await.unwrap();
-            tokio::spawn(async move {
-                while let Ok(data) = rx.recv().await {
-                    println!("Port {:?} mode {:?} sent: {:?}", port_id, mode_id, &data);
-                }})
-        }
-        DatasetType::Bits32 => {
-            let (mut rx, _) = device.enable_32bit_sensor(mode_id, delta).await.unwrap();
-            tokio::spawn(async move {
-                while let Ok(data) = rx.recv().await {
-                    println!("Port {:?} mode {:?} sent: {:?}", port_id, mode_id, &data);
-                }})
-        }
-        DatasetType::Float => {    let (mut rx, _) = device.enable_32bit_sensor(mode_id, delta).await.unwrap();
-            tokio::spawn(async move {
-                while let Ok(data) = rx.recv().await {
-                    println!("Port {:?} mode {:?} sent: {:?}", port_id, mode_id, &data);
-                }})}
+    } else {
+        Err(Error::NoneError(format!("Mode not found: {0} ({0:#x})", mode_id)))
     } 
 }
 
