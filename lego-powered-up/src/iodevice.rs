@@ -65,6 +65,7 @@ impl IoDevice {
     ) {
         (self.tokens.p, self.tokens.c) = tokens;
     }
+    #[allow(clippy::type_complexity)]
     pub fn cache_channels(
         &mut self,
         senders: (

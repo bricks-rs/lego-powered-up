@@ -74,82 +74,80 @@ pub async fn io_event_handler(
 
                     // IoDevice collection / configuration
                     NotificationMessage::HubAttachedIo(io_event) => {
-                        match io_event {
-                            AttachedIo { port, event } => {
-                                let port_id = port;
-                                match event {
-                                    IoAttachEvent::AttachedIo {
-                                        io_type_id,
-                                        hw_rev,
-                                        fw_rev,
-                                    } => {
-                                        {
-                                            let mut hub = mutex.lock().await;
-                                            hub.attach_io(IoDevice::new(
-                                                io_type_id, port_id,
-                                            ))?;
-                                            hub.request_port_info(
-                                                port_id,
-                                                InformationType::ModeInfo,
-                                            )
-                                            .await?;
-                                            // hub.request_port_info(port_id, InformationType::PossibleModeCombinations).await?; // conditional req in PortInformation-arm
-                                        }
-                                        if ATTACHED {
-                                            eprintln!(
-                                                "AttachedIo: {:?} {:?}",
-                                                port_id, event
-                                            );
-                                        }
+                        let AttachedIo { port, event } = io_event;
+                        {
+                            let port_id = port;
+                            match event {
+                                IoAttachEvent::AttachedIo {
+                                    io_type_id,
+                                    hw_rev,
+                                    fw_rev,
+                                } => {
+                                    {
+                                        let mut hub = mutex.lock().await;
+                                        hub.attach_io(IoDevice::new(
+                                            io_type_id, port_id,
+                                        ))?;
+                                        hub.request_port_info(
+                                            port_id,
+                                            InformationType::ModeInfo,
+                                        )
+                                        .await?;
+                                        // hub.request_port_info(port_id, InformationType::PossibleModeCombinations).await?; // conditional req in PortInformation-arm
                                     }
-                                    IoAttachEvent::DetachedIo {} => {
-                                        {
-                                            let mut hub = mutex.lock().await;
-                                            hub.connected_io_mut()
-                                                .remove(&port_id);
-                                        }
-                                        if ATTACHED {
-                                            eprintln!(
-                                                "DetachedIo: {:?} {:?}",
-                                                port_id, event
-                                            );
-                                        }
+                                    if ATTACHED {
+                                        eprintln!(
+                                            "AttachedIo: {:?} {:?}",
+                                            port_id, event
+                                        );
                                     }
-                                    IoAttachEvent::AttachedVirtualIo {
-                                        io_type_id,
-                                        port_a,
-                                        port_b,
-                                    } => {
-                                        {
-                                            let mut hub = mutex.lock().await;
-                                            hub.attach_io(IoDevice::new(
-                                                io_type_id, port_id,
-                                            ))?;
-                                            hub.request_port_info(
-                                                port_id,
-                                                InformationType::ModeInfo,
-                                            )
-                                            .await?;
-                                        }
-                                        if ATTACHED {
-                                            eprintln!(
-                                                "AttachedVirtualIo: {:?} {:?}",
-                                                port_id, event
-                                            );
-                                        }
+                                }
+                                IoAttachEvent::DetachedIo {} => {
+                                    {
+                                        let mut hub = mutex.lock().await;
+                                        hub.connected_io_mut().remove(&port_id);
+                                    }
+                                    if ATTACHED {
+                                        eprintln!(
+                                            "DetachedIo: {:?} {:?}",
+                                            port_id, event
+                                        );
+                                    }
+                                }
+                                IoAttachEvent::AttachedVirtualIo {
+                                    io_type_id,
+                                    port_a,
+                                    port_b,
+                                } => {
+                                    {
+                                        let mut hub = mutex.lock().await;
+                                        hub.attach_io(IoDevice::new(
+                                            io_type_id, port_id,
+                                        ))?;
+                                        hub.request_port_info(
+                                            port_id,
+                                            InformationType::ModeInfo,
+                                        )
+                                        .await?;
+                                    }
+                                    if ATTACHED {
+                                        eprintln!(
+                                            "AttachedVirtualIo: {:?} {:?}",
+                                            port_id, event
+                                        );
                                     }
                                 }
                             }
                         }
                     }
                     NotificationMessage::PortInformation(val) => {
-                        match val {
-                            PortInformationValue {
-                                port_id,
-                                information_type,
-                            } => {
-                                let port_id = port_id;
-                                match information_type {
+                        let PortInformationValue {
+                            port_id,
+                            information_type,
+                        } = val;
+                        {
+                            let port_id = port_id;
+                            match information_type {
                                     PortInformationType::ModeInfo{capabilities, mode_count, input_modes, output_modes} => {
                                         {
                                             let mut hub = mutex.lock().await;
@@ -180,106 +178,87 @@ pub async fn io_event_handler(
                                         let mut hub = mutex.lock().await;
                                         hub.connected_io_mut().get_mut(&port_id).unwrap().def.set_valid_combos(combs);                                    }
                                 }
-                            }
                         }
                     }
                     NotificationMessage::PortModeInformation(val) => {
-                        match val {
-                            PortModeInformationValue {
-                                port_id,
-                                mode,
-                                information_type,
-                            } => {
-                                match information_type {
-                                    PortModeInformationType::Name(name) => {
-                                        let mut hub = mutex.lock().await;
-                                        hub.connected_io_mut()
-                                            .get_mut(&port_id)
-                                            .unwrap()
-                                            .def
-                                            .set_mode_name(mode, name);
-                                    }
-                                    PortModeInformationType::RawRange {
-                                        min,
-                                        max,
-                                    } => {
-                                        let mut hub = mutex.lock().await;
-                                        hub.connected_io_mut()
-                                            .get_mut(&port_id)
-                                            .unwrap()
-                                            .def
-                                            .set_mode_raw(mode, min, max);
-                                    }
-                                    PortModeInformationType::PctRange {
-                                        min,
-                                        max,
-                                    } => {
-                                        let mut hub = mutex.lock().await;
-                                        hub.connected_io_mut()
-                                            .get_mut(&port_id)
-                                            .unwrap()
-                                            .def
-                                            .set_mode_pct(mode, min, max);
-                                    }
-                                    PortModeInformationType::SiRange {
-                                        min,
-                                        max,
-                                    } => {
-                                        let mut hub = mutex.lock().await;
-                                        hub.connected_io_mut()
-                                            .get_mut(&port_id)
-                                            .unwrap()
-                                            .def
-                                            .set_mode_si(mode, min, max);
-                                    }
-                                    PortModeInformationType::Symbol(symbol) => {
-                                        let mut hub = mutex.lock().await;
-                                        hub.connected_io_mut()
-                                            .get_mut(&port_id)
-                                            .unwrap()
-                                            .def
-                                            .set_mode_symbol(mode, symbol);
-                                    }
-                                    PortModeInformationType::Mapping {
-                                        input,
-                                        output,
-                                    } => {
-                                        let mut hub = mutex.lock().await;
-                                        hub.connected_io_mut()
-                                            .get_mut(&port_id)
-                                            .unwrap()
-                                            .def
-                                            .set_mode_mapping(
-                                                mode, input, output,
-                                            );
-                                    }
-                                    PortModeInformationType::MotorBias(
-                                        bias,
-                                    ) => {
-                                        let mut hub = mutex.lock().await;
-                                        hub.connected_io_mut()
-                                            .get_mut(&port_id)
-                                            .unwrap()
-                                            .def
-                                            .set_mode_motor_bias(mode, bias);
-                                    }
-                                    // PortModeInformationType::CapabilityBits(name) => {
-                                    //     let mut hub = mutex.lock().await;
-                                    //     hub.connected_io_mut().get_mut(&port_id).unwrap().set_mode_cabability(mode, name);  //set_mode_capability not implemented
-                                    // }
-                                    PortModeInformationType::ValueFormat(
-                                        format,
-                                    ) => {
-                                        let mut hub = mutex.lock().await;
-                                        hub.connected_io_mut()
-                                            .get_mut(&port_id)
-                                            .unwrap()
-                                            .def
-                                            .set_mode_valueformat(mode, format);
-                                    }
-                                    _ => (),
-                                }
+                        let PortModeInformationValue {
+                            port_id,
+                            mode,
+                            information_type,
+                        } = val;
+                        match information_type {
+                            PortModeInformationType::Name(name) => {
+                                let mut hub = mutex.lock().await;
+                                hub.connected_io_mut()
+                                    .get_mut(&port_id)
+                                    .unwrap()
+                                    .def
+                                    .set_mode_name(mode, name);
                             }
+                            PortModeInformationType::RawRange { min, max } => {
+                                let mut hub = mutex.lock().await;
+                                hub.connected_io_mut()
+                                    .get_mut(&port_id)
+                                    .unwrap()
+                                    .def
+                                    .set_mode_raw(mode, min, max);
+                            }
+                            PortModeInformationType::PctRange { min, max } => {
+                                let mut hub = mutex.lock().await;
+                                hub.connected_io_mut()
+                                    .get_mut(&port_id)
+                                    .unwrap()
+                                    .def
+                                    .set_mode_pct(mode, min, max);
+                            }
+                            PortModeInformationType::SiRange { min, max } => {
+                                let mut hub = mutex.lock().await;
+                                hub.connected_io_mut()
+                                    .get_mut(&port_id)
+                                    .unwrap()
+                                    .def
+                                    .set_mode_si(mode, min, max);
+                            }
+                            PortModeInformationType::Symbol(symbol) => {
+                                let mut hub = mutex.lock().await;
+                                hub.connected_io_mut()
+                                    .get_mut(&port_id)
+                                    .unwrap()
+                                    .def
+                                    .set_mode_symbol(mode, symbol);
+                            }
+                            PortModeInformationType::Mapping {
+                                input,
+                                output,
+                            } => {
+                                let mut hub = mutex.lock().await;
+                                hub.connected_io_mut()
+                                    .get_mut(&port_id)
+                                    .unwrap()
+                                    .def
+                                    .set_mode_mapping(mode, input, output);
+                            }
+                            PortModeInformationType::MotorBias(bias) => {
+                                let mut hub = mutex.lock().await;
+                                hub.connected_io_mut()
+                                    .get_mut(&port_id)
+                                    .unwrap()
+                                    .def
+                                    .set_mode_motor_bias(mode, bias);
+                            }
+                            // PortModeInformationType::CapabilityBits(name) => {
+                            //     let mut hub = mutex.lock().await;
+                            //     hub.connected_io_mut().get_mut(&port_id).unwrap().set_mode_cabability(mode, name);  //set_mode_capability not implemented
+                            // }
+                            PortModeInformationType::ValueFormat(format) => {
+                                let mut hub = mutex.lock().await;
+                                hub.connected_io_mut()
+                                    .get_mut(&port_id)
+                                    .unwrap()
+                                    .def
+                                    .set_mode_valueformat(mode, format);
+                            }
+                            _ => (),
                         }
                     }
 
