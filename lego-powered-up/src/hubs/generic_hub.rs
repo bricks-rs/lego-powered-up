@@ -180,7 +180,8 @@ impl Hub for GenericHub {
         let found: Vec<IoDevice> = self
             .connected_io
             .values()
-            .filter(|&x| *x.kind() == req_kind).cloned()
+            .filter(|&x| *x.kind() == req_kind)
+            .cloned()
             .collect();
         match found.len() {
             0 => {

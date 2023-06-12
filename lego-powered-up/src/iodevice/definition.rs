@@ -125,11 +125,7 @@ impl Definition {
         self.valid_combos.pop(); // Last one is empty end-marker
     }
 
-    pub fn set_mode_name(
-        &mut self,
-        mode_id: u8,
-        chars_as_bytes: Vec<u8>,
-    ) {
+    pub fn set_mode_name(&mut self, mode_id: u8, chars_as_bytes: Vec<u8>) {
         // let mut truncated = vec![chars_as_bytes.into_iter)]; // iter with closure..?E
         let mut truncated: Vec<u8> = Vec::new();
         for c in chars_as_bytes {
@@ -154,10 +150,10 @@ impl Definition {
                     self.port, &mode_id, &name
                 );
 
-                // Some devices have modes that can't normally be enabled (returns error, there
-                // may be some undocumented command to access them?) For example the TecnhicLargeLinearMotor
-                // has the "locked" modes CALIB and STATS in addition to the normal modes POWER,
-                // SPEED, POS and APOS. These count towards mode_count but are not listed in available modes.
+                // Some devices have modes that  count towards mode_count but are not listed in available modes.
+                // For example the TecnhicLargeLinearMotor has the "hidden" modes CALIB and STATS in addition to
+                // normal modes POWER, SPEED, POS and APOS. The Vision Sensor has a few as well. They might be
+                // useful for something, so we'll get their info as well and list them with ModeKind::Hidden.
             }
         }
     }
@@ -173,11 +169,7 @@ impl Definition {
         // let mut mode =
         self.modes.get_mut(&mode_id).unwrap().si = (min, max);
     }
-    pub fn set_mode_symbol(
-        &mut self,
-        mode_id: u8,
-        chars_as_bytes: Vec<u8>,
-    ) {
+    pub fn set_mode_symbol(&mut self, mode_id: u8, chars_as_bytes: Vec<u8>) {
         let mut truncated: Vec<u8> = Vec::new();
         for c in chars_as_bytes {
             if c == 0 {

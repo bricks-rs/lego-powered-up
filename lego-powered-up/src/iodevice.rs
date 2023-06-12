@@ -124,9 +124,7 @@ impl GenericSensor for IoDevice {
             if datasettype == vf.dataset_type {
                 Ok(())
             } else {
-                Err(Error::NoneError(String::from(
-                    "Incorrect dataset type",
-                )))
+                Err(Error::NoneError(String::from("Incorrect dataset type")))
             }
         } else {
             Err(Error::NoneError(String::from("Mode not found")))

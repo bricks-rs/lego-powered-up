@@ -53,7 +53,7 @@ pub trait VisionSensor: Debug + Send + Sync {
         let msg =
             NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
                 port_id: self.port(),
-                mode: mode,
+                mode,
                 delta,
                 notification_enabled: true,
             });
