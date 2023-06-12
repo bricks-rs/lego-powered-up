@@ -2,14 +2,16 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use anyhow::Result;
-use std::time::Duration;
 use crate::argparse::HubArgs;
-use lego_powered_up::{ HubFilter };
-use lego_powered_up::{PoweredUp, ConnectedHub, IoTypeId, IoDevice, consts,
+use anyhow::Result;
+use lego_powered_up::HubFilter;
+use lego_powered_up::{
+    consts,
     iodevice::hubled::{self, HubLed},
-    iodevice::motor::{EncoderMotor, Power} 
+    iodevice::motor::{EncoderMotor, Power},
+    ConnectedHub, IoDevice, IoTypeId, PoweredUp,
 };
+use std::time::Duration;
 
 pub async fn run(args: &HubArgs) -> Result<()> {
     let mut pu = if let Some(dev) = args.device_index {
@@ -46,10 +48,12 @@ pub async fn run(args: &HubArgs) -> Result<()> {
     );
 
     if args.connect {
-        let hub = ConnectedHub::setup_hub
-                                        (pu.create_hub(&hub).await.expect("Error creating hub"))
-                                        .await.expect("Error setting up hub");
-        tokio::time::sleep(Duration::from_secs(1)).await;  //Wait for attached devices to be collected
+        let hub = ConnectedHub::setup_hub(
+            pu.create_hub(&hub).await.expect("Error creating hub"),
+        )
+        .await
+        .expect("Error setting up hub");
+        tokio::time::sleep(Duration::from_secs(1)).await; //Wait for attached devices to be collected
 
         // Set the hub LED if available
         println!("Setting hub LED");
@@ -73,7 +77,7 @@ pub async fn run(args: &HubArgs) -> Result<()> {
         let motor: IoDevice;
         {
             let lock = hub.mutex.lock().await;
-            motor = lock.io_from_port(consts::named_port::A).await?; 
+            motor = lock.io_from_port(consts::named_port::A).await?;
         }
         motor.start_speed(50, Power::Cw(50)).await?;
         tokio::time::sleep(Duration::from_secs(4)).await;

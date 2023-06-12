@@ -1,14 +1,14 @@
 // Any copyright is dedicated to the Public Domain.
 // https://creativecommons.org/publicdomain/zero/1.0/
 
-use lego_powered_up::{IoTypeId, IoDevice,
+use console_engine::{pixel, Color, ConsoleEngine, KeyCode};
+use eyre::Result;
+use lego_powered_up::{
     consts,
     iodevice::hubled::{self, HubLed},
     iodevice::motor::{EncoderMotor, Power},
-    Result as LpuResult 
+    IoDevice, IoTypeId, Result as LpuResult,
 };
-use console_engine::{pixel, Color, ConsoleEngine, KeyCode};
-use eyre::Result;
 use std::fmt::{self, Display, Formatter};
 
 struct Robot {
@@ -25,10 +25,7 @@ impl Display for Robot {
 }
 
 impl Robot {
-    pub fn new(
-        left_motor: IoDevice,
-        right_motor: IoDevice,
-    ) -> Self {
+    pub fn new(left_motor: IoDevice, right_motor: IoDevice) -> Self {
         Self {
             left_speed: 0,
             right_speed: 0,
@@ -93,10 +90,10 @@ async fn main() -> Result<()> {
     {
         let lock = hub.mutex.lock().await;
         hub_led = lock.io_from_kind(IoTypeId::HubLed).await?;
-        motor_a = lock.io_from_port(consts::named_port::A).await?; 
-        motor_b = lock.io_from_port(consts::named_port::B).await?; 
-    }    
-    
+        motor_a = lock.io_from_port(consts::named_port::A).await?;
+        motor_b = lock.io_from_port(consts::named_port::B).await?;
+    }
+
     println!("Change the hub LED to green");
     hub_led.set_hubled_mode(hubled::HubLedMode::Colour).await?;
     hub_led.set_hubled_color(consts::Color::Green).await?;

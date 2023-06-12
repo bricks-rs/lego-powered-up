@@ -6,26 +6,26 @@
 // use core::time::Duration;
 // use tokio::time::sleep as sleep;
 
-use lego_powered_up::{IoDevice}; 
+use lego_powered_up::IoDevice;
 // use lego_powered_up::consts::MotorSensorMode;
 use lego_powered_up::consts::named_port;
-use lego_powered_up::iodevice::motor::EncoderMotor;
-use lego_powered_up::iodevice::remote::{RcDevice, RcButtonState};
-use lego_powered_up::iodevice::sensor::GenericSensor;
 use lego_powered_up::iodevice::modes;
+use lego_powered_up::iodevice::motor::EncoderMotor;
+use lego_powered_up::iodevice::remote::{RcButtonState, RcDevice};
+use lego_powered_up::iodevice::sensor::GenericSensor;
 use lego_powered_up::notifications::Power;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let (main_hub, rc_hub) = lego_powered_up::setup::main_and_rc().await?;
-    
-    // Set up RC input 
+
+    // Set up RC input
     let rc: IoDevice;
     {
         let lock = rc_hub.mutex.lock().await;
         rc = lock.io_from_port(named_port::A).await?;
         // rc = lock.io_from_port(16).await?;
-    }    
+    }
     let (mut rc_rx, _rc_task) = rc.remote_connect_with_green().await?;
 
     // Set up motor feedback
@@ -34,7 +34,9 @@ async fn main() -> anyhow::Result<()> {
         let lock = main_hub.mutex.lock().await;
         motor = lock.io_from_port(named_port::A).await?;
     }
-    let (mut motor_rx, _position_task) = motor.enable_32bit_sensor(modes::InternalMotorTacho::POS, 1).await?;
+    let (mut motor_rx, _position_task) = motor
+        .enable_32bit_sensor(modes::InternalMotorTacho::POS, 1)
+        .await?;
 
     // Control task
     let motor_control = tokio::spawn(async move {
@@ -48,61 +50,61 @@ async fn main() -> anyhow::Result<()> {
             tokio::select! {
                 Ok(msg) = rc_rx.recv() => {
                     match msg {
-                        RcButtonState::Aup => { 
+                        RcButtonState::Aup => {
                             let _ = motor.start_power(Power::Brake).await;
                             cmd = (false, false);
                         }
-                        RcButtonState::Aminus => { 
+                        RcButtonState::Aminus => {
                             if !at_limit.0 {
                                 cmd.0 = true;
                                 let _ = motor.start_speed(-set_speed, MAX_POWER).await;
                             }
                         }
-                        RcButtonState::Aplus => { 
-                            if !at_limit.1 { 
+                        RcButtonState::Aplus => {
+                            if !at_limit.1 {
                                 cmd.1 = true;
-                                let _ = motor.start_speed(set_speed, MAX_POWER).await; 
+                                let _ = motor.start_speed(set_speed, MAX_POWER).await;
                             }
                         }
-                        RcButtonState::Ared => { 
+                        RcButtonState::Ared => {
                             match set_limit.0 {
                                 None => {
                                     set_limit.0 = Some(pos);
                                     println!("Left limit set: {:?}", pos);
                                 }
-                                Some(_) => { 
+                                Some(_) => {
                                     set_limit.0 = None;
                                     println!("Left limit cancelled");
-                                } 
+                                }
                             }
                         }
-                        RcButtonState::Bred => { 
+                        RcButtonState::Bred => {
                             match set_limit.1 {
                                 None => {
                                     set_limit.1 = Some(pos);
                                     println!("Right limit set: {:?}", pos);
                                 }
-                                Some(_) => { 
+                                Some(_) => {
                                     set_limit.1 = None;
                                     println!("Right limit cancelled");
                                 }
                             }
                         }
-                        RcButtonState::Bplus => { 
-                            if set_speed < 96 { 
-                                set_speed += 5; 
+                        RcButtonState::Bplus => {
+                            if set_speed < 96 {
+                                set_speed += 5;
                                 println!("Set speed: {}", set_speed);
                             }
                         }
-                        RcButtonState::Bminus => { 
-                            if set_speed > 4 { 
-                                set_speed -= 5; 
+                        RcButtonState::Bminus => {
+                            if set_speed > 4 {
+                                set_speed -= 5;
                                 println!("Set speed: {}", set_speed);
-                            } 
+                            }
                         }
 
                         // RcButtonState::Bup => { println!("B side released"); }
-                        RcButtonState::Green => { 
+                        RcButtonState::Green => {
                             // println!("Reset position");
                             // motor.preset_encoder(0).await;
                             println!("Exiting");
@@ -141,14 +143,14 @@ async fn main() -> anyhow::Result<()> {
                     }
                     println!("Pos: {}", pos);
                 }
-                else => { break }    
+                else => { break }
             };
-        }    
+        }
     });
 
     motor_control.await?;
 
-    // Cleanup 
+    // Cleanup
     println!("Disconnect from hub `{}`", rc_hub.name);
     {
         let lock = rc_hub.mutex.lock().await;
@@ -159,7 +161,7 @@ async fn main() -> anyhow::Result<()> {
         let lock = main_hub.mutex.lock().await;
         lock.disconnect().await?;
     }
-    
+
     println!("Done!");
 
     Ok(())

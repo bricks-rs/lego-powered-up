@@ -1,27 +1,25 @@
+use super::*;
 /// Generic hub implementation, tested compatible with:
-/// 
-/// Technic Medium hub, aka. Control+ 
+///
+/// Technic Medium hub, aka. Control+
 /// https://rebrickable.com/parts/85824/hub-powered-up-4-port-technic-control-screw-opening/
 /// Move hub, aka. Boost
 /// https://rebrickable.com/sets/88006-1/move-hub/
 /// Remote control handset
 /// https://rebrickable.com/parts/28739/control-unit-powered-up/
-/// 
+///
 /// The Spike and Dacta hubs have not been tested, but there's no
 /// no obvious reason why they shouldn't work as long as they
 /// use the LEGO Wireless Protocol 3.0.00.
-
-
 use std::collections::BTreeMap;
-use super::*;
-#[derive(Debug, )]
+#[derive(Debug)]
 pub struct GenericHub {
     peripheral: Peripheral,
     lpf_characteristic: Characteristic,
     properties: HubProperties,
     pub connected_io: BTreeMap<u8, IoDevice>,
     pub kind: crate::consts::HubType,
-    pub channels: Channels
+    pub channels: Channels,
 }
 
 #[async_trait::async_trait]
@@ -35,16 +33,31 @@ impl Hub for GenericHub {
             .local_name
             .unwrap_or_default())
     }
-    fn properties(&self) -> &HubProperties { &self.properties }
-    fn characteristic(&self) -> &Characteristic { &self.lpf_characteristic }
-    fn peripheral(&self) -> &Peripheral { &self.peripheral }
-    fn connected_io(&self) -> &BTreeMap<u8, IoDevice> { &self.connected_io }
-    fn connected_io_mut(&mut self) -> &mut BTreeMap<u8, IoDevice> { &mut self.connected_io }
-    fn kind(&self) -> HubType { self.kind } 
-    fn channels(&mut self) -> &mut Channels {&mut self.channels}
+    fn properties(&self) -> &HubProperties {
+        &self.properties
+    }
+    fn characteristic(&self) -> &Characteristic {
+        &self.lpf_characteristic
+    }
+    fn peripheral(&self) -> &Peripheral {
+        &self.peripheral
+    }
+    fn connected_io(&self) -> &BTreeMap<u8, IoDevice> {
+        &self.connected_io
+    }
+    fn connected_io_mut(&mut self) -> &mut BTreeMap<u8, IoDevice> {
+        &mut self.connected_io
+    }
+    fn kind(&self) -> HubType {
+        self.kind
+    }
+    fn channels(&mut self) -> &mut Channels {
+        &mut self.channels
+    }
 
     fn attach_io(&mut self, device_to_insert: IoDevice) -> Result<()> {
-        self.connected_io.insert(device_to_insert.port(), device_to_insert );
+        self.connected_io
+            .insert(device_to_insert.port(), device_to_insert);
         Ok(())
     }
     async fn disconnect(&self) -> Result<()> {
@@ -107,31 +120,42 @@ impl Hub for GenericHub {
     /// Cache handles held by hub on device so we don't need to lock hub mutex as often    
     fn device_cache(&self, mut d: IoDevice) -> IoDevice {
         // Channels that forward some notification message types
-        d.cache_channels( (self.channels.singlevalue_sender.clone(),
+        d.cache_channels((
+            self.channels.singlevalue_sender.clone(),
             self.channels.combinedvalue_sender.clone(),
-            self.channels.networkcmd_sender.clone()) );
-       
-        // BT handles for calling send
-        d.cache_tokens( (Some(self.peripheral().clone()),
-            Some(self.characteristic().clone())) );
+            self.channels.networkcmd_sender.clone(),
+        ));
 
-        d   
+        // BT handles for calling send
+        d.cache_tokens((
+            Some(self.peripheral().clone()),
+            Some(self.characteristic().clone()),
+        ));
+
+        d
     }
 
     async fn io_from_port(&self, port_id: u8) -> Result<IoDevice> {
         match self.connected_io.get(&port_id) {
-                Some(connected_device) => { 
-                    let mut d = connected_device.clone();
-                    d = self.device_cache(d);
-                    
-                    Ok(d)
-                 }
-                None => { Err(Error::HubError(format!("No device on port: {} ({:#x}) ", &port_id, &port_id))) }
+            Some(connected_device) => {
+                let mut d = connected_device.clone();
+                d = self.device_cache(d);
+
+                Ok(d)
             }
+            None => Err(Error::HubError(format!(
+                "No device on port: {} ({:#x}) ",
+                &port_id, &port_id
+            ))),
+        }
     }
 
     async fn io_from_kind(&self, req_kind: IoTypeId) -> Result<IoDevice> {
-        let found: Vec<&IoDevice> = self.connected_io.values().filter(|&device| *device.kind() == req_kind).collect();
+        let found: Vec<&IoDevice> = self
+            .connected_io
+            .values()
+            .filter(|&device| *device.kind() == req_kind)
+            .collect();
         match found.len() {
             0 => {
                 Err(Error::HubError(format!("No device of kind: {req_kind:?}")))   
@@ -140,31 +164,38 @@ impl Hub for GenericHub {
                 let device_deref = *found.first().unwrap();
                 let mut d = device_deref.clone();
                 d = self.device_cache(d);
-            
-                Ok(d) 
+
+                Ok(d)
             }
-            _ => { 
+            _ => {
                 Err(Error::HubError(format!("Found {:?} {req_kind:?} on {:?}, use io_from_port or io_multi_from_kind",
-                    found.len(), found.iter().map(|x|x.port()).collect::<Vec<_>>()) )) 
+                    found.len(), found.iter().map(|x|x.port()).collect::<Vec<_>>()) ))
             }
         }
     }
-    async fn io_multi_from_kind(&self, req_kind: IoTypeId) -> Result<Vec<IoDevice>> {
-        let found: Vec<IoDevice> = self.connected_io.values().filter(|&x| *x.kind() == req_kind).map(|x|x.clone()).collect();
+    async fn io_multi_from_kind(
+        &self,
+        req_kind: IoTypeId,
+    ) -> Result<Vec<IoDevice>> {
+        let found: Vec<IoDevice> = self
+            .connected_io
+            .values()
+            .filter(|&x| *x.kind() == req_kind)
+            .map(|x| x.clone())
+            .collect();
         match found.len() {
             0 => {
                 Err(Error::HubError(format!("No device of kind: {req_kind:?}")))   
             }
             1..=4 =>  {
-                Ok(found) 
+                Ok(found)
             }
-            _ => { 
+            _ => {
                 Err(Error::HubError(format!("Sanity check: > 4 devices of same kind. Found {:?} {req_kind:?} on {:?}", 
-                    found.len(), found.iter().map(|x|x.port()).collect::<Vec<_>>()) )) 
+                    found.len(), found.iter().map(|x|x.port()).collect::<Vec<_>>()) ))
             }
         }
     }
-  
 }
 
 impl GenericHub {
@@ -202,9 +233,7 @@ impl GenericHub {
             properties,
             connected_io: Default::default(),
             kind,
-            channels: Default::default()
+            channels: Default::default(),
         })
     }
-
 }
-

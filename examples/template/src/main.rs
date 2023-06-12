@@ -3,23 +3,22 @@
 
 #![allow(unused)]
 use core::time::Duration;
-use tokio::time::sleep as sleep;
+use tokio::time::sleep;
 
-use lego_powered_up::setup;
-use lego_powered_up::{PoweredUp, ConnectedHub, IoDevice, IoTypeId}; 
-use lego_powered_up::{Hub, HubFilter, }; 
-use lego_powered_up::error::{Error, Result, OptionContext}; 
 use lego_powered_up::consts::named_port;
-use lego_powered_up::notifications::Power;
-use lego_powered_up::consts::{LEGO_COLORS, };
+use lego_powered_up::consts::LEGO_COLORS;
+use lego_powered_up::error::{Error, OptionContext, Result};
 use lego_powered_up::iodevice::modes;
-use lego_powered_up::iodevice::remote::{RcDevice, RcButtonState};
-use lego_powered_up::iodevice::{hubled::*, sensor::*, motor::*};
-
+use lego_powered_up::iodevice::remote::{RcButtonState, RcDevice};
+use lego_powered_up::iodevice::{hubled::*, motor::*, sensor::*};
+use lego_powered_up::notifications::Power;
+use lego_powered_up::setup;
+use lego_powered_up::{ConnectedHub, IoDevice, IoTypeId, PoweredUp};
+use lego_powered_up::{Hub, HubFilter};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // === Single hub === 
+    // === Single hub ===
     let hub = setup::single_hub().await?;
 
     // Do stuff
@@ -31,14 +30,13 @@ async fn main() -> anyhow::Result<()> {
         lock.disconnect().await?;
     }
 
-
     // === Main hub and RC ===
     let (main_hub, rc_hub) = setup::main_and_rc().await?;
     let rc: IoDevice;
     {
         let lock = rc_hub.mutex.lock().await;
         rc = lock.io_from_port(named_port::A).await?;
-    }    
+    }
     let (mut rc_rx, _) = rc.remote_connect_with_green().await?;
 
     // Do stuff
@@ -55,10 +53,8 @@ async fn main() -> anyhow::Result<()> {
         lock.disconnect().await?;
     }
 
-
     Ok(())
 }
-
 
 // let rc_control = tokio::spawn(async move {
 //     while let Ok(data) = rc_rx.recv().await {
@@ -67,7 +63,7 @@ async fn main() -> anyhow::Result<()> {
 //             RcButtonState::Aplus => { println!("A plus") }
 //             RcButtonState::Ared => { println!("A red"); }
 //             RcButtonState::Aminus => { println!("A minus") }
-//             RcButtonState::Bup => { println!("B released"); 
+//             RcButtonState::Bup => { println!("B released");
 //             RcButtonState::Bplus => { println!("B plus") }
 //             RcButtonState::Bred => { println!("B red");  }
 //             RcButtonState::Bminus => { println!("B minus") }

@@ -6,7 +6,7 @@
 //! types
 
 use num_derive::FromPrimitive;
-use std::{fmt::{self, Display}, };
+use std::fmt::{self, Display};
 
 /// ```ignore
 /// @typedef DeviceType
@@ -36,12 +36,10 @@ use std::{fmt::{self, Display}, };
 /// @property {number} CONTROL_PLUS_TILT 59
 /// ```
 
-
-// Added more IDs, some observed and some from 
-// https://github.com/nathankellenicki/node-poweredup/blob/master/src/consts.ts 
+// Added more IDs, some observed and some from
+// https://github.com/nathankellenicki/node-poweredup/blob/master/src/consts.ts
 #[repr(u8)]
-#[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive)]
-#[derive(Default)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive, Default)]
 pub enum IoTypeId {
     #[default]
     Unknown = 0x00,
@@ -49,47 +47,46 @@ pub enum IoTypeId {
     SystemTrainMotor = 0x02,
     Button = 0x05,
     LedLight = 0x08,
-    Voltage = 0x14,                         //20
-    Current = 0x15,                         //21
-    PiezoToneSound = 0x16,                  //22
-    HubLed = 0x17,                        //23
+    Voltage = 0x14,        //20
+    Current = 0x15,        //21
+    PiezoToneSound = 0x16, //22
+    HubLed = 0x17,         //23
 
-    ExternalTiltSensor = 0x22,              //34
-    MotionSensor = 0x23,                    //35
-    VisionSensor = 0x25,                    //37
-    ExternalMotorTacho = 0x26,              //38
-    InternalMotorTacho = 0x27,              //39
-    InternalTilt = 0x28,                    //40
-    DuploTrainBaseMotor = 41,               //41
-    DuploTrainBaseSpeaker = 42,             //42
-    DuploTrainBaseColorSensor = 43,         //43
-    DuploTrainBaseSpeedometer = 44,         //44
-    TechnicLargeLinearMotor = 46,           //46   // Technic Control+
-    TechnicXLargeLinearMotor = 47,          //47   // Technic Control+
-    TechnicMediumAngularMotor = 48,         //48   // Spike Prime
-    TechnicLargeAngularMotor = 49,          //49   // Spike Prime
+    ExternalTiltSensor = 0x22,      //34
+    MotionSensor = 0x23,            //35
+    VisionSensor = 0x25,            //37
+    ExternalMotorTacho = 0x26,      //38
+    InternalMotorTacho = 0x27,      //39
+    InternalTilt = 0x28,            //40
+    DuploTrainBaseMotor = 41,       //41
+    DuploTrainBaseSpeaker = 42,     //42
+    DuploTrainBaseColorSensor = 43, //43
+    DuploTrainBaseSpeedometer = 44, //44
+    TechnicLargeLinearMotor = 46,   //46   // Technic Control+
+    TechnicXLargeLinearMotor = 47,  //47   // Technic Control+
+    TechnicMediumAngularMotor = 48, //48   // Spike Prime
+    TechnicLargeAngularMotor = 49,  //49   // Spike Prime
 
-    TechnicHubGestSensor = 0x36,            //54
-    RemoteButtons = 0x37,                   //55
-    Rssi = 0x38,                            //56
-    TechnicHubAccelerometer = 0x39,         //57
-    TechnicHubGyroSensor = 0x3a,            //58
-    TechnicHubTiltSensor = 0x3b,            //59
-    TechnicHubTemperatureSensor = 0x3c,     //60
-    TechnicColorSensor = 61,                //61    // Spike Prime
-    TechnicDistanceSensor = 62,             //62    // Spike Prime
-    TechnicForceSensor = 63,                //63    // Spike Prime
-    Technic3x3ColorLightMatrix = 64,        //64    // Spike Essential
-    TechnicSmallAngularMotor = 65,          //65    // Spike Essential
-    UnknownMovehubDevice = 0x42,            //66    // Unknown MoveHub device. Its 3 modes are named TRIGGER, CANVAS and VAR
-    
-    MarioAccelerometer = 71,                //71
-    MarioBarcodeSensor = 73,                //73
-    MarioPantsSensor = 74,                  //74    
-    TechnicMediumAngularMotorGrey = 75,     //75     // Mindstorms
-    TechnicLargeAngularMotorGrey = 76,      //76     // Technic Control+
+    TechnicHubGestSensor = 0x36,        //54
+    RemoteButtons = 0x37,               //55
+    Rssi = 0x38,                        //56
+    TechnicHubAccelerometer = 0x39,     //57
+    TechnicHubGyroSensor = 0x3a,        //58
+    TechnicHubTiltSensor = 0x3b,        //59
+    TechnicHubTemperatureSensor = 0x3c, //60
+    TechnicColorSensor = 61,            //61    // Spike Prime
+    TechnicDistanceSensor = 62,         //62    // Spike Prime
+    TechnicForceSensor = 63,            //63    // Spike Prime
+    Technic3x3ColorLightMatrix = 64,    //64    // Spike Essential
+    TechnicSmallAngularMotor = 65,      //65    // Spike Essential
+    UnknownMovehubDevice = 0x42, //66    // Unknown MoveHub device. Its 3 modes are named TRIGGER, CANVAS and VAR
+
+    MarioAccelerometer = 71,            //71
+    MarioBarcodeSensor = 73,            //73
+    MarioPantsSensor = 74,              //74
+    TechnicMediumAngularMotorGrey = 75, //75     // Mindstorms
+    TechnicLargeAngularMotorGrey = 76,  //76     // Technic Control+
 }
-
 
 /// ```ignore
 /// @typedef HubType
@@ -128,7 +125,6 @@ impl Display for HubType {
     }
 }
 
-
 /// ```ignore
 /// @typedef Color
 /// @property {number} BLACK 0
@@ -162,7 +158,7 @@ pub enum Color {
 }
 
 pub const LEGO_COLORS: [Color; 11] = [
-    Color::Pink, 
+    Color::Pink,
     Color::Purple,
     Color::Blue,
     Color::LightBlue,
@@ -172,7 +168,7 @@ pub const LEGO_COLORS: [Color; 11] = [
     Color::Orange,
     Color::Red,
     Color::White,
-    Color::Black
+    Color::Black,
 ];
 
 pub mod named_port {
@@ -611,8 +607,6 @@ pub enum InputSetupCombinedSubcommandValue {
     ResetSensor = 0x06,
 }
 
-
-
 pub enum MotorSensorMode {
     // Valid combinations: 1+2+3  (Speed, Pos, Apos)
     Power = 0x0,
@@ -620,8 +614,8 @@ pub enum MotorSensorMode {
     Pos = 0x2,
     APos = 0x3,
     // Load = 0x4,
-    Calib = 0x4, 
-    Stats = 0x5
+    Calib = 0x4,
+    Stats = 0x5,
 }
 
 pub enum VisionSensorMode {
@@ -637,7 +631,7 @@ pub enum VisionSensorMode {
     Spec1 = 0x8,
     Debug = 0x9,
     Calib = 0xa,
-}   
+}
 
 // pub struct PortCapabilities(u8);
 // impl PortCapabilities {
@@ -646,5 +640,3 @@ pub enum VisionSensorMode {
 //     pub const INPUT: u8 = 0b0010;
 //     pub const OUTPUT: u8 = 0b0001;
 // }
-
-

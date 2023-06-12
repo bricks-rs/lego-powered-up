@@ -1,29 +1,16 @@
-/// Representation of an IoDevice 
-///     This struct + device traits (mod sensor, motor, et.al.) replaces
-///     the previous design in mod devices. It also replaces and extends
-///     functionality of ConnectedIo, PortMap and Port.
-///     This design is basically flipped around; instead of a single device
-///     trait with implementations for specific devices we have a single
-///     device struct with traits for specific devices. 
-///     This fits because all devices share the same data structure (as
-///     defined by the data available from the various information-
-///     commands) but differ in functionality.
-///    
-///     Considerations: 
-/// 
-
-
+use btleplug::api::Characteristic;
+/// Representation of an IoDevice
 // use std::collections::{BTreeMap};
 // use std::fmt;
-
 use btleplug::platform::Peripheral;
-use btleplug::api::Characteristic;
 use tokio::sync::broadcast;
 
+use crate::hubs::{Channels, Tokens};
+use crate::notifications::{
+    DatasetType, NetworkCommand, PortValueCombinedFormat, PortValueSingleFormat,
+};
 use crate::IoTypeId;
 use crate::{Error, Result};
-use crate::notifications::{ DatasetType, PortValueSingleFormat, PortValueCombinedFormat, NetworkCommand};
-use crate::hubs::{Tokens, Channels};
 use basic::Basic;
 use definition::Definition;
 use hubled::HubLed;
@@ -50,11 +37,21 @@ pub struct IoDevice {
 }
 
 impl IoDevice {
-    pub fn kind(&self) -> &IoTypeId { &self.def.kind() }
-    pub fn def(&self) -> &Definition { &self.def }
-    pub fn port(&self) -> u8 { self.def.port() }
-    pub fn tokens(&self) -> &Tokens { &self.tokens }
-    pub fn channels(&self) -> &Channels { &self.channels }
+    pub fn kind(&self) -> &IoTypeId {
+        &self.def.kind()
+    }
+    pub fn def(&self) -> &Definition {
+        &self.def
+    }
+    pub fn port(&self) -> u8 {
+        self.def.port()
+    }
+    pub fn tokens(&self) -> &Tokens {
+        &self.tokens
+    }
+    pub fn channels(&self) -> &Channels {
+        &self.channels
+    }
     pub fn new(kind: IoTypeId, port: u8) -> Self {
         Self {
             def: Definition::new(kind, port),
@@ -62,18 +59,25 @@ impl IoDevice {
             channels: Default::default(),
         }
     }
-    pub fn cache_tokens(&mut self, tokens:(
-        Option<Peripheral>, 
-        Option<Characteristic>) ) {
-        (self.tokens.p, self.tokens.c) = tokens; 
+    pub fn cache_tokens(
+        &mut self,
+        tokens: (Option<Peripheral>, Option<Characteristic>),
+    ) {
+        (self.tokens.p, self.tokens.c) = tokens;
     }
-    pub fn cache_channels(&mut self, senders:(
-        Option<broadcast::Sender<PortValueSingleFormat>>, 
-        Option<broadcast::Sender<PortValueCombinedFormat>>, 
-        Option<broadcast::Sender<NetworkCommand>>)) {
-        (self.channels.singlevalue_sender,
-        self.channels.combinedvalue_sender,
-        self.channels.networkcmd_sender ) = senders; 
+    pub fn cache_channels(
+        &mut self,
+        senders: (
+            Option<broadcast::Sender<PortValueSingleFormat>>,
+            Option<broadcast::Sender<PortValueCombinedFormat>>,
+            Option<broadcast::Sender<NetworkCommand>>,
+        ),
+    ) {
+        (
+            self.channels.singlevalue_sender,
+            self.channels.combinedvalue_sender,
+            self.channels.networkcmd_sender,
+        ) = senders;
     }
 }
 
@@ -81,26 +85,35 @@ impl IoDevice {
 // Implement device-traits
 //
 impl Basic for IoDevice {
-    fn port(&self) -> u8 { self.def.port() }
+    fn port(&self) -> u8 {
+        self.def.port()
+    }
     fn tokens(&self) -> Result<(&Peripheral, &Characteristic)> {
         // (&self.tokens.p.as_ref().unwrap(), &self.tokens.c.as_ref().unwrap())
-       
-        match ( &self.tokens.p.as_ref(), &self.tokens.c.as_ref() )  {
-            (Some(p), Some(c) ) => { Ok((p,c)) },
-            _ => { Err(Error::NoneError(String::from("Token not in device cache"))) }
-        }   
-    } 
+
+        match (&self.tokens.p.as_ref(), &self.tokens.c.as_ref()) {
+            (Some(p), Some(c)) => Ok((p, c)),
+            _ => {
+                Err(Error::NoneError(String::from("Token not in device cache")))
+            }
+        }
+    }
 }
 impl GenericSensor for IoDevice {
-    fn port(&self) -> u8 { self.def.port() }
+    fn port(&self) -> u8 {
+        self.def.port()
+    }
     fn tokens(&self) -> (&Peripheral, &Characteristic) {
-        (&self.tokens.p.as_ref().unwrap(), &self.tokens.c.as_ref().unwrap())
-    }    
+        (
+            &self.tokens.p.as_ref().unwrap(),
+            &self.tokens.c.as_ref().unwrap(),
+        )
+    }
     fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>> {
         if let Some(sender) = &self.channels.singlevalue_sender {
             Ok(sender.subscribe())
         } else {
-            Err(Error::NoneError(String::from("Sender not found"))) 
+            Err(Error::NoneError(String::from("Sender not found")))
         }
     }
     fn check(&self, mode: u8, datasettype: DatasetType) -> Result<()> {
@@ -108,8 +121,13 @@ impl GenericSensor for IoDevice {
             let vf = pm.value_format;
             // println!("Dataset for call: {:?}  Dataset for device: {:?} Device kind: {:?} ", &datasettype, &vf.dataset_type, &self.kind);
             // dbg!(&self.modes);
-            if datasettype == vf.dataset_type { return Ok(()) }
-            else { return Err(Error::NoneError(String::from("Incorrect dataset type"))) }
+            if datasettype == vf.dataset_type {
+                return Ok(());
+            } else {
+                return Err(Error::NoneError(String::from(
+                    "Incorrect dataset type",
+                )));
+            }
         } else {
             Err(Error::NoneError(String::from("Mode not found")))
         }
@@ -117,90 +135,116 @@ impl GenericSensor for IoDevice {
 }
 
 impl RcDevice for IoDevice {
-    fn port(&self) -> u8 { self.def.port() }
+    fn port(&self) -> u8 {
+        self.def.port()
+    }
     fn tokens(&self) -> (&Peripheral, &Characteristic) {
-        (&self.tokens.p.as_ref().unwrap(), &self.tokens.c.as_ref().unwrap())
-    } 
+        (
+            &self.tokens.p.as_ref().unwrap(),
+            &self.tokens.c.as_ref().unwrap(),
+        )
+    }
     fn get_rx_pvs(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>> {
         if let Some(sender) = &self.channels.singlevalue_sender {
             Ok(sender.subscribe())
         } else {
-            Err(Error::NoneError(String::from("Sender not found"))) 
+            Err(Error::NoneError(String::from("Sender not found")))
         }
     }
     fn get_rx_nwc(&self) -> Result<broadcast::Receiver<NetworkCommand>> {
         if let Some(sender) = &self.channels.networkcmd_sender {
             Ok(sender.subscribe())
         } else {
-            Err(Error::NoneError(String::from("Sender not found"))) 
+            Err(Error::NoneError(String::from("Sender not found")))
         }
     }
     fn check(&self) -> Result<()> {
         match self.def.kind() {
             IoTypeId::RemoteButtons => Ok(()),
-            _ => Err(Error::HubError(String::from("Not a remote control device"))),
-        } 
-    } 
+            _ => Err(Error::HubError(String::from(
+                "Not a remote control device",
+            ))),
+        }
+    }
 }
 
-impl EncoderMotor for IoDevice {   
-    fn port(&self) -> u8 { self.def.port() }
+impl EncoderMotor for IoDevice {
+    fn port(&self) -> u8 {
+        self.def.port()
+    }
     fn tokens(&self) -> (&Peripheral, &Characteristic) {
-        (&self.tokens.p.as_ref().unwrap(), &self.tokens.c.as_ref().unwrap())
-    } 
+        (
+            &self.tokens.p.as_ref().unwrap(),
+            &self.tokens.c.as_ref().unwrap(),
+        )
+    }
     fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>> {
         if let Some(sender) = &self.channels.singlevalue_sender {
             Ok(sender.subscribe())
         } else {
-            Err(Error::NoneError(String::from("Sender not found"))) 
+            Err(Error::NoneError(String::from("Sender not found")))
         }
     }
-    fn get_rx_combined(&self) -> Result<broadcast::Receiver<PortValueCombinedFormat>> {
+    fn get_rx_combined(
+        &self,
+    ) -> Result<broadcast::Receiver<PortValueCombinedFormat>> {
         if let Some(sender) = &self.channels.combinedvalue_sender {
             Ok(sender.subscribe())
         } else {
-            Err(Error::NoneError(String::from("Sender not found"))) 
+            Err(Error::NoneError(String::from("Sender not found")))
         }
     }
     fn check(&self) -> Result<()> {
         match self.def.kind() {
-            IoTypeId::TechnicLargeLinearMotor |
-            IoTypeId::TechnicXLargeLinearMotor |
-            IoTypeId::InternalMotorTacho => Ok(()),
+            IoTypeId::TechnicLargeLinearMotor
+            | IoTypeId::TechnicXLargeLinearMotor
+            | IoTypeId::InternalMotorTacho => Ok(()),
             _ => Err(Error::HubError(String::from("Not an Encoder Motor"))),
-        } 
-    } 
+        }
+    }
 }
 
 impl HubLed for IoDevice {
-    fn port(&self) -> u8 { self.def.port() }
+    fn port(&self) -> u8 {
+        self.def.port()
+    }
     fn tokens(&self) -> (&Peripheral, &Characteristic) {
-        (&self.tokens.p.as_ref().unwrap(), &self.tokens.c.as_ref().unwrap())
+        (
+            &self.tokens.p.as_ref().unwrap(),
+            &self.tokens.c.as_ref().unwrap(),
+        )
     }
     fn check(&self) -> Result<()> {
         match self.def.kind() {
             IoTypeId::HubLed => Ok(()),
             _ => Err(Error::HubError(String::from("Not a Hub LED device"))),
-        } 
-    } 
+        }
+    }
 }
 
 impl VisionSensor for IoDevice {
-    fn port(&self) -> u8 { self.def.port() }
+    fn port(&self) -> u8 {
+        self.def.port()
+    }
     fn tokens(&self) -> (&Peripheral, &Characteristic) {
-        (&self.tokens.p.as_ref().unwrap(), &self.tokens.c.as_ref().unwrap())
+        (
+            &self.tokens.p.as_ref().unwrap(),
+            &self.tokens.c.as_ref().unwrap(),
+        )
     }
     fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>> {
         if let Some(sender) = &self.channels.singlevalue_sender {
             Ok(sender.subscribe())
         } else {
-            Err(Error::NoneError(String::from("Sender not found"))) 
+            Err(Error::NoneError(String::from("Sender not found")))
         }
     }
     fn check(&self) -> Result<()> {
         match self.def.kind() {
             IoTypeId::VisionSensor => Ok(()),
-            _ => Err(Error::HubError(String::from("Not a Vision sensor Motor"))),
-        } 
-    } 
+            _ => {
+                Err(Error::HubError(String::from("Not a Vision sensor Motor")))
+            }
+        }
+    }
 }

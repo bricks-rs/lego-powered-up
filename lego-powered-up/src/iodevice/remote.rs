@@ -1,19 +1,20 @@
+use crate::Result;
 /// Support for the button devices in
 /// https://rebrickable.com/parts/28739/control-unit-powered-up/
 /// The unit as a whole functions as a hub that connects the
 /// two button devices, hubled and voltage and rssi sensors.
-
 use async_trait::async_trait;
-use core::fmt::Debug;
-use crate::{ Result};
-use btleplug::api::{Characteristic};
+use btleplug::api::Characteristic;
 use btleplug::platform::Peripheral;
+use core::fmt::Debug;
 use tokio::sync::broadcast;
 // use tokio::sync::mpsc;
+use crate::notifications::{
+    ButtonState, InputSetupSingle,
+    NetworkCommand::{self},
+    NotificationMessage, PortValueSingleFormat,
+};
 use tokio::task::JoinHandle;
-use crate::notifications::{ NetworkCommand::{self, }, PortValueSingleFormat, NotificationMessage,
-                            InputSetupSingle, ButtonState};
-
 
 #[derive(Debug, Copy, Clone)]
 pub enum RcButtonState {
@@ -26,7 +27,7 @@ pub enum RcButtonState {
     Bred,
     Bminus,
     Green,
-    GreenUp
+    GreenUp,
 }
 
 #[async_trait]
@@ -38,9 +39,9 @@ pub trait RcDevice: Debug + Send + Sync {
     fn get_rx_nwc(&self) -> Result<broadcast::Receiver<NetworkCommand>>;
     fn check(&self) -> Result<()>;
     async fn commit(&self, msg: NotificationMessage) -> Result<()> {
-        match crate::hubs::send(self.tokens(), msg).await { 
+        match crate::hubs::send(self.tokens(), msg).await {
             Ok(()) => Ok(()),
-            Err(e)  => { Err(e) }
+            Err(e) => Err(e),
         }
     }
 
@@ -57,26 +58,87 @@ pub trait RcDevice: Debug + Send + Sync {
     }
 
     async fn remote_buttons_enable_by_port(&self, port_id: u8) -> Result<()> {
-  self.check()?;
+        self.check()?;
         let msg =
             NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
                 port_id,
-                mode: 0,                // Not sure what the usecases for the different button modes are, 0 seems fine
+                mode: 0, // Not sure what the usecases for the different button modes are, 0 seems fine
                 delta: 1,
                 notification_enabled: true,
             });
         self.commit(msg).await
     }
 
-    async fn remote_connect(&self) -> Result<(broadcast::Receiver<RcButtonState>, JoinHandle<()> )> {
+    async fn remote_connect(
+        &self,
+    ) -> Result<(broadcast::Receiver<RcButtonState>, JoinHandle<()>)> {
         self.remote_buttons_enable_by_port(0x0).await?;
         self.remote_buttons_enable_by_port(0x1).await?;
 
         // Set up channel
         let (tx, rx) = broadcast::channel::<RcButtonState>(8);
-        let mut pvs_from_main = self.get_rx_pvs().expect("Single value sender not in device cache");
-                let task = tokio::spawn(async move {
-                    while let Ok(msg) = pvs_from_main.recv().await {
+        let mut pvs_from_main = self
+            .get_rx_pvs()
+            .expect("Single value sender not in device cache");
+        let task = tokio::spawn(async move {
+            while let Ok(msg) = pvs_from_main.recv().await {
+                match msg.port_id {
+                    0x0 => match msg.data[0] as i8 {
+                        0 => {
+                            let _ = tx.send(RcButtonState::Aup);
+                        }
+                        1 => {
+                            let _ = tx.send(RcButtonState::Aplus);
+                        }
+                        127 => {
+                            let _ = tx.send(RcButtonState::Ared);
+                        }
+                        -1 => {
+                            let _ = tx.send(RcButtonState::Aminus);
+                        }
+                        _ => (),
+                    },
+                    0x1 => match msg.data[0] as i8 {
+                        0 => {
+                            let _ = tx.send(RcButtonState::Bup);
+                        }
+                        1 => {
+                            let _ = tx.send(RcButtonState::Bplus);
+                        }
+                        127 => {
+                            let _ = tx.send(RcButtonState::Bred);
+                        }
+                        -1 => {
+                            let _ = tx.send(RcButtonState::Bminus);
+                        }
+                        _ => (),
+                    },
+                    _ => (),
+                }
+            }
+        });
+
+        Ok((rx, task))
+    }
+
+    async fn remote_connect_with_green(
+        &self,
+    ) -> Result<(broadcast::Receiver<RcButtonState>, JoinHandle<()>)> {
+        self.remote_buttons_enable_by_port(0x0).await?;
+        self.remote_buttons_enable_by_port(0x1).await?;
+
+        // Set up channel
+        let (tx, rx) = broadcast::channel::<RcButtonState>(8);
+        let mut pvs_from_main = self
+            .get_rx_pvs()
+            .expect("Single value sender not in device cache");
+        let mut nwc_from_main = self
+            .get_rx_nwc()
+            .expect("Network command sender not in device cache");
+        let task = tokio::spawn(async move {
+            loop {
+                tokio::select! {
+                    Ok(msg) = pvs_from_main.recv() => {
                         match msg.port_id {
                             0x0 => {
                                 match msg.data[0] as i8 {
@@ -96,63 +158,21 @@ pub trait RcDevice: Debug + Send + Sync {
                                     _  => ()
                                 }
                             }
-                            _ => ()                                
+                            _ => ()
                         }
-                    }
-                });
-            
-                Ok((rx, task))
-      
+                    },
+                    Ok(msg) = nwc_from_main.recv() => {
+                        match msg {
+                            NetworkCommand::ConnectionRequest(ButtonState::Up) => { let _ = tx.send(RcButtonState::Green); },
+                            NetworkCommand::ConnectionRequest(ButtonState::Released) => { let _ = tx.send(RcButtonState::GreenUp); },
+                            _ => ()
+                        }
+                    },
+                    else => { break }
+                };
+            }
+        });
+
+        Ok((rx, task))
     }
-
-    async fn remote_connect_with_green(&self) -> Result<(broadcast::Receiver<RcButtonState>, JoinHandle<()> )> {
-        self.remote_buttons_enable_by_port(0x0).await?;
-        self.remote_buttons_enable_by_port(0x1).await?;
-
-        // Set up channel
-        let (tx,    rx) = broadcast::channel::<RcButtonState>(8);
-        let mut pvs_from_main = self.get_rx_pvs().expect("Single value sender not in device cache");
-        let mut nwc_from_main = self.get_rx_nwc().expect("Network command sender not in device cache");
-                let task = tokio::spawn(async move {
-                    loop {
-                        tokio::select! {
-                            Ok(msg) = pvs_from_main.recv() => {
-                                match msg.port_id {
-                                    0x0 => {
-                                        match msg.data[0] as i8 {
-                                            0 => { let _ = tx.send(RcButtonState::Aup); }
-                                            1 => { let _ = tx.send(RcButtonState::Aplus); }
-                                            127 => { let _ = tx.send(RcButtonState::Ared); }
-                                            -1 => { let _ = tx.send(RcButtonState::Aminus); }
-                                            _  => ()
-                                        }
-                                    }
-                                    0x1 => {
-                                        match msg.data[0] as i8 {
-                                            0 => { let _ = tx.send(RcButtonState::Bup); }
-                                            1 => { let _ = tx.send(RcButtonState::Bplus); }
-                                            127 => { let _ = tx.send(RcButtonState::Bred); }
-                                            -1 => { let _ = tx.send(RcButtonState::Bminus); }
-                                            _  => ()
-                                        }
-                                    }
-                                    _ => ()                                
-                                } 
-                            },
-                            Ok(msg) = nwc_from_main.recv() => {
-                                match msg {
-                                    NetworkCommand::ConnectionRequest(ButtonState::Up) => { let _ = tx.send(RcButtonState::Green); },
-                                    NetworkCommand::ConnectionRequest(ButtonState::Released) => { let _ = tx.send(RcButtonState::GreenUp); },
-                                    _ => ()
-                                }    
-                            },
-                            else => { break }
-                        };    
-                    }
-                });
-            
-                Ok((rx, task))
-    }
-
 }
-

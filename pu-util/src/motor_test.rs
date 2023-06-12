@@ -4,10 +4,13 @@
 
 use crate::argparse::MotorTestArgs;
 use anyhow::Result;
+use lego_powered_up::{
+    consts,
+    iodevice::hubled::HubLed,
+    iodevice::motor::{EncoderMotor, Power},
+    ConnectedHub, IoDevice, IoTypeId,
+};
 use lego_powered_up::{HubFilter, PoweredUp};
-use lego_powered_up::{ConnectedHub, IoDevice, IoTypeId, consts,
-    iodevice::hubled::{HubLed},
-    iodevice::motor::{EncoderMotor, Power} };
 
 use std::time::Duration;
 
@@ -44,10 +47,12 @@ pub async fn run(args: &MotorTestArgs) -> Result<()> {
         hub.hub_type, hub.name, hub.addr
     );
 
-    let hub = ConnectedHub::setup_hub
-                            (pu.create_hub(&hub).await.expect("Error creating hub"))
-                            .await.expect("Error setting up hub");
-    tokio::time::sleep(Duration::from_secs(1)).await;  //Wait for attached devices to be collected
+    let hub = ConnectedHub::setup_hub(
+        pu.create_hub(&hub).await.expect("Error creating hub"),
+    )
+    .await
+    .expect("Error setting up hub");
+    tokio::time::sleep(Duration::from_secs(1)).await; //Wait for attached devices to be collected
 
     // Devices to be used
     let hub_led: IoDevice;
@@ -58,11 +63,11 @@ pub async fn run(args: &MotorTestArgs) -> Result<()> {
     {
         let lock = hub.mutex.lock().await;
         hub_led = lock.io_from_kind(IoTypeId::HubLed).await?;
-        motor_a = lock.io_from_port(consts::named_port::A).await?; 
-        motor_b = lock.io_from_port(consts::named_port::B).await?; 
-        motor_c = lock.io_from_port(consts::named_port::C).await?; 
-        motor_d = lock.io_from_port(consts::named_port::D).await?; 
-    }    
+        motor_a = lock.io_from_port(consts::named_port::A).await?;
+        motor_b = lock.io_from_port(consts::named_port::B).await?;
+        motor_c = lock.io_from_port(consts::named_port::C).await?;
+        motor_d = lock.io_from_port(consts::named_port::D).await?;
+    }
 
     // Set the hub LED if available
     println!("Setting hub LED");

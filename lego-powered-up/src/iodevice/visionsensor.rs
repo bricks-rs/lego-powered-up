@@ -1,18 +1,20 @@
 /// Support for
 /// https://rebrickable.com/parts/26912/sensor-color-and-distance-powered-up-2-x-4-x-2/
-
 use async_trait::async_trait;
+use btleplug::{api::Characteristic, platform::Peripheral};
 use core::fmt::Debug;
-use btleplug::{ api::{Characteristic}, platform::Peripheral };
 use tokio::sync::broadcast;
 use tokio::task::JoinHandle;
 
 use super::modes;
-use crate::error::{Result};
-use crate::notifications::{NotificationMessage,  PortValueSingleFormat,  InputSetupSingle, PortOutputSubcommand, WriteDirectModeDataPayload, PortOutputCommandFormat, StartupInfo, CompletionInfo};
 use super::modes::VisionSensor as visionmode;
+use crate::error::Result;
+use crate::notifications::{
+    CompletionInfo, InputSetupSingle, NotificationMessage,
+    PortOutputCommandFormat, PortOutputSubcommand, PortValueSingleFormat,
+    StartupInfo, WriteDirectModeDataPayload,
+};
 // use crate::consts::Color;
-
 
 // #[macro_use]
 // use crate::notifications::macros::*;
@@ -30,19 +32,23 @@ pub enum DetectedColor {
     Yellow = 7,
     Color8 = 8,
     Red = 9,
-    White = 10
+    White = 10,
 }
 pub enum OutputColor {
     Off = 0,
     Blue = 3,
     Green = 5,
     Red = 9,
-    White = 10
+    White = 10,
 }
 
 #[async_trait]
 pub trait VisionSensor: Debug + Send + Sync {
-    async fn vison_sensor_single_enable(&self, mode: u8, delta: u32) -> Result<()> {
+    async fn vison_sensor_single_enable(
+        &self,
+        mode: u8,
+        delta: u32,
+    ) -> Result<()> {
         self.check()?;
         let msg =
             NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
@@ -54,37 +60,65 @@ pub trait VisionSensor: Debug + Send + Sync {
         self.commit(msg).await
     }
 
-    async fn visionsensor_color(&self) -> Result<(broadcast::Receiver<DetectedColor>, JoinHandle<()> )> {
-        self.vison_sensor_single_enable(visionmode::COLOR, 1).await?;
+    async fn visionsensor_color(
+        &self,
+    ) -> Result<(broadcast::Receiver<DetectedColor>, JoinHandle<()>)> {
+        self.vison_sensor_single_enable(visionmode::COLOR, 1)
+            .await?;
         let port_id = self.port();
         // Set up channel
-        let (tx,  rx) = broadcast::channel::<DetectedColor>(8);
-        let mut rx_from_main = self.get_rx().expect("Single value sender not in device cache");
+        let (tx, rx) = broadcast::channel::<DetectedColor>(8);
+        let mut rx_from_main = self
+            .get_rx()
+            .expect("Single value sender not in device cache");
         let task = tokio::spawn(async move {
             while let Ok(msg) = rx_from_main.recv().await {
                 if msg.port_id == port_id {
                     match msg.data[0] as i8 {
-                       -1 => { let _ = tx.send(DetectedColor::NoObject); }
-                        0 => { let _ = tx.send(DetectedColor::Black); }
-                        1 => { let _ = tx.send(DetectedColor::Color1); }
-                        2 => { let _ = tx.send(DetectedColor::Color2); }
-                        3 => { let _ = tx.send(DetectedColor::Blue); }
-                        4 => { let _ = tx.send(DetectedColor::Color4); }
-                        5 => { let _ = tx.send(DetectedColor::Green); }
-                        6 => { let _ = tx.send(DetectedColor::Color6); }
-                        7 => { let _ = tx.send(DetectedColor::Yellow); }
-                        8 => { let _ = tx.send(DetectedColor::Color8); }
-                        9 => { let _ = tx.send(DetectedColor::Red); }
-                        10 => { let _ = tx.send(DetectedColor::White); }
-                        _  => ()
+                        -1 => {
+                            let _ = tx.send(DetectedColor::NoObject);
+                        }
+                        0 => {
+                            let _ = tx.send(DetectedColor::Black);
+                        }
+                        1 => {
+                            let _ = tx.send(DetectedColor::Color1);
+                        }
+                        2 => {
+                            let _ = tx.send(DetectedColor::Color2);
+                        }
+                        3 => {
+                            let _ = tx.send(DetectedColor::Blue);
+                        }
+                        4 => {
+                            let _ = tx.send(DetectedColor::Color4);
+                        }
+                        5 => {
+                            let _ = tx.send(DetectedColor::Green);
+                        }
+                        6 => {
+                            let _ = tx.send(DetectedColor::Color6);
+                        }
+                        7 => {
+                            let _ = tx.send(DetectedColor::Yellow);
+                        }
+                        8 => {
+                            let _ = tx.send(DetectedColor::Color8);
+                        }
+                        9 => {
+                            let _ = tx.send(DetectedColor::Red);
+                        }
+                        10 => {
+                            let _ = tx.send(DetectedColor::White);
+                        }
+                        _ => (),
                     }
                 }
             }
         });
-        
+
         Ok((rx, task))
     }
-
 
     // Just setting output mode turns the light off, which may be useful
     async fn visionsensor_light_output_mode(&self) -> Result<()> {
@@ -102,7 +136,8 @@ pub trait VisionSensor: Debug + Send + Sync {
     async fn visionsensor_set_color(&self, color: OutputColor) -> Result<()> {
         self.check()?;
         let subcommand = PortOutputSubcommand::WriteDirectModeData(
-            WriteDirectModeDataPayload::SetVisionSensorColor(color as i8));
+            WriteDirectModeDataPayload::SetVisionSensorColor(color as i8),
+        );
 
         let msg =
             NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
@@ -120,10 +155,9 @@ pub trait VisionSensor: Debug + Send + Sync {
     fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>>;
     fn check(&self) -> Result<()>;
     async fn commit(&self, msg: NotificationMessage) -> Result<()> {
-        match crate::hubs::send(self.tokens(), msg).await { 
+        match crate::hubs::send(self.tokens(), msg).await {
             Ok(()) => Ok(()),
-            Err(e)  => { Err(e) }
+            Err(e) => Err(e),
         }
     }
-
 }

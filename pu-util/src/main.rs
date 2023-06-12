@@ -6,8 +6,8 @@ use anyhow::Result;
 use argparse::Command;
 use env_logger::Env;
 
-mod argparse;
 mod adapters;
+mod argparse;
 mod hubs;
 mod motor_test;
 

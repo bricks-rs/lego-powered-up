@@ -1,16 +1,15 @@
 #![allow(unused)]
 #[cfg(test)]
 
-
 mod tests {
-    use btleplug::api::{Characteristic, Peripheral as _, WriteType};
-    use std::collections::BTreeMap;
-    use crate::iodevice::IoDevice;
     use crate::consts::IoTypeId;
-    use crate::hubs::generic_hub::GenericHub;
     use crate::hubs;
+    use crate::hubs::generic_hub::GenericHub;
+    use crate::iodevice::IoDevice;
     use crate::HubType;
-    use btleplug::platform::{Adapter, Manager, PeripheralId, Peripheral};
+    use btleplug::api::{Characteristic, Peripheral as _, WriteType};
+    use btleplug::platform::{Adapter, Manager, Peripheral, PeripheralId};
+    use std::collections::BTreeMap;
 
     #[test]
     fn test_get_from_port() {
@@ -23,10 +22,9 @@ mod tests {
 
         // let p = Peripheral {
 
-        // } 
+        // }
         // hub = GenericHub {
 
         // }
-
     }
 }

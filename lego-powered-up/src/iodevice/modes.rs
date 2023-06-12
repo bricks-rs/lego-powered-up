@@ -7,7 +7,7 @@ pub mod Current {
     pub const CUR_L: u8 = 0;
     pub const CUR_S: u8 = 1;
 }
-pub mod HubLed  {
+pub mod HubLed {
     pub const COL_O: u8 = 0;
     pub const RGB_O: u8 = 1;
 }
@@ -95,11 +95,11 @@ pub mod TechnicHubTiltSensor {
     pub const CFG: u8 = 2;
 }
 pub mod TechnicHubTemperatureSensor {
-    pub const TEMP: u8 = 0; 
+    pub const TEMP: u8 = 0;
 }
 pub mod UnknownMovehubDevice {
-    pub const TRIGGER: u8 = 0; 
-    pub const CANVAS:u8 = 1;
+    pub const TRIGGER: u8 = 0;
+    pub const CANVAS: u8 = 1;
     pub const VAR: u8 = 2;
 }
 

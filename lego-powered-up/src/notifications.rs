@@ -4,7 +4,7 @@
 
 //! Parser and data structure for hub notification messages
 
-use crate::consts::{*,};
+use crate::consts::*;
 use crate::error::{Error, OptionContext, Result};
 use log::{debug, trace};
 use lpu_macros::Parse;
@@ -22,7 +22,6 @@ pub mod macros;
 
 pub const MAX_NAME_SIZE: usize = 14;
 
-
 /// The two modes by which Hub LED colours may be set
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -35,9 +34,9 @@ pub enum HubLedMode {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HubProperty {
-   pub(crate) property: HubPropertyValue,
-   pub(crate) operation: HubPropertyOperation,
-   pub(crate) reference: HubPropertyRef
+    pub(crate) property: HubPropertyValue,
+    pub(crate) operation: HubPropertyOperation,
+    pub(crate) reference: HubPropertyRef,
 }
 
 impl HubProperty {
@@ -46,21 +45,37 @@ impl HubProperty {
         let operation = ok!(HubPropertyOperation::from_u8(next!(msg)));
         let property = HubPropertyValue::parse(property_int, &mut msg)?;
         let reference = match property {
-            HubPropertyValue::AdvertisingName(_) => HubPropertyRef::AdvertisingName,
+            HubPropertyValue::AdvertisingName(_) => {
+                HubPropertyRef::AdvertisingName
+            }
             HubPropertyValue::Button(_) => HubPropertyRef::Button,
             HubPropertyValue::FwVersion(_) => HubPropertyRef::FwVersion,
             HubPropertyValue::HwVersion(_) => HubPropertyRef::HwVersion,
             HubPropertyValue::Rssi(_) => HubPropertyRef::Rssi,
-            HubPropertyValue::BatteryVoltage(_) => HubPropertyRef::BatteryVoltage,
+            HubPropertyValue::BatteryVoltage(_) => {
+                HubPropertyRef::BatteryVoltage
+            }
             HubPropertyValue::BatteryType(_) => HubPropertyRef::BatteryType,
-            HubPropertyValue::ManufacturerName(_) => HubPropertyRef::ManufacturerName,
-            HubPropertyValue::RadioFirmwareVersion(_) => HubPropertyRef::RadioFirmwareVersion,
-            HubPropertyValue::LegoWirelessProtocolVersion(_) => HubPropertyRef::LegoWirelessProtocolVersion,
+            HubPropertyValue::ManufacturerName(_) => {
+                HubPropertyRef::ManufacturerName
+            }
+            HubPropertyValue::RadioFirmwareVersion(_) => {
+                HubPropertyRef::RadioFirmwareVersion
+            }
+            HubPropertyValue::LegoWirelessProtocolVersion(_) => {
+                HubPropertyRef::LegoWirelessProtocolVersion
+            }
             HubPropertyValue::SystemTypeId(_) => HubPropertyRef::SystemTypeId,
             HubPropertyValue::HwNetworkId(_) => HubPropertyRef::HwNetworkId,
-            HubPropertyValue::PrimaryMacAddress(_) => HubPropertyRef::PrimaryMacAddress,
-            HubPropertyValue::SecondaryMacAddress => HubPropertyRef::SecondaryMacAddress,
-            HubPropertyValue::HardwareNetworkFamily(_) => HubPropertyRef::HardwareNetworkFamily,
+            HubPropertyValue::PrimaryMacAddress(_) => {
+                HubPropertyRef::PrimaryMacAddress
+            }
+            HubPropertyValue::SecondaryMacAddress => {
+                HubPropertyRef::SecondaryMacAddress
+            }
+            HubPropertyValue::HardwareNetworkFamily(_) => {
+                HubPropertyRef::HardwareNetworkFamily
+            }
         };
 
         Ok(Self {
@@ -78,13 +93,11 @@ impl HubProperty {
             // prop_ref,
             self.reference as u8,
             self.operation as u8,
-
         ]);
 
         msg
     }
 }
-
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum HubPropertyValue {
@@ -106,7 +119,10 @@ pub enum HubPropertyValue {
 }
 
 impl HubPropertyValue {
-    pub fn parse<'a>(prop_type: u8, mut msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
+    pub fn parse<'a>(
+        prop_type: u8,
+        mut msg: impl Iterator<Item = &'a u8>,
+    ) -> Result<Self> {
         use HubPropertyValue::*;
         let prop_type = ok!(HubPropertyRef::from_u8(prop_type));
 
@@ -204,9 +220,7 @@ pub struct HubActionRequest {
 impl HubActionRequest {
     pub fn parse<'a>(mut msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
         let action_type = HubAction::parse(&mut msg)?;
-        Ok(HubActionRequest {
-            action_type,
-        })
+        Ok(HubActionRequest { action_type })
     }
     pub fn serialise(&self) -> Vec<u8> {
         let mut msg = Vec::with_capacity(10);
@@ -249,7 +263,7 @@ pub enum AlertPayload {
 pub struct HubAlert {
     pub(crate) alert_type: AlertType,
     pub(crate) operation: AlertOperation,
-    pub(crate) payload: AlertPayload
+    pub(crate) payload: AlertPayload,
 }
 
 impl HubAlert {
@@ -260,7 +274,7 @@ impl HubAlert {
         Ok(HubAlert {
             alert_type,
             operation,
-            payload
+            payload,
         })
     }
     pub fn serialise(&self) -> Vec<u8> {
@@ -317,20 +331,28 @@ impl IoAttachEvent {
         Ok(match event_type {
             Event::DetachedIo => {
                 // let io_type_id = ok!(IoTypeId::from_u16(next_u16!(msg)));
-                IoAttachEvent::DetachedIo { }
+                IoAttachEvent::DetachedIo {}
             }
-            
+
             Event::AttachedIo => {
                 let io_type_id = ok!(IoTypeId::from_u16(next_u16!(msg)));
                 let hw_rev = VersionNumber::parse(&mut msg)?;
                 let fw_rev = VersionNumber::parse(&mut msg)?;
-                IoAttachEvent::AttachedIo { io_type_id, hw_rev, fw_rev }
+                IoAttachEvent::AttachedIo {
+                    io_type_id,
+                    hw_rev,
+                    fw_rev,
+                }
             }
             Event::AttachedVirtualIo => {
                 let io_type_id = ok!(IoTypeId::from_u16(next_u16!(msg)));
                 let port_a = next!(msg);
                 let port_b = next!(msg);
-                IoAttachEvent::AttachedVirtualIo { io_type_id, port_a, port_b }
+                IoAttachEvent::AttachedVirtualIo {
+                    io_type_id,
+                    port_a,
+                    port_b,
+                }
             }
         })
     }
@@ -421,8 +443,6 @@ impl Debug for VersionNumber {
         write!(fmt, "{}", self)
     }
 }
-
-
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct ErrorMessageFormat {
@@ -669,7 +689,6 @@ impl ModeInformationRequest {
     }
 }
 
-
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive, Parse)]
 pub enum ModeInformationType {
@@ -768,7 +787,7 @@ impl InputSetupCombined {
                 // Not sure why mode_dataset needs to be a [u8; 8] but changing it necessitates reworking
                 // the parse function and possibly more. Workaround for now is to set unneeded values to
                 // all 1's as a marker. Should be ok since no device probably has 128 modes and 128 datasets.
-                let md = mode_dataset.as_slice(); 
+                let md = mode_dataset.as_slice();
                 for val in md.into_iter() {
                     if *val == 255 {
                         break;
@@ -787,7 +806,8 @@ impl InputSetupCombined {
                     MessageType::PortInputFormatSetupCombined as u8,
                     // Command
                     self.port_id,
-                    InputSetupCombinedSubcommandValue::LockLpf2DeviceForSetup as u8,
+                    InputSetupCombinedSubcommandValue::LockLpf2DeviceForSetup
+                        as u8,
                 ]
             }
             UnlockAndStartMultiEnabled {} => {
@@ -833,7 +853,7 @@ impl InputSetupCombined {
                     self.port_id,
                     InputSetupCombinedSubcommandValue::ResetSensor as u8,
                 ]
-            } 
+            }
         }
     }
 }
@@ -1086,11 +1106,13 @@ pub struct ValueFormatType {
 }
 impl fmt::Display for ValueFormatType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:>4} value(s) of {:<8}   Figures: {:<3} Decimals: {:<3}", 
-            self.number_of_datasets, 
-            self.dataset_type, 
+        write!(
+            f,
+            "{:>4} value(s) of {:<8}   Figures: {:<3} Decimals: {:<3}",
+            self.number_of_datasets,
+            self.dataset_type,
             self.total_figures,
-            self.decimals 
+            self.decimals
         )
     }
 }
@@ -1117,13 +1139,21 @@ pub enum DatasetType {
 impl fmt::Display for DatasetType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            DatasetType::Bits8 => { write!(f, " 8 bit") },
-            DatasetType::Bits16 => { write!(f, "16 bit") },
-            DatasetType::Bits32 => { write!(f, "32 bit") },
-            DatasetType::Float => { write!(f, "float ") },
-        } 
-        // write!(f, "{}", 
-            // *self, 
+            DatasetType::Bits8 => {
+                write!(f, " 8 bit")
+            }
+            DatasetType::Bits16 => {
+                write!(f, "16 bit")
+            }
+            DatasetType::Bits32 => {
+                write!(f, "32 bit")
+            }
+            DatasetType::Float => {
+                write!(f, "float ")
+            }
+        }
+        // write!(f, "{}",
+        // *self,
         // )
     }
 }
@@ -1141,26 +1171,25 @@ pub enum TypedValue {
 /// on the port configuration. For now we just save the payload and then
 /// later on will provide a method to split it out into port-value pairs
 /// based on a separate port type mapping.
-/// 
+///
 /// Notes on Value Format
-/// 1) The valuetypes are signed, i.e. the variants are i8, i16, i32, f32. This: 
+/// 1) The valuetypes are signed, i.e. the variants are i8, i16, i32, f32. This:
 ///    https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-value-single
 ///    says that the values are unsigned, but this is seemingly incorrect. Many sensors can
 ///    report negative values, as can be seen by requesting Port Mode Information::Raw range.
 /// 2) The values are not a single value but an array, the length of which is given
-///    by the "number_of_datasets"-member of Value Format. 
+///    by the "number_of_datasets"-member of Value Format.
 ///    ("Single" in PortValueSingle refers to single sensor mode, but single sensors can)  
 ///     and do provide provide array data, ex. color RGB or accelerometer XYZ-data.)
-/// 3) There are some inconsistencies looking at port mode information: 
+/// 3) There are some inconsistencies looking at port mode information:
 ///         HubLeds in RBG reports taking 8 bit values in the range 0-255, though this
-///         doesn't concern the parser of incoming values. As regards sensors; 
+///         doesn't concern the parser of incoming values. As regards sensors;
 ///         TechnicHubTiltSensor mode CFG, as well as MoveHubInternalTilt modes IM_CF
 ///         and CALIB: These all report that they will provide 8 bit values in
-///         range 0-255. 
+///         range 0-255.
 ///     But these are the only ones I've been able to find. On the whole it seems better
-///     to correctly support the multitude of sensors and modes. 
-/// 
-
+///     to correctly support the multitude of sensors and modes.
+///
 
 // #[derive(Clone, Debug, PartialEq, Eq)]
 // pub struct PortValueSingleFormat {
@@ -1197,8 +1226,6 @@ impl PortValueSingleFormat {
         unimplemented!()
     }
 }
-
-
 
 /// The PortValueCombinedFormat is some horrific set of pointers to
 /// values we should already have cached elsewhere. For now we save the
@@ -1260,10 +1287,10 @@ impl PortInputFormatCombinedFormat {
     pub fn parse<'a>(mut msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
         let port_id = next!(msg);
         let control = next!(msg);
-        
+
         // let combination_index = next!(msg);  // combination index is part of control byte, not separate byte.
-                                                // This caused function to fail with "NoneError: Insufficient length"
-        let combination_index: u8 = 0;          // Set to 0 for now, figure out how to get from control byte later
+        // This caused function to fail with "NoneError: Insufficient length"
+        let combination_index: u8 = 0; // Set to 0 for now, figure out how to get from control byte later
 
         let multi_update = (control >> 7) != 0;
         let mode_dataset_combination_pointer = next_u16!(msg);
@@ -1355,7 +1382,7 @@ impl PortOutputCommandFormat {
                     self.port_id,
                     0x11, // 0001 Execute immediately, 0001 Command feedback
                     PortOutputSubCommandValue::StartSpeed as u8,
-                    // Subcommand payload                   
+                    // Subcommand payload
                     speed,
                     max_power.to_u8(),
                     profile,
@@ -1382,14 +1409,14 @@ impl PortOutputCommandFormat {
                     self.port_id,
                     0x11, // 0001 Execute immediately, 0001 Command feedback
                     PortOutputSubCommandValue::StartSpeedForDegrees as u8,
-                ];  
-                    // Subcommand payload
-                    bytes.extend_from_slice(&degrees);
-                    bytes.push(speed);
-                    bytes.push(max_power.to_u8());
-                    bytes.push(end_state.to_u8());
-                    bytes.push(profile);
-                
+                ];
+                // Subcommand payload
+                bytes.extend_from_slice(&degrees);
+                bytes.push(speed);
+                bytes.push(max_power.to_u8());
+                bytes.push(end_state.to_u8());
+                bytes.push(profile);
+
                 bytes
             }
             GotoAbsolutePosition {
@@ -1401,27 +1428,27 @@ impl PortOutputCommandFormat {
                 use_dec_profile,
             } => {
                 let profile =
-                ((*use_acc_profile as u8) << 1) | (*use_dec_profile as u8);
+                    ((*use_acc_profile as u8) << 1) | (*use_dec_profile as u8);
                 let speed = speed.to_le_bytes()[0];
                 let abs_pos = abs_pos.to_le_bytes();
                 let mut bytes = vec![
-                // Header
-                0, // len
-                0, // hub id - always set to 0
-                MessageType::PortOutputCommand as u8,
-                // Command
-                self.port_id,
-                0x11, // 0001 Execute immediately, 0001 Command feedback
-                PortOutputSubCommandValue::StartSpeedForDegrees as u8,
-            ];  
+                    // Header
+                    0, // len
+                    0, // hub id - always set to 0
+                    MessageType::PortOutputCommand as u8,
+                    // Command
+                    self.port_id,
+                    0x11, // 0001 Execute immediately, 0001 Command feedback
+                    PortOutputSubCommandValue::StartSpeedForDegrees as u8,
+                ];
                 // Subcommand payload
                 bytes.extend_from_slice(&abs_pos);
                 bytes.push(speed);
                 bytes.push(max_power.to_u8());
                 bytes.push(end_state.to_u8());
                 bytes.push(profile);
-            
-            bytes
+
+                bytes
             }
             WriteDirectModeData(data) => data.serialise(self),
             _ => todo!(),
@@ -1882,8 +1909,8 @@ pub enum WriteDirectModeDataPayload {
     // StartPower2 has the "Encoded through WriteDirectModeData"-tag, but it also has a subcommand-id (0x02)
     // and is not listed among the WriteDirectModeData-commands. I think the tag is a doc error, so:
     // StartPower2{
-        // power1: Power,
-        // power2: Power
+    // power1: Power,
+    // power2: Power
     // },
     // i32 as four bytes
     PresetEncoder(i32),
@@ -1900,7 +1927,7 @@ pub enum WriteDirectModeDataPayload {
         green: u8,
         blue: u8,
     },
-    SetVisionSensorColor(i8)
+    SetVisionSensorColor(i8),
 }
 
 impl WriteDirectModeDataPayload {
@@ -1909,7 +1936,8 @@ impl WriteDirectModeDataPayload {
 
         let mode = next!(msg);
         Ok(match mode {
-            0x01 => {   //Should be 0x00 according to docs? Seems to work, I may be misreading.
+            0x01 => {
+                //Should be 0x00 according to docs? Seems to work, I may be misreading.
                 // StartPower(Power)
                 let power = Power::parse(&mut msg)?;
                 StartPower(power)
@@ -1944,9 +1972,9 @@ impl WriteDirectModeDataPayload {
             0x07 => {
                 // TiltFactoryCalibration(Orientation, CalibrationPassCode)  Passcode is 12 chars: Calib-Sensor
                 // "Mode 7"
-                let orientation = next_i8!(msg);  
+                let orientation = next_i8!(msg);
                 // let passcode = next_i8!(msg);
-                TiltFactoryCalibration(orientation) 
+                TiltFactoryCalibration(orientation)
             }
             0x08 => {
                 // SetHubColor(ColorNo)
@@ -1982,14 +2010,14 @@ impl WriteDirectModeDataPayload {
                     meta.port_id,
                     startup_and_completion,
                     0x51, // WriteDirect
-                    // Docs says to insert an 0x00 and then an extra 0x51 here, but works without it 
+                    // Docs says to insert an 0x00 and then an extra 0x51 here, but works without it
                     crate::iodevice::modes::HubLed::RGB_O as u8,
                     *red,
                     *green,
                     *blue,
                 ]
             }
-            SetHubColor(c)=> {
+            SetHubColor(c) => {
                 let startup_and_completion =
                     meta.startup_info.serialise(&meta.completion_info);
                 vec![
@@ -2000,7 +2028,7 @@ impl WriteDirectModeDataPayload {
                     startup_and_completion,
                     0x51, // WriteDirect
                     crate::iodevice::modes::HubLed::COL_O as u8,
-                    *c as u8
+                    *c as u8,
                 ]
             }
             StartPower(p) => {
@@ -2018,7 +2046,7 @@ impl WriteDirectModeDataPayload {
                     power,
                 ]
             }
-            PresetEncoder(position ) => {
+            PresetEncoder(position) => {
                 let startup_and_completion =
                     meta.startup_info.serialise(&meta.completion_info);
                 let pos_bytes: [u8; 4] = position.to_le_bytes(); // i32 sent as 4 bytes
@@ -2033,13 +2061,13 @@ impl WriteDirectModeDataPayload {
                     pos_bytes[0],
                     pos_bytes[1],
                     pos_bytes[2],
-                    pos_bytes[3]
+                    pos_bytes[3],
                 ]
             }
             // Set the Tilt into TiltImpactCount mode (0x03) and change (preset) the value to PresetValue.
-            TiltImpactPreset(preset_value) => { 
+            TiltImpactPreset(preset_value) => {
                 let startup_and_completion =
-                meta.startup_info.serialise(&meta.completion_info);
+                    meta.startup_info.serialise(&meta.completion_info);
                 let val_bytes: [u8; 4] = preset_value.to_le_bytes(); // i32 sent as 4 bytes
                 vec![
                     0,
@@ -2052,13 +2080,13 @@ impl WriteDirectModeDataPayload {
                     val_bytes[0],
                     val_bytes[1],
                     val_bytes[2],
-                    val_bytes[3]
-                ] 
+                    val_bytes[3],
+                ]
             }
             // Set the Tilt into TiltOrientation mode (0x05) and set the Orientation value to Orientation
-            TiltConfigOrientation(orientation) => { 
+            TiltConfigOrientation(orientation) => {
                 let startup_and_completion =
-                meta.startup_info.serialise(&meta.completion_info);
+                    meta.startup_info.serialise(&meta.completion_info);
                 vec![
                     0,
                     0, // hub id
@@ -2067,13 +2095,16 @@ impl WriteDirectModeDataPayload {
                     startup_and_completion,
                     0x51, // WriteDirect
                     crate::iodevice::modes::InternalTilt::OR_CF as u8,
-                    *orientation as u8,   
-                ] 
+                    *orientation as u8,
+                ]
             }
             // Setup Tilt ImpactThreshold and BumpHoldoff by entering mode 6 and use the payload ImpactThreshold and BumpHoldoff.
-            TiltConfigImpact{impact_threshold, bump_holdoff} => {
+            TiltConfigImpact {
+                impact_threshold,
+                bump_holdoff,
+            } => {
                 let startup_and_completion =
-                meta.startup_info.serialise(&meta.completion_info);
+                    meta.startup_info.serialise(&meta.completion_info);
                 vec![
                     0,
                     0, // hub id
@@ -2084,12 +2115,12 @@ impl WriteDirectModeDataPayload {
                     crate::iodevice::modes::InternalTilt::IM_CF as u8,
                     *impact_threshold as u8,
                     *bump_holdoff as u8,
-                ] 
+                ]
             }
             //  Sets the actual orientation in the montage automat.  0: XY (laying flat) 1: Z (standing long direction)
-            TiltFactoryCalibration(orientation) => { 
+            TiltFactoryCalibration(orientation) => {
                 let startup_and_completion =
-                meta.startup_info.serialise(&meta.completion_info);
+                    meta.startup_info.serialise(&meta.completion_info);
                 vec![
                     0,
                     0, // hub id
@@ -2099,11 +2130,21 @@ impl WriteDirectModeDataPayload {
                     0x51, // WriteDirect
                     crate::iodevice::modes::InternalTilt::CALIB as u8,
                     *orientation as u8,
-                    'C' as u8, 'a' as u8, 'l' as u8, 'i' as u8, 'b' as u8, '-' as u8,
-                    'S' as u8, 'e' as u8, 'n' as u8, 's' as u8, 'o' as u8, 'r' as u8,
-                ] 
+                    'C' as u8,
+                    'a' as u8,
+                    'l' as u8,
+                    'i' as u8,
+                    'b' as u8,
+                    '-' as u8,
+                    'S' as u8,
+                    'e' as u8,
+                    'n' as u8,
+                    's' as u8,
+                    'o' as u8,
+                    'r' as u8,
+                ]
             }
-            SetVisionSensorColor(c)=> {
+            SetVisionSensorColor(c) => {
                 let startup_and_completion =
                     meta.startup_info.serialise(&meta.completion_info);
                 vec![
@@ -2114,10 +2155,9 @@ impl WriteDirectModeDataPayload {
                     startup_and_completion,
                     0x51, // WriteDirect
                     crate::iodevice::modes::VisionSensor::COL_O as u8,
-                    *c as u8
+                    *c as u8,
                 ]
-            }
-            // _ => todo!(),
+            } // _ => todo!(),
         }
     }
 }
@@ -2185,4 +2225,3 @@ impl FeedbackMessage {
         })
     }
 }
-

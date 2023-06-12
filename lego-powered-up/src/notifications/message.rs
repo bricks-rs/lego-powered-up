@@ -1,8 +1,8 @@
 use super::*;
 
 // Macros
-use crate::ok;
 use crate::next;
+use crate::ok;
 
 #[non_exhaustive]
 #[derive(Clone, Debug, PartialEq)]
@@ -258,7 +258,7 @@ impl NotificationMessage {
             PortOutputCommand(cmd) => cmd.serialise(),
 
             // Documentation unclear; marked as upstream only but desc says
-            // it can be used to request data. 
+            // it can be used to request data.
             HubAttachedIo(_) => todo!(),
 
             // These are upstream only and shouldn't need serialisation

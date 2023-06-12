@@ -4,24 +4,24 @@
 /// https://rebrickable.com/parts/22172/motor-xl-powered-up/
 /// And the internal motors in: https://rebrickable.com/parts/26910/hub-move-powered-up-6-x-16-x-4/
 /// The start_power commands should work with train motors.
-
 use async_trait::async_trait;
+use btleplug::{api::Characteristic, platform::Peripheral};
 use core::fmt::Debug;
-use btleplug::{ api::{Characteristic}, platform::Peripheral };
 use tokio::sync::broadcast;
 use tokio::task::JoinHandle;
 
-use crate::error::{Error,  Result};
-use crate::notifications::NotificationMessage;
+use crate::error::{Error, Result};
 use crate::notifications::InputSetupSingle;
-use crate::notifications::{ WriteDirectModeDataPayload, };
-use crate::notifications::{PortOutputSubcommand, PortOutputCommandFormat, StartupInfo, CompletionInfo};
-use crate::notifications::{InputSetupCombined,  InputSetupCombinedSubcommand};
-use crate::notifications::{PortValueSingleFormat, PortValueCombinedFormat};
+use crate::notifications::NotificationMessage;
+use crate::notifications::WriteDirectModeDataPayload;
+use crate::notifications::{
+    CompletionInfo, PortOutputCommandFormat, PortOutputSubcommand, StartupInfo,
+};
+use crate::notifications::{InputSetupCombined, InputSetupCombinedSubcommand};
+use crate::notifications::{PortValueCombinedFormat, PortValueSingleFormat};
 
-pub use crate::notifications::{Power, EndState};
-pub use crate::consts::{MotorSensorMode};
-
+pub use crate::consts::MotorSensorMode;
+pub use crate::notifications::{EndState, Power};
 
 // #[derive(Debug, Copy, Clone)]
 // pub enum MotorState{
@@ -46,7 +46,8 @@ pub trait EncoderMotor: Debug + Send + Sync {
 
         self.check()?;
         let subcommand = PortOutputSubcommand::WriteDirectModeData(
-            WriteDirectModeDataPayload::PresetEncoder(position),);
+            WriteDirectModeDataPayload::PresetEncoder(position),
+        );
         let msg =
             NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
                 port_id: self.port(),
@@ -59,7 +60,10 @@ pub trait EncoderMotor: Debug + Send + Sync {
 
     async fn set_acc_time(&self, time: i16, profile_number: i8) -> Result<()> {
         self.check()?;
-        let subcommand = PortOutputSubcommand::SetAccTime { time, profile_number, };
+        let subcommand = PortOutputSubcommand::SetAccTime {
+            time,
+            profile_number,
+        };
         let msg =
             NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
                 port_id: self.port(),
@@ -72,7 +76,10 @@ pub trait EncoderMotor: Debug + Send + Sync {
 
     async fn set_dec_time(&self, time: i16, profile_number: i8) -> Result<()> {
         self.check()?;
-        let subcommand = PortOutputSubcommand::SetDecTime { time, profile_number, };
+        let subcommand = PortOutputSubcommand::SetDecTime {
+            time,
+            profile_number,
+        };
         let msg =
             NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
                 port_id: self.port(),
@@ -87,7 +94,7 @@ pub trait EncoderMotor: Debug + Send + Sync {
     async fn start_power(&self, power: Power) -> Result<()> {
         self.check()?;
         let subcommand = PortOutputSubcommand::WriteDirectModeData(
-            WriteDirectModeDataPayload::StartPower(power) 
+            WriteDirectModeDataPayload::StartPower(power),
         );
         let msg =
             NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
@@ -100,10 +107,7 @@ pub trait EncoderMotor: Debug + Send + Sync {
     }
     async fn start_power2(&self, power1: Power, power2: Power) -> Result<()> {
         self.check()?;
-        let subcommand = PortOutputSubcommand::StartPower2 {
-            power1,
-            power2,
-        };
+        let subcommand = PortOutputSubcommand::StartPower2 { power1, power2 };
         let msg =
             NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
                 port_id: self.port(),
@@ -130,7 +134,13 @@ pub trait EncoderMotor: Debug + Send + Sync {
             });
         self.commit(msg).await
     }
-    async fn start_speed_for_degrees(&self, degrees: i32, speed: i8, max_power: Power, end_state: EndState ) -> Result<()> {
+    async fn start_speed_for_degrees(
+        &self,
+        degrees: i32,
+        speed: i8,
+        max_power: Power,
+        end_state: EndState,
+    ) -> Result<()> {
         self.check()?;
         let subcommand = PortOutputSubcommand::StartSpeedForDegrees {
             degrees,
@@ -150,8 +160,12 @@ pub trait EncoderMotor: Debug + Send + Sync {
         self.commit(msg).await
     }
 
-    // Encoder sensor data 
-    async fn motor_sensor_enable(&self, mode: MotorSensorMode, delta: u32) -> Result<()> {
+    // Encoder sensor data
+    async fn motor_sensor_enable(
+        &self,
+        mode: MotorSensorMode,
+        delta: u32,
+    ) -> Result<()> {
         self.check()?;
         let msg =
             NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
@@ -171,86 +185,101 @@ pub trait EncoderMotor: Debug + Send + Sync {
                 delta: u32::MAX,
                 notification_enabled: false,
             });
-    self.commit(msg).await
+        self.commit(msg).await
     }
-    async fn motor_combined_sensor_enable(&self, primary_mode: MotorSensorMode, speed_delta: u32, position_delta: u32) 
-        -> Result<(broadcast::Receiver<Vec<u8>>, JoinHandle<()> )> {
-        
+    async fn motor_combined_sensor_enable(
+        &self,
+        primary_mode: MotorSensorMode,
+        speed_delta: u32,
+        position_delta: u32,
+    ) -> Result<(broadcast::Receiver<Vec<u8>>, JoinHandle<()>)> {
         self.check()?;
         // Step 1: Lock device
-        let subcommand = InputSetupCombinedSubcommand::LockLpf2DeviceForSetup {};     
-        let msg =
-            NotificationMessage::PortInputFormatSetupCombinedmode(InputSetupCombined {
+        let subcommand =
+            InputSetupCombinedSubcommand::LockLpf2DeviceForSetup {};
+        let msg = NotificationMessage::PortInputFormatSetupCombinedmode(
+            InputSetupCombined {
                 port_id: self.port(),
                 subcommand,
-            });
+            },
+        );
         self.commit(msg).await?;
 
         // Step 2: Set up modes
-        self.motor_sensor_enable(MotorSensorMode::Speed, speed_delta).await?;
+        self.motor_sensor_enable(MotorSensorMode::Speed, speed_delta)
+            .await?;
         // self.motor_sensor_enable(MotorSensorMode::APos, position_delta).await;    // Availablie on TechnicLinear motors, not on InternalTacho (MoveHub)
-        self.motor_sensor_enable(MotorSensorMode::Pos, position_delta).await?;        // POS available on either
+        self.motor_sensor_enable(MotorSensorMode::Pos, position_delta)
+            .await?; // POS available on either
 
         // Step 3: Set up combination
         let sensor0_mode_nibble: u8;
         let sensor1_mode_nibble: u8;
         // let mut sensor2_mode_nibble: u8;
-        let dataset_nibble: u8 = 0x00;     // All motor modes have 1 dataset only 
+        let dataset_nibble: u8 = 0x00; // All motor modes have 1 dataset only
         match primary_mode {
             MotorSensorMode::Speed => {
-                sensor0_mode_nibble = 0x10; // Speed 
+                sensor0_mode_nibble = 0x10; // Speed
                 sensor1_mode_nibble = 0x20; // Pos
-                // sensor2_mode_nibble = 0x30; // APos
+                                            // sensor2_mode_nibble = 0x30; // APos
             }
             MotorSensorMode::Pos => {
-                sensor0_mode_nibble = 0x20; // Pos 
+                sensor0_mode_nibble = 0x20; // Pos
                 sensor1_mode_nibble = 0x10; // Speed
-                // sensor2_mode_nibble = 0x30; // APos
+                                            // sensor2_mode_nibble = 0x30; // APos
             }
             _ => {
-                sensor0_mode_nibble = 0x00;  
-                sensor1_mode_nibble = 0x00; 
-                // sensor2_mode_nibble = 0x00; 
+                sensor0_mode_nibble = 0x00;
+                sensor1_mode_nibble = 0x00;
+                // sensor2_mode_nibble = 0x00;
             }
         }
-        let subcommand = InputSetupCombinedSubcommand::SetModeanddatasetCombinations { 
-            combination_index: 0, 
-            mode_dataset: [
-                sensor0_mode_nibble + dataset_nibble, 
-                sensor1_mode_nibble + dataset_nibble, 
-                // sensor2_mode_nibble + dataset_nibble,
-                255, 0, 0, 0, 0, 0 // 255-byte marks end, cf. comment in InputSetupCombined::serialise.
-            ] 
-        };     
-        let msg =
-            NotificationMessage::PortInputFormatSetupCombinedmode(InputSetupCombined {
+        let subcommand =
+            InputSetupCombinedSubcommand::SetModeanddatasetCombinations {
+                combination_index: 0,
+                mode_dataset: [
+                    sensor0_mode_nibble + dataset_nibble,
+                    sensor1_mode_nibble + dataset_nibble,
+                    // sensor2_mode_nibble + dataset_nibble,
+                    255,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0, // 255-byte marks end, cf. comment in InputSetupCombined::serialise.
+                ],
+            };
+        let msg = NotificationMessage::PortInputFormatSetupCombinedmode(
+            InputSetupCombined {
                 port_id: self.port(),
                 subcommand,
-            });
-        self.commit(msg).await?;
- 
-        // Step 4: Unlock device and enable multi updates 
-        let subcommand = InputSetupCombinedSubcommand::UnlockAndStartMultiEnabled {};     
-        let msg =
-            NotificationMessage::PortInputFormatSetupCombinedmode(InputSetupCombined {
-                port_id: self.port(),
-                subcommand,
-            });
+            },
+        );
         self.commit(msg).await?;
 
+        // Step 4: Unlock device and enable multi updates
+        let subcommand =
+            InputSetupCombinedSubcommand::UnlockAndStartMultiEnabled {};
+        let msg = NotificationMessage::PortInputFormatSetupCombinedmode(
+            InputSetupCombined {
+                port_id: self.port(),
+                subcommand,
+            },
+        );
+        self.commit(msg).await?;
 
         // Set up channel
         let port_id = self.port();
         let (tx, rx) = broadcast::channel::<Vec<u8>>(8);
         match self.get_rx_combined() {
-            Ok(mut rx_from_main) => { 
+            Ok(mut rx_from_main) => {
                 let task = tokio::spawn(async move {
                     while let Ok(data) = rx_from_main.recv().await {
                         if data.port_id != port_id {
                             continue;
                         }
                         tx.send(data.data).expect("Error sending");
-                        
+
                         // let converted_data = data.data.into_iter().map(|x| x as i8).collect();
                         // tx.send(converted_data);
                     }
@@ -258,26 +287,22 @@ pub trait EncoderMotor: Debug + Send + Sync {
 
                 Ok((rx, task))
             }
-            _ => { Err(Error::NoneError(String::from("Something went wrong"))) }
+            _ => Err(Error::NoneError(String::from("Something went wrong"))),
         }
-
-
-    }    
+    }
 
     /// Device trait boilerplate
     fn port(&self) -> u8;
     fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>>;
-    fn get_rx_combined(&self) -> Result<broadcast::Receiver<PortValueCombinedFormat>>;
+    fn get_rx_combined(
+        &self,
+    ) -> Result<broadcast::Receiver<PortValueCombinedFormat>>;
     fn tokens(&self) -> (&Peripheral, &Characteristic);
     fn check(&self) -> Result<()>;
     async fn commit(&self, msg: NotificationMessage) -> Result<()> {
-        match crate::hubs::send(self.tokens(), msg).await { 
+        match crate::hubs::send(self.tokens(), msg).await {
             Ok(()) => Ok(()),
-            Err(e)  => { Err(e) }
+            Err(e) => Err(e),
         }
     }
-
 }
-
-
-
