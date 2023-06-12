@@ -50,7 +50,7 @@ pub trait RcDevice: Debug + Send + Sync {
         let msg =
             NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
                 port_id: self.port(),
-                mode: mode as u8,
+                mode: mode,
                 delta,
                 notification_enabled: true,
             });
@@ -83,7 +83,7 @@ pub trait RcDevice: Debug + Send + Sync {
         let task = tokio::spawn(async move {
             while let Ok(msg) = pvs_from_main.recv().await {
                 match msg.port_id {
-                    0x0 => match msg.data[0] as i8 {
+                    0x0 => match msg.data[0] {
                         0 => {
                             let _ = tx.send(RcButtonState::Aup);
                         }
@@ -98,7 +98,7 @@ pub trait RcDevice: Debug + Send + Sync {
                         }
                         _ => (),
                     },
-                    0x1 => match msg.data[0] as i8 {
+                    0x1 => match msg.data[0] {
                         0 => {
                             let _ = tx.send(RcButtonState::Bup);
                         }
@@ -141,7 +141,7 @@ pub trait RcDevice: Debug + Send + Sync {
                     Ok(msg) = pvs_from_main.recv() => {
                         match msg.port_id {
                             0x0 => {
-                                match msg.data[0] as i8 {
+                                match msg.data[0] {
                                     0 => { let _ = tx.send(RcButtonState::Aup); }
                                     1 => { let _ = tx.send(RcButtonState::Aplus); }
                                     127 => { let _ = tx.send(RcButtonState::Ared); }
@@ -150,7 +150,7 @@ pub trait RcDevice: Debug + Send + Sync {
                                 }
                             }
                             0x1 => {
-                                match msg.data[0] as i8 {
+                                match msg.data[0] {
                                     0 => { let _ = tx.send(RcButtonState::Bup); }
                                     1 => { let _ = tx.send(RcButtonState::Bplus); }
                                     127 => { let _ = tx.send(RcButtonState::Bred); }

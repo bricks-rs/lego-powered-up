@@ -53,7 +53,7 @@ pub trait VisionSensor: Debug + Send + Sync {
         let msg =
             NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
                 port_id: self.port(),
-                mode: mode as u8,
+                mode: mode,
                 delta,
                 notification_enabled: true,
             });
@@ -74,7 +74,7 @@ pub trait VisionSensor: Debug + Send + Sync {
         let task = tokio::spawn(async move {
             while let Ok(msg) = rx_from_main.recv().await {
                 if msg.port_id == port_id {
-                    match msg.data[0] as i8 {
+                    match msg.data[0] {
                         -1 => {
                             let _ = tx.send(DetectedColor::NoObject);
                         }

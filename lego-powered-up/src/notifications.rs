@@ -788,7 +788,7 @@ impl InputSetupCombined {
                 // the parse function and possibly more. Workaround for now is to set unneeded values to
                 // all 1's as a marker. Should be ok since no device probably has 128 modes and 128 datasets.
                 let md = mode_dataset.as_slice();
-                for val in md.into_iter() {
+                for val in md.iter() {
                     if *val == 255 {
                         break;
                     } else {
@@ -2011,7 +2011,7 @@ impl WriteDirectModeDataPayload {
                     startup_and_completion,
                     0x51, // WriteDirect
                     // Docs says to insert an 0x00 and then an extra 0x51 here, but works without it
-                    crate::iodevice::modes::HubLed::RGB_O as u8,
+                    crate::iodevice::modes::HubLed::RGB_O,
                     *red,
                     *green,
                     *blue,
@@ -2027,7 +2027,7 @@ impl WriteDirectModeDataPayload {
                     meta.port_id,
                     startup_and_completion,
                     0x51, // WriteDirect
-                    crate::iodevice::modes::HubLed::COL_O as u8,
+                    crate::iodevice::modes::HubLed::COL_O,
                     *c as u8,
                 ]
             }
@@ -2042,7 +2042,7 @@ impl WriteDirectModeDataPayload {
                     meta.port_id,
                     startup_and_completion,
                     0x51, // WriteDirect
-                    crate::iodevice::modes::InternalMotorTacho::POWER as u8,
+                    crate::iodevice::modes::InternalMotorTacho::POWER,
                     power,
                 ]
             }
@@ -2057,7 +2057,7 @@ impl WriteDirectModeDataPayload {
                     meta.port_id,
                     startup_and_completion,
                     0x51, // WriteDirect
-                    crate::iodevice::modes::InternalMotorTacho::POS as u8,
+                    crate::iodevice::modes::InternalMotorTacho::POS,
                     pos_bytes[0],
                     pos_bytes[1],
                     pos_bytes[2],
@@ -2076,7 +2076,7 @@ impl WriteDirectModeDataPayload {
                     meta.port_id,
                     startup_and_completion,
                     0x51, // WriteDirect
-                    crate::iodevice::modes::InternalTilt::IMPCT as u8,
+                    crate::iodevice::modes::InternalTilt::IMPCT,
                     val_bytes[0],
                     val_bytes[1],
                     val_bytes[2],
@@ -2094,7 +2094,7 @@ impl WriteDirectModeDataPayload {
                     meta.port_id,
                     startup_and_completion,
                     0x51, // WriteDirect
-                    crate::iodevice::modes::InternalTilt::OR_CF as u8,
+                    crate::iodevice::modes::InternalTilt::OR_CF,
                     *orientation as u8,
                 ]
             }
@@ -2112,7 +2112,7 @@ impl WriteDirectModeDataPayload {
                     meta.port_id,
                     startup_and_completion,
                     0x51, // WriteDirect
-                    crate::iodevice::modes::InternalTilt::IM_CF as u8,
+                    crate::iodevice::modes::InternalTilt::IM_CF,
                     *impact_threshold as u8,
                     *bump_holdoff as u8,
                 ]
@@ -2128,20 +2128,20 @@ impl WriteDirectModeDataPayload {
                     meta.port_id,
                     startup_and_completion,
                     0x51, // WriteDirect
-                    crate::iodevice::modes::InternalTilt::CALIB as u8,
+                    crate::iodevice::modes::InternalTilt::CALIB,
                     *orientation as u8,
-                    'C' as u8,
-                    'a' as u8,
-                    'l' as u8,
-                    'i' as u8,
-                    'b' as u8,
-                    '-' as u8,
-                    'S' as u8,
-                    'e' as u8,
-                    'n' as u8,
-                    's' as u8,
-                    'o' as u8,
-                    'r' as u8,
+                    b'C',
+                    b'a',
+                    b'l',
+                    b'i',
+                    b'b',
+                    b'-',
+                    b'S',
+                    b'e',
+                    b'n',
+                    b's',
+                    b'o',
+                    b'r',
                 ]
             }
             SetVisionSensorColor(c) => {
@@ -2154,7 +2154,7 @@ impl WriteDirectModeDataPayload {
                     meta.port_id,
                     startup_and_completion,
                     0x51, // WriteDirect
-                    crate::iodevice::modes::VisionSensor::COL_O as u8,
+                    crate::iodevice::modes::VisionSensor::COL_O,
                     *c as u8,
                 ]
             } // _ => todo!(),

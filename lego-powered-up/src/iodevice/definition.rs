@@ -65,10 +65,10 @@ impl Definition {
             modes: Default::default(),
         }
     }
-    pub fn set_mode_count(&mut self, mode_count: u8) -> () {
+    pub fn set_mode_count(&mut self, mode_count: u8) {
         self.mode_count = mode_count;
     }
-    pub fn set_modes(&mut self, input_modes: u16, output_modes: u16) -> () {
+    pub fn set_modes(&mut self, input_modes: u16, output_modes: u16) {
         let mut r: BTreeMap<ModeId, PortMode> = BTreeMap::new();
         for mode in 0..15 {
             if (input_modes >> mode as u16) & 1 == 1 {
@@ -87,7 +87,7 @@ impl Definition {
             while r.contains_key(&empty_key) {
                 empty_key += 1
             }
-            r.insert(empty_key as u8, PortMode::new(ModeKind::Hidden));
+            r.insert(empty_key, PortMode::new(ModeKind::Hidden));
         }
         self.modes = r;
     }
@@ -95,7 +95,7 @@ impl Definition {
     //     &self.modes
     // }
 
-    pub fn set_capabilities(&mut self, capabilities: u8) -> () {
+    pub fn set_capabilities(&mut self, capabilities: u8) {
         let mut r: Vec<Capability> = Vec::new();
         if (capabilities >> 3) & 1 == 1 {
             r.push(Capability::LogicalSynchronizable)
@@ -106,13 +106,13 @@ impl Definition {
         if (capabilities >> 1) & 1 == 1 {
             r.push(Capability::ProvideData)
         }
-        if (capabilities >> 0) & 1 == 1 {
+        if capabilities & 1 == 1 {
             r.push(Capability::AcceptData)
         }
         self.capabilities = r;
     }
 
-    pub fn set_valid_combos(&mut self, valid: Vec<u8>) -> () {
+    pub fn set_valid_combos(&mut self, valid: Vec<u8>) {
         for combo in valid {
             let mut v: Vec<u8> = Vec::new();
             for mode in 0..7 {
@@ -129,7 +129,7 @@ impl Definition {
         &mut self,
         mode_id: u8,
         chars_as_bytes: Vec<u8>,
-    ) -> () {
+    ) {
         // let mut truncated = vec![chars_as_bytes.into_iter)]; // iter with closure..?E
         let mut truncated: Vec<u8> = Vec::new();
         for c in chars_as_bytes {
@@ -161,15 +161,15 @@ impl Definition {
             }
         }
     }
-    pub fn set_mode_raw(&mut self, mode_id: u8, min: f32, max: f32) -> () {
+    pub fn set_mode_raw(&mut self, mode_id: u8, min: f32, max: f32) {
         // let mut mode =
         self.modes.get_mut(&mode_id).unwrap().raw = (min, max);
     }
-    pub fn set_mode_pct(&mut self, mode_id: u8, min: f32, max: f32) -> () {
+    pub fn set_mode_pct(&mut self, mode_id: u8, min: f32, max: f32) {
         // let mut mode =
         self.modes.get_mut(&mode_id).unwrap().pct = (min, max);
     }
-    pub fn set_mode_si(&mut self, mode_id: u8, min: f32, max: f32) -> () {
+    pub fn set_mode_si(&mut self, mode_id: u8, min: f32, max: f32) {
         // let mut mode =
         self.modes.get_mut(&mode_id).unwrap().si = (min, max);
     }
@@ -177,7 +177,7 @@ impl Definition {
         &mut self,
         mode_id: u8,
         chars_as_bytes: Vec<u8>,
-    ) -> () {
+    ) {
         let mut truncated: Vec<u8> = Vec::new();
         for c in chars_as_bytes {
             if c == 0 {
@@ -206,7 +206,7 @@ impl Definition {
         mode_id: u8,
         input: MappingValue,
         output: MappingValue,
-    ) -> () {
+    ) {
         let mode = self.modes.get_mut(&mode_id).unwrap();
         let mut r: Vec<Mapping> = Vec::new();
         if (input.0 >> 7) & 1 == 1 {
@@ -254,11 +254,11 @@ impl Definition {
         &mut self,
         mode_id: u8,
         format: ValueFormatType,
-    ) -> () {
+    ) {
         self.modes.get_mut(&mode_id).unwrap().value_format = format;
     }
 
-    pub fn set_mode_motor_bias(&mut self, mode_id: u8, bias: u8) -> () {
+    pub fn set_mode_motor_bias(&mut self, mode_id: u8, bias: u8) {
         // let mut mode =
         self.modes.get_mut(&mode_id).unwrap().motor_bias = bias;
     }

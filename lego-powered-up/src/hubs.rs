@@ -201,7 +201,7 @@ pub async fn send(
     let buf = msg.serialise();
     tokens
         .0
-        .write(&tokens.1, &buf, WriteType::WithoutResponse)
+        .write(tokens.1, &buf, WriteType::WithoutResponse)
         .await?;
     Ok(())
 }

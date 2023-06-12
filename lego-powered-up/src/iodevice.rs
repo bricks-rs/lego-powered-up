@@ -38,7 +38,7 @@ pub struct IoDevice {
 
 impl IoDevice {
     pub fn kind(&self) -> &IoTypeId {
-        &self.def.kind()
+        self.def.kind()
     }
     pub fn def(&self) -> &Definition {
         &self.def
@@ -105,8 +105,8 @@ impl GenericSensor for IoDevice {
     }
     fn tokens(&self) -> (&Peripheral, &Characteristic) {
         (
-            &self.tokens.p.as_ref().unwrap(),
-            &self.tokens.c.as_ref().unwrap(),
+            (self.tokens.p.as_ref().unwrap()),
+            (self.tokens.c.as_ref().unwrap()),
         )
     }
     fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>> {
@@ -122,11 +122,11 @@ impl GenericSensor for IoDevice {
             // println!("Dataset for call: {:?}  Dataset for device: {:?} Device kind: {:?} ", &datasettype, &vf.dataset_type, &self.kind);
             // dbg!(&self.modes);
             if datasettype == vf.dataset_type {
-                return Ok(());
+                Ok(())
             } else {
-                return Err(Error::NoneError(String::from(
+                Err(Error::NoneError(String::from(
                     "Incorrect dataset type",
-                )));
+                )))
             }
         } else {
             Err(Error::NoneError(String::from("Mode not found")))
@@ -140,8 +140,8 @@ impl RcDevice for IoDevice {
     }
     fn tokens(&self) -> (&Peripheral, &Characteristic) {
         (
-            &self.tokens.p.as_ref().unwrap(),
-            &self.tokens.c.as_ref().unwrap(),
+            (self.tokens.p.as_ref().unwrap()),
+            (self.tokens.c.as_ref().unwrap()),
         )
     }
     fn get_rx_pvs(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>> {
@@ -174,8 +174,8 @@ impl EncoderMotor for IoDevice {
     }
     fn tokens(&self) -> (&Peripheral, &Characteristic) {
         (
-            &self.tokens.p.as_ref().unwrap(),
-            &self.tokens.c.as_ref().unwrap(),
+            (self.tokens.p.as_ref().unwrap()),
+            (self.tokens.c.as_ref().unwrap()),
         )
     }
     fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>> {
@@ -210,8 +210,8 @@ impl HubLed for IoDevice {
     }
     fn tokens(&self) -> (&Peripheral, &Characteristic) {
         (
-            &self.tokens.p.as_ref().unwrap(),
-            &self.tokens.c.as_ref().unwrap(),
+            (self.tokens.p.as_ref().unwrap()),
+            (self.tokens.c.as_ref().unwrap()),
         )
     }
     fn check(&self) -> Result<()> {
@@ -228,8 +228,8 @@ impl VisionSensor for IoDevice {
     }
     fn tokens(&self) -> (&Peripheral, &Characteristic) {
         (
-            &self.tokens.p.as_ref().unwrap(),
-            &self.tokens.c.as_ref().unwrap(),
+            (self.tokens.p.as_ref().unwrap()),
+            (self.tokens.c.as_ref().unwrap()),
         )
     }
     fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>> {
