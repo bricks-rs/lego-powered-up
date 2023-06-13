@@ -7,8 +7,10 @@ use lego_powered_up::{
     consts,
     iodevice::hubled::{self, HubLed},
     // iodevice::motor::{EncoderMotor, Power},
-    iodevice::motor::{EncoderMotor, },
-    IoDevice, IoTypeId, Result as LpuResult,
+    iodevice::motor::EncoderMotor,
+    IoDevice,
+    IoTypeId,
+    Result as LpuResult,
 };
 use std::fmt::{self, Display, Formatter};
 

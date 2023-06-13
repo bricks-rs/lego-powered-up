@@ -91,6 +91,7 @@ pub trait EncoderMotor: Debug + Send + Sync {
     }
 
     // Commands
+    // To do: "2" variants of all commands, except done: start_power2
     async fn start_power(&self, power: Power) -> Result<()> {
         self.check()?;
         let subcommand = PortOutputSubcommand::WriteDirectModeData(
@@ -119,7 +120,7 @@ pub trait EncoderMotor: Debug + Send + Sync {
     }
     async fn start_speed(&self, speed: i8, max_power: u8) -> Result<()> {
         self.check()?;
-        let subcommand = PortOutputSubcommand::StartSpeedNoPower {
+        let subcommand = PortOutputSubcommand::StartSpeed {
             speed,
             max_power,
             use_acc_profile: true,
@@ -138,12 +139,62 @@ pub trait EncoderMotor: Debug + Send + Sync {
         &self,
         degrees: i32,
         speed: i8,
-        max_power: Power,
+        max_power: u8,
         end_state: EndState,
     ) -> Result<()> {
         self.check()?;
         let subcommand = PortOutputSubcommand::StartSpeedForDegrees {
             degrees,
+            speed,
+            max_power,
+            end_state,
+            use_acc_profile: true,
+            use_dec_profile: true,
+        };
+        let msg =
+            NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
+                port_id: self.port(),
+                startup_info: StartupInfo::ExecuteImmediately,
+                completion_info: CompletionInfo::NoAction,
+                subcommand,
+            });
+        self.commit(msg).await
+    }
+    async fn start_speed_for_time(
+        &self,
+        time: i16,
+        speed: i8,
+        max_power: u8,
+        end_state: EndState,
+    ) -> Result<()> {
+        self.check()?;
+        let subcommand = PortOutputSubcommand::StartSpeedForTime {
+            time,
+            speed,
+            max_power,
+            end_state,
+            use_acc_profile: true,
+            use_dec_profile: true,
+        };
+        let msg =
+            NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
+                port_id: self.port(),
+                startup_info: StartupInfo::ExecuteImmediately,
+                completion_info: CompletionInfo::NoAction,
+                subcommand,
+            });
+        self.commit(msg).await
+    }
+    async fn goto_absolute_position(
+        &self,
+        abs_pos: i32,
+        speed: i8,
+        max_power: u8,
+        end_state: EndState,
+    ) -> Result<()> {
+        self.check()?;
+        let subcommand = PortOutputSubcommand::GotoAbsolutePosition {
+            abs_pos,
             speed,
             max_power,
             end_state,
