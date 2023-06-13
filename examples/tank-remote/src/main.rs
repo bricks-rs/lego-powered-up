@@ -6,7 +6,8 @@ use eyre::Result;
 use lego_powered_up::{
     consts,
     iodevice::hubled::{self, HubLed},
-    iodevice::motor::{EncoderMotor, Power},
+    // iodevice::motor::{EncoderMotor, Power},
+    iodevice::motor::{EncoderMotor, },
     IoDevice, IoTypeId, Result as LpuResult,
 };
 use std::fmt::{self, Display, Formatter};
@@ -34,6 +35,7 @@ impl Robot {
         }
     }
 
+    // Depending on what the goal is, should possibly use braking (start_power(Power::Brake)) rather than "hold" (start_speed with speed 0).
     pub async fn stop(&mut self) -> LpuResult<()> {
         self.left_speed = 0;
         self.right_speed = 0;
@@ -66,10 +68,12 @@ impl Robot {
 
     async fn commit(&mut self) -> LpuResult<()> {
         self.left_motor
-            .start_speed(self.left_speed, Power::from_i8(self.left_speed)?)
+            // .start_speed(self.left_speed, Power::from_i8(self.left_speed)?)
+            .start_speed(self.left_speed, self.left_speed as u8)
             .await?;
         self.right_motor
-            .start_speed(self.right_speed, Power::from_i8(self.right_speed)?)
+            // .start_speed(self.right_speed, Power::from_i8(self.right_speed)?)
+            .start_speed(self.left_speed, self.left_speed as u8)
             .await?;
         Ok(())
     }

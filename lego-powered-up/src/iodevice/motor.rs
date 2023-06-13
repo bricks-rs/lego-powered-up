@@ -117,9 +117,9 @@ pub trait EncoderMotor: Debug + Send + Sync {
             });
         self.commit(msg).await
     }
-    async fn start_speed(&self, speed: i8, max_power: Power) -> Result<()> {
+    async fn start_speed(&self, speed: i8, max_power: u8) -> Result<()> {
         self.check()?;
-        let subcommand = PortOutputSubcommand::StartSpeed {
+        let subcommand = PortOutputSubcommand::StartSpeedNoPower {
             speed,
             max_power,
             use_acc_profile: true,

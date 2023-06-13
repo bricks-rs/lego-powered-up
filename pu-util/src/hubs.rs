@@ -79,7 +79,7 @@ pub async fn run(args: &HubArgs) -> Result<()> {
             let lock = hub.mutex.lock().await;
             motor = lock.io_from_port(consts::named_port::A).await?;
         }
-        motor.start_speed(50, Power::Cw(50)).await?;
+        motor.start_speed(50, 50).await?;
         tokio::time::sleep(Duration::from_secs(4)).await;
         motor.start_power(Power::Float).await?;
 

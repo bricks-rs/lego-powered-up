@@ -1501,6 +1501,12 @@ pub enum PortOutputSubcommand {
         use_acc_profile: bool,
         use_dec_profile: bool,
     },
+    StartSpeedNoPower {
+        speed: i8,
+        max_power: u8,
+        use_acc_profile: bool,
+        use_dec_profile: bool,
+    },
     StartSpeed2 {
         speed1: i8,
         speed2: i8,

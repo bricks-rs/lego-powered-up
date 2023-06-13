@@ -40,7 +40,8 @@ async fn main() -> anyhow::Result<()> {
 
     // Control task
     let motor_control = tokio::spawn(async move {
-        const MAX_POWER: Power = Power::Cw(100);
+        // const MAX_POWER: Power = Power::Cw(100);
+        const MAX_POWER: u8 = 100; 
         let mut set_limit: (Option<i32>, Option<i32>) = (None, None);
         let mut set_speed: i8 = 20;
         let mut pos: i32 = 0;

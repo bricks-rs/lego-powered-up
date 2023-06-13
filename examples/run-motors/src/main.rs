@@ -29,8 +29,8 @@ async fn main() -> anyhow::Result<()> {
     hub_led.set_hubled_color(consts::Color::Green).await?;
 
     println!("Run motors");
-    motor_c.start_speed(50, Power::Cw(50)).await?;
-    motor_d.start_speed(50, Power::Cw(50)).await?;
+    motor_c.start_speed(50, 50).await?;
+    motor_d.start_speed(50, 50).await?;
 
     tokio::time::sleep(Duration::from_secs(3)).await;
 

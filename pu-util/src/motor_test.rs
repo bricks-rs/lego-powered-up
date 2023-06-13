@@ -77,7 +77,7 @@ pub async fn run(args: &MotorTestArgs) -> Result<()> {
     tokio::time::sleep(Duration::from_secs(1)).await;
 
     for motor in &[motor_a, motor_b, motor_c, motor_d] {
-        motor.start_speed(50, Power::Cw(100)).await?;
+        motor.start_speed(50, 50).await?;
         tokio::time::sleep(Duration::from_secs(2)).await;
         motor.start_power(Power::Float).await?;
         tokio::time::sleep(Duration::from_secs(1)).await;
