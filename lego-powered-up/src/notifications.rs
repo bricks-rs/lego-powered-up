@@ -1436,6 +1436,7 @@ impl PortOutputCommandFormat {
                 let speed = speed.to_le_bytes()[0];
                 let max_power = max_power.to_le_bytes()[0];
                 let abs_pos = abs_pos.to_le_bytes();
+                dbg!(abs_pos);
                 let mut bytes = vec![
                     // Header
                     0, // len
@@ -1449,6 +1450,40 @@ impl PortOutputCommandFormat {
                 // Subcommand payload
                 bytes.extend_from_slice(&abs_pos);
                 bytes.push(speed);
+                bytes.push(max_power);
+                bytes.push(end_state.to_u8());
+                bytes.push(profile);
+
+                bytes
+            }
+            StartSpeedForTime {
+                time,
+                speed,
+                max_power,
+                end_state,
+                use_acc_profile,
+                use_dec_profile,
+            } => {
+                let profile =
+                    ((*use_acc_profile as u8) << 1) | (*use_dec_profile as u8);
+                let speed = speed.to_le_bytes()[0];
+                let max_power = max_power.to_le_bytes()[0];
+                let time = time.to_le_bytes();
+                dbg!(time);
+                let mut bytes = vec![
+                    // Header
+                    0, // len
+                    0, // hub id - always set to 0
+                    MessageType::PortOutputCommand as u8,
+                    // Command
+                    self.port_id,
+                    0x11, // 0001 Execute immediately, 0001 Command feedback
+                    PortOutputSubCommandValue::StartSpeedForDegrees as u8,
+                ];
+                // Subcommand payload
+                bytes.extend_from_slice(&time);
+                bytes.push(speed);
+                // bytes.push(max_power.to_u8());
                 bytes.push(max_power);
                 bytes.push(end_state.to_u8());
                 bytes.push(profile);

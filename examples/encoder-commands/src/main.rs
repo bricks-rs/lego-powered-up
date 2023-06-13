@@ -3,7 +3,7 @@
 
 #![allow(unused)]
 use core::time::Duration;
-use tokio::time::sleep;
+use tokio::time::sleep as sleep;
 
 use lego_powered_up::consts::named_port;
 use lego_powered_up::consts::LEGO_COLORS;
@@ -17,38 +17,34 @@ use lego_powered_up::{Hub, HubFilter};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // === Single hub ===
     let hub = lego_powered_up::setup::single_hub().await?;
 
-    // Do stuff
+    let motor: IoDevice;
+    {
+        let lock = hub.mutex.lock().await;
+        motor = lock.io_from_port(named_port::A).await?;
+    }
+
+    // Rotate by degrees (180 cw)
+    println!("Rotate by degrees (180 cw)");
+    motor.start_speed_for_degrees(180, 50, 50, EndState::Brake).await?;
+    sleep(Duration::from_secs(2)).await;
+
+    // Go to position (back to start)
+    println!("Go to position (back to start)");
+    motor.goto_absolute_position(0, 50, 50, EndState::Brake).await?;
+    sleep(Duration::from_secs(2)).await;
+
+    // Run for time (hub-controlled)
+    println!("Run for time (hub-controlled)");
+    motor.start_speed_for_time(3, 50, 50, EndState::Brake).await?;
+    sleep(Duration::from_secs(5)).await;
+
 
     // Cleanup
     println!("Disconnect from hub `{}`", hub.name);
     {
         let lock = hub.mutex.lock().await;
-        lock.disconnect().await?;
-    }
-
-    // === Main hub and RC ===
-    let (main_hub, rc_hub) = lego_powered_up::setup::main_and_rc().await?;
-    let rc: IoDevice;
-    {
-        let lock = rc_hub.mutex.lock().await;
-        rc = lock.io_from_port(named_port::A).await?;
-    }
-    let (mut rc_rx, _) = rc.remote_connect_with_green().await?;
-
-    // Do stuff
-
-    // Cleanup
-    println!("Disconnect from hub `{}`", rc_hub.name);
-    {
-        let lock = rc_hub.mutex.lock().await;
-        lock.disconnect().await?;
-    }
-    println!("Disconnect from hub `{}`", main_hub.name);
-    {
-        let lock = main_hub.mutex.lock().await;
         lock.disconnect().await?;
     }
 
