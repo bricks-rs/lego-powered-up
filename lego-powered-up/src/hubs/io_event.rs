@@ -36,7 +36,7 @@ pub async fn io_event_handler(
     const ATTACHED: bool = true;
     const HUB: bool = true;
     const INPUT: bool = false;
-    const OUTPUT: bool = false;
+    const OUTPUT: bool = true;
     const _VALUES: bool = false;
     while let Some(data) = stream.next().await {
         // println!("Received data from {:?} [{:?}]: {:?}", hub_name, data.uuid, data.value);  // Dev use

@@ -22,8 +22,20 @@ async fn main() -> anyhow::Result<()> {
     let motor: IoDevice;
     {
         let lock = hub.mutex.lock().await;
-        motor = lock.io_from_port(named_port::A).await?;
+        motor = lock.io_from_port(named_port::C).await?;
     }
+    let (mut motor_rx, _position_task) = motor
+        .enable_32bit_sensor(modes::InternalMotorTacho::POS, 1)
+        .await?;
+
+        tokio::spawn(async move {
+            while let Ok(data) = motor_rx.recv().await {
+                println!(
+                    "Pos: {:?}",
+                    data
+                );
+            }
+        });
 
     // Rotate by degrees (180 cw)
     println!("Rotate by degrees (180 cw)");
@@ -32,13 +44,13 @@ async fn main() -> anyhow::Result<()> {
 
     // Go to position (back to start)
     println!("Go to position (back to start)");
-    motor.goto_absolute_position(0, 50, 50, EndState::Brake).await?;
-    sleep(Duration::from_secs(2)).await;
+    motor.goto_absolute_position(-512, 50, 50, EndState::Brake).await?;
+    sleep(Duration::from_secs(5)).await;
 
     // Run for time (hub-controlled)
     println!("Run for time (hub-controlled)");
-    motor.start_speed_for_time(3, 50, 50, EndState::Brake).await?;
-    sleep(Duration::from_secs(5)).await;
+    motor.start_speed_for_time(5, 50, 50, EndState::Brake).await?;
+    sleep(Duration::from_secs(10)).await;
 
 
     // Cleanup
