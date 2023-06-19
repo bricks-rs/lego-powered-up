@@ -61,9 +61,9 @@ pub trait Hub: Debug + Send + Sync {
     fn attach_io(&mut self, device_to_insert: IoDevice) -> Result<()>;
     // fn detach_io(&mut self, ) -> Result<()>;
     async fn subscribe(&self, char: Characteristic) -> Result<()>;
-    async fn io_from_port(&self, port_id: u8) -> Result<IoDevice>;
-    async fn io_from_kind(&self, kind: IoTypeId) -> Result<IoDevice>;
-    async fn io_multi_from_kind(&self, kind: IoTypeId)
+    fn io_from_port(&self, port_id: u8) -> Result<IoDevice>;
+    fn io_from_kind(&self, kind: IoTypeId) -> Result<IoDevice>;
+    fn io_multi_from_kind(&self, kind: IoTypeId)
         -> Result<Vec<IoDevice>>;
 
     // Port information

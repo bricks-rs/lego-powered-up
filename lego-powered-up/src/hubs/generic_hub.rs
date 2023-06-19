@@ -135,7 +135,7 @@ impl Hub for GenericHub {
         d
     }
 
-    async fn io_from_port(&self, port_id: u8) -> Result<IoDevice> {
+    fn io_from_port(&self, port_id: u8) -> Result<IoDevice> {
         match self.connected_io.get(&port_id) {
             Some(connected_device) => {
                 let mut d = connected_device.clone();
@@ -150,7 +150,7 @@ impl Hub for GenericHub {
         }
     }
 
-    async fn io_from_kind(&self, req_kind: IoTypeId) -> Result<IoDevice> {
+    fn io_from_kind(&self, req_kind: IoTypeId) -> Result<IoDevice> {
         let found: Vec<&IoDevice> = self
             .connected_io
             .values()
@@ -173,7 +173,7 @@ impl Hub for GenericHub {
             }
         }
     }
-    async fn io_multi_from_kind(
+    fn io_multi_from_kind(
         &self,
         req_kind: IoTypeId,
     ) -> Result<Vec<IoDevice>> {
