@@ -62,11 +62,11 @@ pub async fn run(args: &MotorTestArgs) -> Result<()> {
     let motor_d: IoDevice;
     {
         let lock = hub.mutex.lock().await;
-        hub_led = lock.io_from_kind(IoTypeId::HubLed).await?;
-        motor_a = lock.io_from_port(consts::named_port::A).await?;
-        motor_b = lock.io_from_port(consts::named_port::B).await?;
-        motor_c = lock.io_from_port(consts::named_port::C).await?;
-        motor_d = lock.io_from_port(consts::named_port::D).await?;
+        hub_led = lock.io_from_kind(IoTypeId::HubLed)?;
+        motor_a = lock.io_from_port(consts::named_port::A)?;
+        motor_b = lock.io_from_port(consts::named_port::B)?;
+        motor_c = lock.io_from_port(consts::named_port::C)?;
+        motor_d = lock.io_from_port(consts::named_port::D)?;
     }
 
     // Set the hub LED if available

@@ -19,9 +19,9 @@ async fn main() -> anyhow::Result<()> {
     let motor_d: IoDevice;
     {
         let lock = hub.mutex.lock().await;
-        hub_led = lock.io_from_kind(IoTypeId::HubLed).await?;
-        motor_c = lock.io_from_port(consts::named_port::C).await?;
-        motor_d = lock.io_from_port(consts::named_port::D).await?;
+        hub_led = lock.io_from_kind(IoTypeId::HubLed)?;
+        motor_c = lock.io_from_port(consts::named_port::C)?;
+        motor_d = lock.io_from_port(consts::named_port::D)?;
     }
 
     println!("Change the hub LED to green");

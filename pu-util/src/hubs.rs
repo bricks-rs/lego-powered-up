@@ -60,7 +60,7 @@ pub async fn run(args: &HubArgs) -> Result<()> {
         let hub_led: IoDevice;
         {
             let lock = hub.mutex.lock().await;
-            hub_led = lock.io_from_kind(IoTypeId::HubLed).await?;
+            hub_led = lock.io_from_kind(IoTypeId::HubLed)?;
         }
         hub_led.set_hubled_mode(hubled::HubLedMode::Colour).await?;
         for colour in [[0_u8, 0xff, 0], [0xff, 0, 0], [0, 0, 0xff]]
@@ -77,7 +77,7 @@ pub async fn run(args: &HubArgs) -> Result<()> {
         let motor: IoDevice;
         {
             let lock = hub.mutex.lock().await;
-            motor = lock.io_from_port(consts::named_port::A).await?;
+            motor = lock.io_from_port(consts::named_port::A)?;
         }
         motor.start_speed(50, 50).await?;
         tokio::time::sleep(Duration::from_secs(4)).await;

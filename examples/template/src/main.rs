@@ -34,7 +34,7 @@ async fn main() -> anyhow::Result<()> {
     let rc: IoDevice;
     {
         let lock = rc_hub.mutex.lock().await;
-        rc = lock.io_from_port(named_port::A).await?;
+        rc = lock.io_from_port(named_port::A)?;
     }
     let (mut rc_rx, _) = rc.remote_connect_with_green().await?;
 

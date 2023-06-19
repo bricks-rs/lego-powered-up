@@ -43,7 +43,7 @@ pub async fn vision_sensor_ui(mutex: HubMutex) -> Result<()> {
         let lock = mutex.lock().await;
         device = lock
             .io_from_kind(IoTypeId::VisionSensor)
-            .await
+            // .await
             .expect("Can't access VisionSensor");
     }
     let port_id = device.def.port();
@@ -309,7 +309,7 @@ async fn vision_to_hub_color(
         let lock = mutex.lock().await;
         hubled = lock
             .io_from_kind(IoTypeId::HubLed)
-            .await
+            // .await
             .expect("Can't access Hubled");
     }
     let (mut vision_rx, _) = device.visionsensor_color().await.unwrap();
@@ -363,7 +363,7 @@ async fn vision_to_hub_rgb(
         let lock = mutex.lock().await;
         hubled = lock
             .io_from_kind(IoTypeId::HubLed)
-            .await
+            // .await
             .expect("Can't access Hubled");
     }
     hubled

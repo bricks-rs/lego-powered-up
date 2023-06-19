@@ -25,7 +25,7 @@ async fn main() -> anyhow::Result<()> {
     let hubled: IoDevice;
     {
         let lock = hub.mutex.lock().await;
-        hubled = lock.io_from_kind(IoTypeId::HubLed).await?;
+        hubled = lock.io_from_kind(IoTypeId::HubLed)?;
     }
     let _led_task = tokio::spawn(async move {
         // LEGO colors
