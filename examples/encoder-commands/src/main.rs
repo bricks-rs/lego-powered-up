@@ -28,14 +28,14 @@ async fn main() -> anyhow::Result<()> {
         .enable_32bit_sensor(modes::InternalMotorTacho::POS, 1)
         .await?;
 
-        tokio::spawn(async move {
-            while let Ok(data) = motor_rx.recv().await {
-                println!(
-                    "Pos: {:?}",
-                    data
-                );
-            }
-        });
+    tokio::spawn(async move {
+        while let Ok(data) = motor_rx.recv().await {
+            println!(
+                "Pos: {:?}",
+                data
+            );
+        }
+    });
 
     // Rotate by degrees (180 cw)
     println!("Rotate by degrees (180 cw)");
@@ -44,12 +44,12 @@ async fn main() -> anyhow::Result<()> {
 
     // Go to position (back to start)
     println!("Go to position (back to start)");
-    motor.goto_absolute_position(-512, 50, 50, EndState::Brake).await?;
+    
     sleep(Duration::from_secs(5)).await;
 
     // Run for time (hub-controlled)
     println!("Run for time (hub-controlled)");
-    motor.start_speed_for_time(5, 50, 50, EndState::Brake).await?;
+    motor.start_speed_for_time(5, 50, 50, EndState::Float).await?;
     sleep(Duration::from_secs(10)).await;
 
 
@@ -63,19 +63,3 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-// let rc_control = tokio::spawn(async move {
-//     while let Ok(data) = rc_rx.recv().await {
-//         match data {
-//             RcButtonState::Aup => {  println!("A released"); }
-//             RcButtonState::Aplus => { println!("A plus") }
-//             RcButtonState::Ared => { println!("A red"); }
-//             RcButtonState::Aminus => { println!("A minus") }
-//             RcButtonState::Bup => { println!("B released");
-//             RcButtonState::Bplus => { println!("B plus") }
-//             RcButtonState::Bred => { println!("B red");  }
-//             RcButtonState::Bminus => { println!("B minus") }
-//             RcButtonState::Green => { println!("Green pressed") }
-//             RcButtonState::GreenUp => { println!("Green released") }
-//         }
-//     }
-// });
