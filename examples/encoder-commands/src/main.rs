@@ -25,8 +25,8 @@ async fn main() -> anyhow::Result<()> {
         motor = lock.io_from_port(named_port::B)?;
     }
     let (mut motor_rx, _position_task) = motor
-        .enable_32bit_sensor(modes::InternalMotorTacho::POS, 1)
-        .await?;
+        .enable_32bit_sensor(modes::InternalMotorTacho::POS, 1)?;
+        // .await?;
 
     tokio::spawn(async move {
         while let Ok(data) = motor_rx.recv().await {

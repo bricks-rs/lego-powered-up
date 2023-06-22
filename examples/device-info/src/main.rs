@@ -179,7 +179,7 @@ async fn reader(
             }
             DatasetType::Bits16 => {
                 let (mut rx, _) =
-                    device.enable_16bit_sensor(mode_id, delta).await.unwrap();
+                    device.enable_16bit_sensor(mode_id, delta).unwrap();
                 Ok(tokio::spawn(async move {
                     while let Ok(data) = rx.recv().await {
                         println!(
@@ -191,7 +191,7 @@ async fn reader(
             }
             DatasetType::Bits32 => {
                 let (mut rx, _) =
-                    device.enable_32bit_sensor(mode_id, delta).await.unwrap();
+                    device.enable_32bit_sensor(mode_id, delta).unwrap();
                 Ok(tokio::spawn(async move {
                     while let Ok(data) = rx.recv().await {
                         println!(
@@ -203,7 +203,7 @@ async fn reader(
             }
             DatasetType::Float => {
                 let (mut rx, _) =
-                    device.enable_32bit_sensor(mode_id, delta).await.unwrap();
+                    device.enable_32bit_sensor(mode_id, delta).unwrap();
                 Ok(tokio::spawn(async move {
                     while let Ok(data) = rx.recv().await {
                         println!(

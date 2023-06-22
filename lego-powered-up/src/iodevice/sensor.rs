@@ -89,7 +89,7 @@ pub trait GenericSensor: Debug + Send + Sync {
         }
     }
 
-    async fn enable_16bit_sensor(
+    fn enable_16bit_sensor(
         &self,
         mode: u8,
         delta: u32,
@@ -146,7 +146,7 @@ pub trait GenericSensor: Debug + Send + Sync {
         }
     }
 
-    async fn enable_32bit_sensor(
+    fn enable_32bit_sensor(
         &self,
         mode: u8,
         delta: u32,
@@ -198,7 +198,7 @@ pub trait GenericSensor: Debug + Send + Sync {
         }
     }
 
-    async fn raw_channel(
+    fn raw_channel(
         &self,
     ) -> Result<(broadcast::Receiver<Vec<i8>>, JoinHandle<()>)> {
         let port_id = self.port();
