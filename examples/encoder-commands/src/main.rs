@@ -39,13 +39,13 @@ async fn main() -> anyhow::Result<()> {
 
     // Rotate by degrees (180 cw)
     println!("Rotate by degrees (180 cw)");
-    motor.start_speed_for_degrees(180, 50, 50, EndState::Brake).await?;
+    motor.start_speed_for_degrees(180, 50, 50, EndState::Brake)?;
     sleep(Duration::from_secs(2)).await;
 
     // Experimental sync command
-    println!("SYNC Rotate by degrees (180 cw)");
-    motor.start_speed_for_degrees2(180, 50, 50, EndState::Brake)?;
-    sleep(Duration::from_secs(2)).await;
+    // println!("SYNC Rotate by degrees (180 cw)");
+    // motor.start_speed_for_degrees2(180, 50, 50, EndState::Brake)?;
+    // sleep(Duration::from_secs(2)).await;
 
     // Go to position (back to start)
     println!("Go to position (back to start)");
@@ -54,7 +54,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Run for time (hub-controlled)
     println!("Run for time (hub-controlled)");
-    motor.start_speed_for_time(5, 50, 50, EndState::Float).await?;
+    motor.start_speed_for_time(5, 50, 50, EndState::Float)?;
     sleep(Duration::from_secs(10)).await;
 
 

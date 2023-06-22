@@ -31,12 +31,12 @@ async fn main() -> anyhow::Result<()> {
         // LEGO colors
         hubled
             .set_hubled_mode(HubLedMode::Colour)
-            .await
+            // .await
             .expect("Error setting mode");
         for c in LEGO_COLORS {
             hubled
                 .set_hubled_color(c)
-                .await
+                // .await
                 .expect("Error setting color");
             sleep(Duration::from_millis(1000)).await;
         }
@@ -45,7 +45,7 @@ async fn main() -> anyhow::Result<()> {
         // Rainbow
         hubled
             .set_hubled_mode(HubLedMode::Rgb)
-            .await
+            // .await
             .expect("Error setting mode");
         let mut rgb: [u8; 3] = [0; 3];
         loop {
@@ -55,7 +55,7 @@ async fn main() -> anyhow::Result<()> {
                 rgb[2] = RAINBOW_TABLE[(angle + 240) % 360];
                 hubled
                     .set_hubled_rgb(&rgb)
-                    .await
+                    // .await
                     .expect("Error setting RGB");
                 sleep(Duration::from_millis(30)).await;
             }
@@ -110,7 +110,7 @@ pub async fn attached_device_info(mutex: HubMutex) -> Result<()> {
                 print!("Set mode; enable notifications (Y / n) > ");
                 let line: String = read!("{}\n");
                 if (line.len() > 1) & (line.contains("n")) {
-                    let _ = device.device_mode(mode_id, delta, false).await;
+                    let _ = device.device_mode(mode_id, delta, false);
                 } else {
                     if let Ok(task) =
                         reader(&device, port_id, mode_id, delta).await
@@ -167,7 +167,7 @@ async fn reader(
         match mode.value_format.dataset_type {
             DatasetType::Bits8 => {
                 let (mut rx, _) =
-                    device.enable_8bit_sensor(mode_id, delta).await.unwrap();
+                    device.enable_8bit_sensor(mode_id, delta).unwrap();
                 Ok(tokio::spawn(async move {
                     while let Ok(data) = rx.recv().await {
                         println!(

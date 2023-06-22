@@ -5,6 +5,7 @@
 use async_trait::async_trait;
 use btleplug::{api::Characteristic, platform::Peripheral};
 use core::fmt::Debug;
+use std::sync::Arc;
 
 pub use crate::consts::Color;
 use crate::notifications::CompletionInfo;
@@ -18,7 +19,7 @@ use crate::Result;
 
 #[async_trait]
 pub trait HubLed: Debug + Send + Sync {
-    async fn set_hubled_mode(&self, mode: HubLedMode) -> Result<()> {
+    fn set_hubled_mode(&self, mode: HubLedMode) -> Result<()> {
         self.check()?;
         let msg =
             NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
@@ -27,10 +28,10 @@ pub trait HubLed: Debug + Send + Sync {
                 delta: 1,
                 notification_enabled: false,
             });
-        self.commit(msg).await
+        self.commit(msg)
     }
 
-    async fn set_hubled_rgb(&self, rgb: &[u8; 3]) -> Result<()> {
+    fn set_hubled_rgb(&self, rgb: &[u8; 3]) -> Result<()> {
         // self.check()?;  // Possible performance hit?
         let subcommand = PortOutputSubcommand::WriteDirectModeData(
             WriteDirectModeDataPayload::SetHubRgb {
@@ -47,10 +48,10 @@ pub trait HubLed: Debug + Send + Sync {
                 completion_info: CompletionInfo::NoAction,
                 subcommand,
             });
-        self.commit(msg).await
+        self.commit(msg)
     }
 
-    async fn set_hubled_color(&self, color: Color) -> Result<()> {
+    fn set_hubled_color(&self, color: Color) -> Result<()> {
         self.check()?;
         let subcommand = PortOutputSubcommand::WriteDirectModeData(
             WriteDirectModeDataPayload::SetHubColor(color as i8),
@@ -63,15 +64,15 @@ pub trait HubLed: Debug + Send + Sync {
                 completion_info: CompletionInfo::NoAction,
                 subcommand,
             });
-        self.commit(msg).await
+        self.commit(msg)
     }
 
     /// Device trait boilerplate
     fn port(&self) -> u8;
-    fn tokens(&self) -> (&Peripheral, &Characteristic);
+    fn tokens(&self) -> (Arc<Peripheral>, Arc<Characteristic>);
     fn check(&self) -> Result<()>;
-    async fn commit(&self, msg: NotificationMessage) -> Result<()> {
-        match crate::hubs::send(self.tokens(), msg).await {
+    fn commit(&self, msg: NotificationMessage) -> Result<()> {
+        match crate::hubs::send(self.tokens(), msg) {
             Ok(()) => Ok(()),
             Err(e) => Err(e),
         }

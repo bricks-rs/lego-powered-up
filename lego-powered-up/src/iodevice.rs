@@ -7,7 +7,7 @@ use tokio::sync::broadcast;
 use std::sync::Arc;
 
 use crate::hubs::{Channels, Tokens};
-use crate::hubs::Tokens2;
+// use crate::hubs::Tokens2;
 use crate::notifications::{
     DatasetType, NetworkCommand, PortValueCombinedFormat, PortValueSingleFormat,
 };
@@ -35,7 +35,7 @@ pub mod visionsensor;
 pub struct IoDevice {
     pub def: Definition,
     tokens: Tokens,
-    tokens2: Tokens2,
+    // tokens2: Tokens2,
     channels: Channels,
 }
 
@@ -60,20 +60,20 @@ impl IoDevice {
             def: Definition::new(kind, port),
             tokens: Default::default(),
             channels: Default::default(),
-            tokens2: Default::default(),
+            // tokens2: Default::default(),
         }
     }
+    // pub fn cache_tokens_old(
+    //     &mut self,
+    //     tokens: (Option<Peripheral>, Option<Characteristic>),
+    // ) {
+    //     (self.tokens.p, self.tokens.c) = tokens;
+    // }
     pub fn cache_tokens(
-        &mut self,
-        tokens: (Option<Peripheral>, Option<Characteristic>),
-    ) {
-        (self.tokens.p, self.tokens.c) = tokens;
-    }
-    pub fn cache_tokens2(
         &mut self,
         tokens: (Option<Arc<Peripheral>>, Option<Arc<Characteristic>>),
     ) {
-        (self.tokens2.p, self.tokens2.c) = tokens;
+        (self.tokens.p, self.tokens.c) = tokens;
     }
     #[allow(clippy::type_complexity)]
     pub fn cache_channels(
@@ -99,25 +99,28 @@ impl Basic for IoDevice {
     fn port(&self) -> u8 {
         self.def.port()
     }
-    fn tokens(&self) -> Result<(&Peripheral, &Characteristic)> {
-        // (&self.tokens.p.as_ref().unwrap(), &self.tokens.c.as_ref().unwrap())
-
-        match (&self.tokens.p.as_ref(), &self.tokens.c.as_ref()) {
-            (Some(p), Some(c)) => Ok((p, c)),
-            _ => {
-                Err(Error::NoneError(String::from("Token not in device cache")))
-            }
-        }
+    fn tokens(&self) -> (Arc<Peripheral>, Arc<Characteristic>) {
+        (
+            (self.tokens.p.as_ref().expect("No peripheral").clone()),
+            (self.tokens.c.as_ref().expect("No characteristic").clone()),
+        )
     }
+
 }
 impl GenericSensor for IoDevice {
     fn port(&self) -> u8 {
         self.def.port()
     }
-    fn tokens(&self) -> (&Peripheral, &Characteristic) {
+    // fn tokens(&self) -> (&Peripheral, &Characteristic) {
+    //     (
+    //         (self.tokens.p.as_ref().unwrap()),
+    //         (self.tokens.c.as_ref().unwrap()),
+    //     )
+    // }
+    fn tokens(&self) -> (Arc<Peripheral>, Arc<Characteristic>) {
         (
-            (self.tokens.p.as_ref().unwrap()),
-            (self.tokens.c.as_ref().unwrap()),
+            (self.tokens.p.as_ref().expect("No peripheral").clone()),
+            (self.tokens.c.as_ref().expect("No characteristic").clone()),
         )
     }
     fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>> {
@@ -147,10 +150,10 @@ impl RcDevice for IoDevice {
     fn port(&self) -> u8 {
         self.def.port()
     }
-    fn tokens(&self) -> (&Peripheral, &Characteristic) {
+    fn tokens(&self) -> (Arc<Peripheral>, Arc<Characteristic>) {
         (
-            (self.tokens.p.as_ref().unwrap()),
-            (self.tokens.c.as_ref().unwrap()),
+            (self.tokens.p.as_ref().expect("No peripheral").clone()),
+            (self.tokens.c.as_ref().expect("No characteristic").clone()),
         )
     }
     fn get_rx_pvs(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>> {
@@ -181,16 +184,16 @@ impl EncoderMotor for IoDevice {
     fn port(&self) -> u8 {
         self.def.port()
     }
-    fn tokens(&self) -> (&Peripheral, &Characteristic) {
+    // fn tokens_old(&self) -> (&Peripheral, &Characteristic) {
+    //     (
+    //         (self.tokens.p.as_ref().expect("No peripheral")),
+    //         (self.tokens.c.as_ref().expect("No characteristic")),
+    //     )
+    // }
+    fn tokens(&self) -> (Arc<Peripheral>, Arc<Characteristic>) {
         (
-            (self.tokens.p.as_ref().expect("No peripheral")),
-            (self.tokens.c.as_ref().expect("No characteristic")),
-        )
-    }
-    fn tokens2(&self) -> (Arc<Peripheral>, Arc<Characteristic>) {
-        (
-            (self.tokens2.p.as_ref().expect("No peripheral").clone()),
-            (self.tokens2.c.as_ref().expect("No characteristic").clone()),
+            (self.tokens.p.as_ref().expect("No peripheral").clone()),
+            (self.tokens.c.as_ref().expect("No characteristic").clone()),
         )
     }
     fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>> {
@@ -223,10 +226,10 @@ impl HubLed for IoDevice {
     fn port(&self) -> u8 {
         self.def.port()
     }
-    fn tokens(&self) -> (&Peripheral, &Characteristic) {
+    fn tokens(&self) -> (Arc<Peripheral>, Arc<Characteristic>) {
         (
-            (self.tokens.p.as_ref().unwrap()),
-            (self.tokens.c.as_ref().unwrap()),
+            (self.tokens.p.as_ref().expect("No peripheral").clone()),
+            (self.tokens.c.as_ref().expect("No characteristic").clone()),
         )
     }
     fn check(&self) -> Result<()> {
@@ -241,10 +244,10 @@ impl VisionSensor for IoDevice {
     fn port(&self) -> u8 {
         self.def.port()
     }
-    fn tokens(&self) -> (&Peripheral, &Characteristic) {
+    fn tokens(&self) -> (Arc<Peripheral>, Arc<Characteristic>) {
         (
-            (self.tokens.p.as_ref().unwrap()),
-            (self.tokens.c.as_ref().unwrap()),
+            (self.tokens.p.as_ref().expect("No peripheral").clone()),
+            (self.tokens.c.as_ref().expect("No characteristic").clone()),
         )
     }
     fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>> {

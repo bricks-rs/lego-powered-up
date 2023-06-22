@@ -25,18 +25,18 @@ async fn main() -> anyhow::Result<()> {
     }
 
     println!("Change the hub LED to green");
-    hub_led.set_hubled_mode(hubled::HubLedMode::Colour).await?;
-    hub_led.set_hubled_color(consts::Color::Green).await?;
+    hub_led.set_hubled_mode(hubled::HubLedMode::Colour)?;
+    hub_led.set_hubled_color(consts::Color::Green)?;
 
     println!("Run motors");
-    motor_c.start_speed(50, 50).await?;
-    motor_d.start_speed(50, 50).await?;
+    motor_c.start_speed(50, 50)?;
+    motor_d.start_speed(50, 50)?;
 
     tokio::time::sleep(Duration::from_secs(3)).await;
 
     println!("Stop motors");
-    motor_c.start_power(Power::Float).await?;
-    motor_d.start_power(Power::Brake).await?;
+    motor_c.start_power(Power::Float)?;
+    motor_d.start_power(Power::Brake)?;
 
     println!("Disconnect from hub `{}`", hub.name);
     {

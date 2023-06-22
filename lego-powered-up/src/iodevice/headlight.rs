@@ -8,15 +8,15 @@ use async_trait::async_trait;
 use btleplug::api::Characteristic;
 use btleplug::platform::Peripheral;
 use core::fmt::Debug;
-
+use std::sync::Arc;
 #[async_trait]
 pub trait HeadLight: Debug + Send + Sync {
     /// Device trait boilerplate
     fn port(&self) -> u8;
-    fn tokens(&self) -> (&Peripheral, &Characteristic);
+    fn tokens(&self) -> (Arc<Peripheral>, Arc<Characteristic>);
     fn check(&self) -> Result<()>;
-    async fn commit(&self, msg: NotificationMessage) -> Result<()> {
-        match crate::hubs::send(self.tokens(), msg).await {
+    fn commit(&self, msg: NotificationMessage) -> Result<()> {
+        match crate::hubs::send(self.tokens(), msg) {
             Ok(()) => Ok(()),
             Err(e) => Err(e),
         }

@@ -3,6 +3,7 @@
 /// higher level support.
 use async_trait::async_trait;
 use core::fmt::Debug;
+use std::sync::Arc;
 
 use btleplug::api::Characteristic;
 use btleplug::platform::Peripheral;
@@ -21,17 +22,17 @@ use crate::notifications::{
 pub trait GenericSensor: Debug + Send + Sync {
     /// Device trait boilerplate
     fn port(&self) -> u8;
-    fn tokens(&self) -> (&Peripheral, &Characteristic);
+    fn tokens(&self) -> (Arc<Peripheral>, Arc<Characteristic>);
     fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>>;
     fn check(&self, mode: u8, datasettype: DatasetType) -> Result<()>;
-    async fn commit(&self, msg: NotificationMessage) -> Result<()> {
-        match crate::hubs::send(self.tokens(), msg).await {
+    fn commit(&self, msg: NotificationMessage) -> Result<()> {
+        match crate::hubs::send(self.tokens(), msg) {
             Ok(()) => Ok(()),
             Err(e) => Err(e),
         }
     }
 
-    async fn set_device_mode(
+    fn set_device_mode(
         &self,
         mode: u8,
         delta: u32,
@@ -45,10 +46,10 @@ pub trait GenericSensor: Debug + Send + Sync {
                 notification_enabled,
             });
 
-        self.commit(msg).await
+        self.commit(msg)
     }
 
-    async fn enable_8bit_sensor(
+    fn enable_8bit_sensor(
         &self,
         mode: u8,
         delta: u32,
@@ -61,7 +62,7 @@ pub trait GenericSensor: Debug + Send + Sync {
                 )))
             }
         }
-        self.set_device_mode(mode, delta, true).await?;
+        self.set_device_mode(mode, delta, true)?;
 
         // Set up channel
         let port_id = self.port();
@@ -101,7 +102,7 @@ pub trait GenericSensor: Debug + Send + Sync {
                 )))
             }
         }
-        self.set_device_mode(mode, delta, true).await?;
+        self.set_device_mode(mode, delta, true)?;
 
         // Set up channel
         let port_id = self.port();
@@ -158,7 +159,7 @@ pub trait GenericSensor: Debug + Send + Sync {
                 )))
             }
         }
-        self.set_device_mode(mode, delta, true).await?;
+        self.set_device_mode(mode, delta, true)?;
 
         // Set up channel
         let port_id = self.port();

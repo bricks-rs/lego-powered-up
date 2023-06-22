@@ -26,7 +26,7 @@ async fn main() -> anyhow::Result<()> {
         rc = lock.io_from_port(named_port::A)?;
         // rc = lock.io_from_port(16).await?;
     }
-    let (mut rc_rx, _rc_task) = rc.remote_connect_with_green().await?;
+    let (mut rc_rx, _rc_task) = rc.remote_connect_with_green()?;
 
     // Set up motor feedback
     let motor: IoDevice;
@@ -48,23 +48,52 @@ async fn main() -> anyhow::Result<()> {
         let mut at_limit: (bool, bool) = (false, false);
         let mut cmd: (bool, bool) = (false, false);
         loop {
-            tokio::select! {
+            tokio::select! { biased;
+                Ok(msg) = motor_rx.recv() => {
+                    pos = msg[0];
+                    match set_limit.0 {
+                        None => (),
+                        Some(limit) => {
+                            if (pos <= limit) & cmd.0 {
+                                let _ = motor.start_power(Power::Brake);
+                                at_limit.0 = true;
+                                println!("Left LIMIT: {}", limit);
+                            } else {
+                                at_limit.0 = false;
+                            }
+                        }
+                    }
+                    match set_limit.1 {
+                        None => (),
+                        Some(limit) => {
+                            if (pos >= limit) & cmd.1 {
+                                let _ = motor.start_power(Power::Brake);
+                                at_limit.1 = true;
+                                println!("Right LIMIT: {}", limit);
+                            } else {
+                                at_limit.1 = false;
+                            }
+
+                        }
+                    }
+                    println!("Pos: {}", pos);
+                }
                 Ok(msg) = rc_rx.recv() => {
                     match msg {
                         RcButtonState::Aup => {
-                            let _ = motor.start_power(Power::Brake).await;
+                            let _ = motor.start_power(Power::Brake);
                             cmd = (false, false);
                         }
                         RcButtonState::Aminus => {
                             if !at_limit.0 {
                                 cmd.0 = true;
-                                let _ = motor.start_speed(-set_speed, MAX_POWER).await;
+                                let _ = motor.start_speed(-set_speed, MAX_POWER);
                             }
                         }
                         RcButtonState::Aplus => {
                             if !at_limit.1 {
                                 cmd.1 = true;
-                                let _ = motor.start_speed(set_speed, MAX_POWER).await;
+                                let _ = motor.start_speed(set_speed, MAX_POWER);
                             }
                         }
                         RcButtonState::Ared => {
@@ -114,35 +143,6 @@ async fn main() -> anyhow::Result<()> {
                         // RcButtonState::GreenUp => { println!("Green released") }
                         _ => ()
                     }
-                }
-                Ok(msg) = motor_rx.recv() => {
-                    pos = msg[0];
-                    match set_limit.0 {
-                        None => (),
-                        Some(limit) => {
-                            if (pos <= limit) & cmd.0 {
-                                let _ = motor.start_power(Power::Brake).await;
-                                at_limit.0 = true;
-                                println!("Left LIMIT: {}", limit);
-                            } else {
-                                at_limit.0 = false;
-                            }
-                        }
-                    }
-                    match set_limit.1 {
-                        None => (),
-                        Some(limit) => {
-                            if (pos >= limit) & cmd.1 {
-                                let _ = motor.start_power(Power::Brake).await;
-                                at_limit.1 = true;
-                                println!("Right LIMIT: {}", limit);
-                            } else {
-                                at_limit.1 = false;
-                            }
-
-                        }
-                    }
-                    println!("Pos: {}", pos);
                 }
                 else => { break }
             };

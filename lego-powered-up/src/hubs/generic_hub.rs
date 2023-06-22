@@ -41,17 +41,17 @@ impl Hub for GenericHub {
     fn properties(&self) -> &HubProperties {
         &self.properties
     }
-    fn characteristic(&self) -> &Characteristic {
+    fn characteristic_old(&self) -> &Characteristic {
         &self.lpf_characteristic
     }
-    fn peripheral(&self) -> &Peripheral {
+    fn peripheral_old(&self) -> &Peripheral {
         &self.peripheral
     }
  
-    fn peripheral2(&self) -> Arc<Peripheral>{
+    fn peripheral(&self) -> Arc<Peripheral>{
         self.peripheral2.clone()
     }
-    fn characteristic2(&self) -> Arc<Characteristic>{
+    fn characteristic(&self) -> Arc<Characteristic>{
         self.lpf_characteristic2.clone()
     }
     fn connected_io(&self) -> &BTreeMap<u8, IoDevice> {
@@ -146,32 +146,32 @@ impl Hub for GenericHub {
 
         d
     }
-    fn device_cache2(&self, mut d: IoDevice) -> IoDevice {
-        // Channels that forward some notification message types
-        d.cache_channels((
-            self.channels.singlevalue_sender.clone(),
-            self.channels.combinedvalue_sender.clone(),
-            self.channels.networkcmd_sender.clone(),
-        ));
+    // fn device_cache2(&self, mut d: IoDevice) -> IoDevice {
+    //     // Channels that forward some notification message types
+    //     d.cache_channels((
+    //         self.channels.singlevalue_sender.clone(),
+    //         self.channels.combinedvalue_sender.clone(),
+    //         self.channels.networkcmd_sender.clone(),
+    //     ));
 
-        // BT handles for calling send
-        d.cache_tokens((
-            Some(self.peripheral().clone()),
-            Some(self.characteristic().clone()),
-        ));
-        d.cache_tokens2((
-            Some(self.peripheral2().clone()),
-            Some(self.characteristic2().clone()),
-        ));
+    //     // BT handles for calling send
+    //     d.cache_tokens((
+    //         Some(self.peripheral().clone()),
+    //         Some(self.characteristic().clone()),
+    //     ));
+    //     d.cache_tokens2((
+    //         Some(self.peripheral2().clone()),
+    //         Some(self.characteristic2().clone()),
+    //     ));
 
-        d
-    }
+    //     d
+    // }
 
     fn io_from_port(&self, port_id: u8) -> Result<IoDevice> {
         match self.connected_io.get(&port_id) {
             Some(connected_device) => {
                 let mut d = connected_device.clone();
-                d = self.device_cache2(d);
+                d = self.device_cache(d);
 
                 Ok(d)
             }

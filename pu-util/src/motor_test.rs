@@ -73,13 +73,13 @@ pub async fn run(args: &MotorTestArgs) -> Result<()> {
     println!("Setting hub LED");
     let colour = [0x00, 0xff, 0x00];
     println!("Setting to: {:02x?}", colour);
-    hub_led.set_hubled_rgb(&colour).await?;
+    hub_led.set_hubled_rgb(&colour)?;
     tokio::time::sleep(Duration::from_secs(1)).await;
 
     for motor in &[motor_a, motor_b, motor_c, motor_d] {
-        motor.start_speed(50, 50).await?;
+        motor.start_speed(50, 50)?;
         tokio::time::sleep(Duration::from_secs(2)).await;
-        motor.start_power(Power::Float).await?;
+        motor.start_power(Power::Float)?;
         tokio::time::sleep(Duration::from_secs(1)).await;
     }
 

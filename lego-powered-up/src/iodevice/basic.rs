@@ -3,6 +3,7 @@
 use async_trait::async_trait;
 use btleplug::{api::Characteristic, platform::Peripheral};
 use core::fmt::Debug;
+use std::sync::Arc;
 
 use crate::error::Result;
 use crate::notifications::{
@@ -13,7 +14,7 @@ use crate::notifications::{
 
 #[async_trait]
 pub trait Basic: Debug + Send + Sync {
-    async fn device_mode(
+    fn device_mode(
         &self,
         mode: u8,
         delta: u32,
@@ -26,10 +27,10 @@ pub trait Basic: Debug + Send + Sync {
                 delta,
                 notification_enabled,
             });
-        self.commit(msg).await
+        self.commit(msg)
     }
 
-    async fn device_mode_combined(
+    fn device_mode_combined(
         &self,
         subcommand: InputSetupCombinedSubcommand,
     ) -> Result<()> {
@@ -39,10 +40,10 @@ pub trait Basic: Debug + Send + Sync {
                 subcommand,
             },
         );
-        self.commit(msg).await
+        self.commit(msg)
     }
 
-    async fn device_command(
+    fn device_command(
         &self,
         subcommand: PortOutputSubcommand,
         startup_info: StartupInfo,
@@ -55,14 +56,15 @@ pub trait Basic: Debug + Send + Sync {
                 completion_info,
                 subcommand,
             });
-        self.commit(msg).await
+        self.commit(msg)
     }
 
     /// Device trait boilerplate
     fn port(&self) -> u8;
-    fn tokens(&self) -> Result<(&Peripheral, &Characteristic)>;
-    async fn commit(&self, msg: NotificationMessage) -> Result<()> {
-        match crate::hubs::send(self.tokens().unwrap(), msg).await {
+    // fn tokens(&self) -> Result<(&Peripheral, &Characteristic)>;
+    fn tokens(&self) -> (Arc<Peripheral>, Arc<Characteristic>);
+    fn commit(&self, msg: NotificationMessage) -> Result<()> {
+        match crate::hubs::send(self.tokens(), msg) {
             Ok(()) => Ok(()),
             Err(e) => Err(e),
         }

@@ -58,7 +58,7 @@ pub async fn vision_sensor_ui(mutex: HubMutex) -> Result<()> {
             }
             device
                 .set_device_mode(0, 1, false)
-                .await
+                // .await
                 .expect("Error disabling notifications");
             continue;
         } else if line.trim().eq_ignore_ascii_case("color") {
@@ -251,7 +251,7 @@ async fn reader(
         // panics on non-existant mode_id
         DatasetType::Bits8 => {
             let (mut rx, _) =
-                device.enable_8bit_sensor(mode_id, delta).await.unwrap();
+                device.enable_8bit_sensor(mode_id, delta).unwrap();
             Ok(tokio::spawn(async move {
                 while let Ok(data) = rx.recv().await {
                     println!(
@@ -312,40 +312,40 @@ async fn vision_to_hub_color(
             // .await
             .expect("Can't access Hubled");
     }
-    let (mut vision_rx, _) = device.visionsensor_color().await.unwrap();
+    let (mut vision_rx, _) = device.visionsensor_color().unwrap();
     hubled
         .set_hubled_mode(HubLedMode::Colour)
-        .await
+        // .await
         .expect("Error setting mode");
     Ok(tokio::spawn(async move {
         while let Ok(data) = vision_rx.recv().await {
             println!("Color: {:?} ", data,);
             match data {
                 DetectedColor::NoObject => {
-                    let _ = hubled.set_hubled_color(Color::Black).await;
+                    let _ = hubled.set_hubled_color(Color::Black);
                 }
                 DetectedColor::Black => {
-                    let _ = hubled.set_hubled_color(Color::Black).await;
+                    let _ = hubled.set_hubled_color(Color::Black);
                 }
                 // DetectedColor::Color1 => { hubled.set_hubled_color(Color::Pink).await; },
                 // DetectedColor::Color2 => { hubled.set_hubled_color(Color::Magenta).await; },
                 DetectedColor::Blue => {
-                    let _ = hubled.set_hubled_color(Color::Blue).await;
+                    let _ = hubled.set_hubled_color(Color::Blue);
                 }
                 // DetectedColor::Color4 => { hubled.set_hubled_color(Color::LightBlue).await; },
                 DetectedColor::Green => {
-                    let _ = hubled.set_hubled_color(Color::Green).await;
+                    let _ = hubled.set_hubled_color(Color::Green);
                 }
                 // DetectedColor::Color6 => { hubled.set_hubled_color(Color::Green).await; },
                 DetectedColor::Yellow => {
-                    let _ = hubled.set_hubled_color(Color::Yellow).await;
+                    let _ = hubled.set_hubled_color(Color::Yellow);
                 }
                 // DetectedColor::Color8 => { hubled.set_hubled_color(Color::Orange).await; },
                 DetectedColor::Red => {
-                    let _ = hubled.set_hubled_color(Color::Red).await;
+                    let _ = hubled.set_hubled_color(Color::Red);
                 }
                 DetectedColor::White => {
-                    let _ = hubled.set_hubled_color(Color::White).await;
+                    let _ = hubled.set_hubled_color(Color::White);
                 }
                 _ => (),
             }
@@ -368,9 +368,9 @@ async fn vision_to_hub_rgb(
     }
     hubled
         .set_hubled_mode(HubLedMode::Rgb)
-        .await
+        // .await
         .expect("Error setting mode");
-    hubled.set_hubled_rgb(&[0x00, 0x00, 0x00]).await.unwrap();
+    let _ = hubled.set_hubled_rgb(&[0x00, 0x00, 0x00]);
     let (mut vision_rx, _) = device
         .enable_16bit_sensor(modes::VisionSensor::RGB_I, 1)
         .await
@@ -378,8 +378,8 @@ async fn vision_to_hub_rgb(
     Ok(tokio::spawn(async move {
         while let Ok(data) = vision_rx.recv().await {
             let _ = hubled
-                .set_hubled_rgb(&[data[0] as u8, data[1] as u8, data[2] as u8])
-                .await;
+                .set_hubled_rgb(&[data[0] as u8, data[1] as u8, data[2] as u8]);
+                // .await;
             println!("RGB: {:?} ", data,)
         }
     }))

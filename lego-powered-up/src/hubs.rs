@@ -52,13 +52,13 @@ pub trait Hub: Debug + Send + Sync {
     // The init function cannot be a trait method until we have GAT :(
     //fn init(peripheral: P);
     fn properties(&self) -> &HubProperties;
-    fn peripheral(&self) -> &Peripheral;
-    fn characteristic(&self) -> &Characteristic;
+    fn peripheral_old(&self) -> &Peripheral;
+    fn characteristic_old(&self) -> &Characteristic;
     fn kind(&self) -> HubType;
     fn connected_io(&self) -> &BTreeMap<u8, IoDevice>;
     fn connected_io_mut(&mut self) -> &mut BTreeMap<u8, IoDevice>;
     fn channels(&mut self) -> &mut crate::hubs::Channels;
-    fn device_cache(&self, d: IoDevice) -> IoDevice;
+    // fn device_cache_old(&self, d: IoDevice) -> IoDevice;
     fn attach_io(&mut self, device_to_insert: IoDevice) -> Result<()>;
     // fn detach_io(&mut self, ) -> Result<()>;
     async fn subscribe(&self, char: Characteristic) -> Result<()>;
@@ -67,9 +67,9 @@ pub trait Hub: Debug + Send + Sync {
     fn io_multi_from_kind(&self, kind: IoTypeId)
         -> Result<Vec<IoDevice>>;
 
-    fn peripheral2(&self) -> Arc<Peripheral>;
-    fn characteristic2(&self) -> Arc<Characteristic>;
-    fn device_cache2(&self, d: IoDevice) -> IoDevice;
+    fn peripheral(&self) -> Arc<Peripheral>;
+    fn characteristic(&self) -> Arc<Characteristic>;
+    fn device_cache(&self, d: IoDevice) -> IoDevice;
 
     // Port information
     async fn request_port_info(
@@ -155,7 +155,7 @@ pub trait Hub: Debug + Send + Sync {
     async fn send(&self, msg: NotificationMessage) -> Result<()> {
         let buf = msg.serialise();
         self.peripheral()
-            .write(self.characteristic(), &buf, WriteType::WithoutResponse)
+            .write(&self.characteristic(), &buf, WriteType::WithoutResponse)
             .await?;
         Ok(())
     }
@@ -199,7 +199,7 @@ pub struct HubProperties {
 }
 
 /// Devices can use this with cached tokens and not need to mutex-lock hub
-pub async fn send(
+pub async fn send_old(
     tokens: (&Peripheral, &Characteristic),
     msg: NotificationMessage,
 ) -> Result<()> {
@@ -211,7 +211,7 @@ pub async fn send(
     Ok(())
 }
 
-pub fn send2(
+pub fn send(
     tokens: (Arc<Peripheral>, Arc<Characteristic>),
     msg: NotificationMessage,
 ) -> Result<()> {
@@ -226,14 +226,14 @@ pub fn send2(
     Ok(())
 }
 
-#[derive(Debug, Default, Clone)]
-pub struct Tokens {
-    pub p: Option<Peripheral>,
-    pub c: Option<Characteristic>,
-}
+// #[derive(Debug, Default, Clone)]
+// pub struct Tokens {
+//     pub p: Option<Peripheral>,
+//     pub c: Option<Characteristic>,
+// }
 
 #[derive(Debug, Default, Clone)]
-pub struct Tokens2 {
+pub struct Tokens {
     pub p: Option<Arc<Peripheral>>,
     pub c: Option<Arc<Characteristic>>,
 }

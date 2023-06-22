@@ -412,7 +412,7 @@ impl ConnectedHub {
         // Subscribe to btleplug peripheral
         {
             let lock = connected_hub.mutex.lock().await;
-            match lock.peripheral().subscribe(lock.characteristic()).await {
+            match lock.peripheral().subscribe(&lock.characteristic()).await {
                 Ok(()) => (),
                 // We got a peri connection but can't subscribe. Can happen if the hub has almost timed out
                 // waiting for a connection; it seemingly connects but then turns off. On Windows the error
