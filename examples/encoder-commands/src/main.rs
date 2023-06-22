@@ -22,7 +22,7 @@ async fn main() -> anyhow::Result<()> {
     let motor: IoDevice;
     {
         let lock = hub.mutex.lock().await;
-        motor = lock.io_from_port(named_port::C)?;
+        motor = lock.io_from_port(named_port::B)?;
     }
     let (mut motor_rx, _position_task) = motor
         .enable_32bit_sensor(modes::InternalMotorTacho::POS, 1)
@@ -40,6 +40,11 @@ async fn main() -> anyhow::Result<()> {
     // Rotate by degrees (180 cw)
     println!("Rotate by degrees (180 cw)");
     motor.start_speed_for_degrees(180, 50, 50, EndState::Brake).await?;
+    sleep(Duration::from_secs(2)).await;
+
+    // Experimental sync command
+    println!("SYNC Rotate by degrees (180 cw)");
+    motor.start_speed_for_degrees2(180, 50, 50, EndState::Brake)?;
     sleep(Duration::from_secs(2)).await;
 
     // Go to position (back to start)

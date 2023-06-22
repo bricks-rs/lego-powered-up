@@ -41,6 +41,7 @@ pub mod io_event;
 // pub mod technic_hub;
 // pub mod rc_hub;
 // pub mod move_hub;
+use std::sync::Arc;
 
 /// Trait describing a generic hub.
 #[async_trait::async_trait]
@@ -65,6 +66,10 @@ pub trait Hub: Debug + Send + Sync {
     fn io_from_kind(&self, kind: IoTypeId) -> Result<IoDevice>;
     fn io_multi_from_kind(&self, kind: IoTypeId)
         -> Result<Vec<IoDevice>>;
+
+    fn peripheral2(&self) -> Arc<Peripheral>;
+    fn characteristic2(&self) -> Arc<Characteristic>;
+    fn device_cache2(&self, d: IoDevice) -> IoDevice;
 
     // Port information
     async fn request_port_info(
@@ -205,10 +210,32 @@ pub async fn send(
         .await?;
     Ok(())
 }
+
+pub fn send2(
+    tokens: (Arc<Peripheral>, Arc<Characteristic>),
+    msg: NotificationMessage,
+) -> Result<()> {
+    let buf = msg.serialise();
+    let new_tokens = tokens.clone();
+    tokio::spawn(async move {
+        let _ = new_tokens
+            .0
+            .write(&new_tokens.1, &buf, WriteType::WithoutResponse)
+            .await;
+    });
+    Ok(())
+}
+
 #[derive(Debug, Default, Clone)]
 pub struct Tokens {
     pub p: Option<Peripheral>,
     pub c: Option<Characteristic>,
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct Tokens2 {
+    pub p: Option<Arc<Peripheral>>,
+    pub c: Option<Arc<Characteristic>>,
 }
 #[derive(Debug, Default, Clone)]
 pub struct Channels {
@@ -224,10 +251,10 @@ pub struct Channels {
 
 #[derive(Debug, Default, Clone)]
 pub struct HubNotification {
-    hub_property: Option<HubProperty>,
-    hub_action: Option<HubActionRequest>,
-    hub_alert: Option<HubAlert>,
-    hub_error: Option<ErrorMessageFormat>,
+    pub hub_property: Option<HubProperty>,
+    pub hub_action: Option<HubActionRequest>,
+    pub hub_alert: Option<HubAlert>,
+    pub hub_error: Option<ErrorMessageFormat>,
 }
 
 // pub type PortMap = HashMap<Port, u8>;

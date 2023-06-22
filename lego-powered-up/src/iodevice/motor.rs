@@ -22,6 +22,8 @@ use crate::notifications::{PortValueCombinedFormat, PortValueSingleFormat};
 
 pub use crate::consts::MotorSensorMode;
 pub use crate::notifications::{EndState, Power};
+use std::sync::Arc;
+
 
 // #[derive(Debug, Copy, Clone)]
 // pub enum MotorState{
@@ -159,6 +161,31 @@ pub trait EncoderMotor: Debug + Send + Sync {
                 subcommand,
             });
         self.commit(msg).await
+    }
+    fn start_speed_for_degrees2(
+        &self,
+        degrees: i32,
+        speed: i8,
+        max_power: u8,
+        end_state: EndState,
+    ) -> Result<()> {
+        self.check()?;
+        let subcommand = PortOutputSubcommand::StartSpeedForDegrees {
+            degrees,
+            speed,
+            max_power,
+            end_state,
+            use_acc_profile: true,
+            use_dec_profile: true,
+        };
+        let msg =
+            NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
+                port_id: self.port(),
+                startup_info: StartupInfo::ExecuteImmediately,
+                completion_info: CompletionInfo::NoAction,
+                subcommand,
+            });
+        self.commit2(msg)
     }
     async fn start_speed_for_time(
         &self,
@@ -356,4 +383,11 @@ pub trait EncoderMotor: Debug + Send + Sync {
             Err(e) => Err(e),
         }
     }
+    fn commit2(&self, msg: NotificationMessage) -> Result<()> {
+        match crate::hubs::send2(self.tokens2(), msg) {
+            Ok(()) => Ok(()),
+            Err(e) => Err(e),
+        }
+    }
+    fn tokens2(&self) -> (Arc<Peripheral>, Arc<Characteristic>);
 }

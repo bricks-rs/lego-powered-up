@@ -34,9 +34,9 @@ pub async fn io_event_handler(
 ) -> Result<()> {
     // Verbosity
     const ATTACHED: bool = true;
-    const HUB: bool = true;
+    const HUB: bool = false;
     const INPUT: bool = false;
-    const OUTPUT: bool = true;
+    const OUTPUT: bool = false;
     const _VALUES: bool = false;
     while let Some(data) = stream.next().await {
         // println!("Received data from {:?} [{:?}]: {:?}", hub_name, data.uuid, data.value);  // Dev use
@@ -234,7 +234,7 @@ pub async fn io_event_handler(
                                 let mut hub = mutex.lock().await;
                                 hub.connected_io_mut()
                                     .get_mut(&port_id)
-                                    .unwrap()
+                                    .unwrap()           // thread 'tokio-runtime-worker' panicked at 'called `Option::unwrap()` on a `None` value', /mnt/r/code/hus_project/api/lego-powered-up/lego-powered-up/src/hubs/io_event.rs:237:38
                                     .def
                                     .set_mode_mapping(mode, input, output);
                             }
@@ -282,9 +282,9 @@ pub async fn io_event_handler(
                         }
                     }
                     NotificationMessage::HubActions(val) => {
-                        if HUB {
+                        // if HUB {
                             eprintln!("{:?}", &val);
-                        }
+                        // }
                         match senders.3.send(HubNotification {
                             hub_property: None,
                             hub_action: Some(val),

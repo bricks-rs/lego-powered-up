@@ -11,6 +11,8 @@ use super::*;
 /// The Spike and Dacta hubs have not been tested, but there's no
 /// no obvious reason why they shouldn't work as long as they
 /// use the LEGO Wireless Protocol 3.0.00.
+use std::sync::Arc;
+
 use std::collections::BTreeMap;
 #[derive(Debug)]
 pub struct GenericHub {
@@ -20,6 +22,9 @@ pub struct GenericHub {
     pub connected_io: BTreeMap<u8, IoDevice>,
     pub kind: crate::consts::HubType,
     pub channels: Channels,
+
+    peripheral2: Arc<Peripheral>,
+    lpf_characteristic2: Arc<Characteristic>,
 }
 
 #[async_trait::async_trait]
@@ -41,6 +46,13 @@ impl Hub for GenericHub {
     }
     fn peripheral(&self) -> &Peripheral {
         &self.peripheral
+    }
+ 
+    fn peripheral2(&self) -> Arc<Peripheral>{
+        self.peripheral2.clone()
+    }
+    fn characteristic2(&self) -> Arc<Characteristic>{
+        self.lpf_characteristic2.clone()
     }
     fn connected_io(&self) -> &BTreeMap<u8, IoDevice> {
         &self.connected_io
@@ -134,12 +146,32 @@ impl Hub for GenericHub {
 
         d
     }
+    fn device_cache2(&self, mut d: IoDevice) -> IoDevice {
+        // Channels that forward some notification message types
+        d.cache_channels((
+            self.channels.singlevalue_sender.clone(),
+            self.channels.combinedvalue_sender.clone(),
+            self.channels.networkcmd_sender.clone(),
+        ));
+
+        // BT handles for calling send
+        d.cache_tokens((
+            Some(self.peripheral().clone()),
+            Some(self.characteristic().clone()),
+        ));
+        d.cache_tokens2((
+            Some(self.peripheral2().clone()),
+            Some(self.characteristic2().clone()),
+        ));
+
+        d
+    }
 
     fn io_from_port(&self, port_id: u8) -> Result<IoDevice> {
         match self.connected_io.get(&port_id) {
             Some(connected_device) => {
                 let mut d = connected_device.clone();
-                d = self.device_cache(d);
+                d = self.device_cache2(d);
 
                 Ok(d)
             }
@@ -226,6 +258,8 @@ impl GenericHub {
             // port_map,
             ..Default::default()
         };
+        let p2 = Arc::new(peripheral.clone());
+        let c2= Arc::new(lpf_characteristic.clone());
 
         Ok(Self {
             peripheral,
@@ -234,6 +268,9 @@ impl GenericHub {
             connected_io: Default::default(),
             kind,
             channels: Default::default(),
+
+            peripheral2: p2,
+            lpf_characteristic2: c2,
         })
     }
 }

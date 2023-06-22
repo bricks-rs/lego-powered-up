@@ -242,6 +242,16 @@ pub enum AlertType {
     LowSignalStrength = 0x03,
     OverPowerCondition = 0x04,
 }
+impl Display for AlertType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            AlertType::HighCurrent => write!(f, "High current"),
+            AlertType::LowSignalStrength => write!(f, "Low signal strength"),
+            AlertType::LowVoltage => write!(f, "Low voltage"),
+            AlertType::OverPowerCondition => write!(f, "Over power condition"),
+        }
+    }
+}
 
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive, Parse)]
@@ -261,9 +271,9 @@ pub enum AlertPayload {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct HubAlert {
-    pub(crate) alert_type: AlertType,
-    pub(crate) operation: AlertOperation,
-    pub(crate) payload: AlertPayload,
+    pub alert_type: AlertType,
+    pub operation: AlertOperation,
+    pub payload: AlertPayload,
 }
 
 impl HubAlert {

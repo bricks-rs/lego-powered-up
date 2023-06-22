@@ -16,6 +16,7 @@ use hubs::HubNotification;
 use std::sync::Arc;
 use tokio::sync::broadcast;
 use tokio::sync::Mutex;
+// use std::sync::Mutex;
 #[macro_use]
 extern crate log;
 
@@ -288,12 +289,14 @@ impl PoweredUp {
 }
 
 /// Properties by which to filter discovered hubs
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum HubFilter {
     /// Hub name must match the provided value
     Name(String),
     /// Hub address must match the provided value
     Addr(String),
+    /// Match by type
+    Kind(HubType),
     /// Always matches
     Null,
 }
@@ -304,7 +307,9 @@ impl HubFilter {
         use HubFilter::*;
         match self {
             Name(n) => hub.name == *n,
+            // Addr(a) => format!("{:?}", hub.addr) == *a,
             Addr(a) => format!("{:?}", hub.addr) == *a,
+            Kind(k) => hub.hub_type == *k,
             Null => true,
         }
     }
