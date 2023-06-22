@@ -19,94 +19,94 @@ async fn main() -> anyhow::Result<()> {
         lock.hub_props(
             HubPropertyRef::AdvertisingName,
             HubPropertyOperation::RequestUpdateDownstream,
-        )
-        .await?;
+        )?;
+        // .await?;
         lock.hub_props(
             HubPropertyRef::Button,
             HubPropertyOperation::RequestUpdateDownstream,
-        )
-        .await?;
+        )?;
+        // .await?;
         lock.hub_props(
             HubPropertyRef::FwVersion,
             HubPropertyOperation::RequestUpdateDownstream,
-        )
-        .await?;
+        )?;
+        // .await?;
         lock.hub_props(
             HubPropertyRef::HwVersion,
             HubPropertyOperation::RequestUpdateDownstream,
-        )
-        .await?;
+        )?;
+        // .await?;
         lock.hub_props(
             HubPropertyRef::Rssi,
             HubPropertyOperation::RequestUpdateDownstream,
-        )
-        .await?;
+        )?;
+        // .await?;
         lock.hub_props(
             HubPropertyRef::BatteryVoltage,
             HubPropertyOperation::RequestUpdateDownstream,
-        )
-        .await?;
+        )?;
+        // .await?;
         lock.hub_props(
             HubPropertyRef::BatteryType,
             HubPropertyOperation::RequestUpdateDownstream,
-        )
-        .await?;
+        )?;
+        // .await?;
         lock.hub_props(
             HubPropertyRef::ManufacturerName,
             HubPropertyOperation::RequestUpdateDownstream,
-        )
-        .await?;
+        )?;
+        // .await?;
         lock.hub_props(
             HubPropertyRef::RadioFirmwareVersion,
             HubPropertyOperation::RequestUpdateDownstream,
-        )
-        .await?;
+        )?;
+        // .await?;
         lock.hub_props(
             HubPropertyRef::LegoWirelessProtocolVersion,
             HubPropertyOperation::RequestUpdateDownstream,
-        )
-        .await?;
+        )?;
+        // .await?;
         lock.hub_props(
             HubPropertyRef::SystemTypeId,
             HubPropertyOperation::RequestUpdateDownstream,
-        )
-        .await?;
+        )?;
+        // .await?;
         lock.hub_props(
             HubPropertyRef::HwNetworkId,
             HubPropertyOperation::RequestUpdateDownstream,
-        )
-        .await?;
+        )?;
+        // .await?;
         lock.hub_props(
             HubPropertyRef::PrimaryMacAddress,
             HubPropertyOperation::RequestUpdateDownstream,
-        )
-        .await?;
+        )?;
+        // .await?;
         // lock.hub_prop_req(HubPropertyRef::SecondaryMacAddress, HubPropertyOperation::RequestUpdateDownstream).await?;
         lock.hub_props(
             HubPropertyRef::HardwareNetworkFamily,
             HubPropertyOperation::RequestUpdateDownstream,
-        )
-        .await?;
+        )?;
+        // .await?;
     }
     sleep(Duration::from_secs(1)).await;
 
     // Hub alerts
     {
         let lock = hub.mutex.lock().await;
-        lock.hub_alerts(AlertType::LowVoltage, AlertOperation::RequestUpdate)
-            .await?;
-        lock.hub_alerts(AlertType::HighCurrent, AlertOperation::RequestUpdate)
-            .await?;
+        lock.hub_alerts(AlertType::LowVoltage, AlertOperation::RequestUpdate)?;
+            // .await?;
+        lock.hub_alerts(AlertType::HighCurrent, AlertOperation::RequestUpdate)?;
+            // .await?;
         lock.hub_alerts(
             AlertType::LowSignalStrength,
             AlertOperation::RequestUpdate,
-        )
-        .await?;
+        )?;
+        // .await?;
         lock.hub_alerts(
             AlertType::OverPowerCondition,
             AlertOperation::RequestUpdate,
-        )
-        .await?;
+        )?;
+        // .await?;
     }
     sleep(Duration::from_secs(1)).await;
 
@@ -116,20 +116,20 @@ async fn main() -> anyhow::Result<()> {
         println!("Busy!");
         lock.hub_action(
             lego_powered_up::notifications::HubAction::ActivateBusyIndication,
-        )
-        .await?;
+        )?;
+        // .await?;
         sleep(Duration::from_secs(3)).await;
         println!("Not busy");
         lock.hub_action(
             lego_powered_up::notifications::HubAction::ResetBusyIndication,
-        )
-        .await?;
+        )?;
+        // .await?;
         sleep(Duration::from_secs(3)).await;
         println!("Switch off");
         lock.hub_action(
             lego_powered_up::notifications::HubAction::SwitchOffHub,
-        )
-        .await?;
+        )?;
+        // .await?;
         sleep(Duration::from_secs(3)).await;
 
         // lock.hub_action(lego_powered_up::notifications::HubAction::Disconnect).await?;

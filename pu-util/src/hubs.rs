@@ -80,7 +80,7 @@ pub async fn run(args: &HubArgs) -> Result<()> {
             motor = lock.io_from_port(consts::named_port::A)?;
         }
         motor.start_speed(50, 50)?;
-        tokio::time::sleep(Duration::from_secs(4));
+        tokio::time::sleep(Duration::from_secs(4)).await;
         motor.start_power(Power::Float)?;
 
         println!("Done!");

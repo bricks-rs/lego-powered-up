@@ -52,8 +52,8 @@ pub trait Hub: Debug + Send + Sync {
     // The init function cannot be a trait method until we have GAT :(
     //fn init(peripheral: P);
     fn properties(&self) -> &HubProperties;
-    fn peripheral_old(&self) -> &Peripheral;
-    fn characteristic_old(&self) -> &Characteristic;
+    // fn peripheral_old(&self) -> &Peripheral;
+    // fn characteristic_old(&self) -> &Characteristic;
     fn kind(&self) -> HubType;
     fn connected_io(&self) -> &BTreeMap<u8, IoDevice>;
     fn connected_io_mut(&mut self) -> &mut BTreeMap<u8, IoDevice>;
@@ -72,7 +72,7 @@ pub trait Hub: Debug + Send + Sync {
     fn device_cache(&self, d: IoDevice) -> IoDevice;
 
     // Port information
-    async fn request_port_info(
+    fn request_port_info(
         &self,
         port_id: u8,
         infotype: InformationType,
@@ -82,9 +82,9 @@ pub trait Hub: Debug + Send + Sync {
                 port_id,
                 information_type: infotype,
             });
-        self.send(msg).await
+        self.send(msg)
     }
-    async fn req_mode_info(
+    fn req_mode_info(
         &self,
         port_id: u8,
         mode: u8,
@@ -97,10 +97,10 @@ pub trait Hub: Debug + Send + Sync {
                 information_type: infotype,
             },
         );
-        self.send(msg).await
+        self.send(msg)
     }
 
-    async fn set_port_mode(
+    fn set_port_mode(
         &self,
         port_id: u8,
         mode: u8,
@@ -114,11 +114,11 @@ pub trait Hub: Debug + Send + Sync {
                 delta,
                 notification_enabled,
             });
-        self.send(mode_set_msg).await
+        self.send(mode_set_msg)
     }
 
     /// Hub properties: Single request, enable/disable notifications, reset
-    async fn hub_props(
+    fn hub_props(
         &self,
         reference: HubPropertyRef,
         operation: HubPropertyOperation,
@@ -128,18 +128,18 @@ pub trait Hub: Debug + Send + Sync {
             operation,
             property: HubPropertyValue::SecondaryMacAddress, // Not used in request
         });
-        self.send(msg).await
+        self.send(msg)
     }
 
     /// Perform Hub actions
-    async fn hub_action(&self, action_type: HubAction) -> Result<()> {
+    fn hub_action(&self, action_type: HubAction) -> Result<()> {
         let msg =
             NotificationMessage::HubActions(HubActionRequest { action_type });
-        self.send(msg).await
+        self.send(msg)
     }
 
     /// Hub alerts: Single request, enable/disable notifications
-    async fn hub_alerts(
+    fn hub_alerts(
         &self,
         alert_type: AlertType,
         operation: AlertOperation,
@@ -149,14 +149,25 @@ pub trait Hub: Debug + Send + Sync {
             operation,
             payload: AlertPayload::StatusOk,
         });
-        self.send(msg).await
+        self.send(msg)
     }
 
-    async fn send(&self, msg: NotificationMessage) -> Result<()> {
+    // async fn send(&self, msg: NotificationMessage) -> Result<()> {
+    //     let buf = msg.serialise();
+    //     self.peripheral()
+    //         .write(&self.characteristic(), &buf, WriteType::WithoutResponse)
+    //         .await?;
+    //     Ok(())
+    // }
+    fn send(&self, msg: NotificationMessage) -> Result<()> {
         let buf = msg.serialise();
-        self.peripheral()
-            .write(&self.characteristic(), &buf, WriteType::WithoutResponse)
-            .await?;
+        let new_tokens = (self.peripheral().clone(), self.characteristic().clone() );
+        tokio::spawn(async move {
+            let _ = new_tokens
+                .0
+                .write(&new_tokens.1, &buf, WriteType::WithoutResponse)
+                .await;
+        });
         Ok(())
     }
 
@@ -199,18 +210,6 @@ pub struct HubProperties {
 }
 
 /// Devices can use this with cached tokens and not need to mutex-lock hub
-pub async fn send_old(
-    tokens: (&Peripheral, &Characteristic),
-    msg: NotificationMessage,
-) -> Result<()> {
-    let buf = msg.serialise();
-    tokens
-        .0
-        .write(tokens.1, &buf, WriteType::WithoutResponse)
-        .await?;
-    Ok(())
-}
-
 pub fn send(
     tokens: (Arc<Peripheral>, Arc<Characteristic>),
     msg: NotificationMessage,
@@ -225,6 +224,19 @@ pub fn send(
     });
     Ok(())
 }
+// pub async fn send_old(
+//     tokens: (&Peripheral, &Characteristic),
+//     msg: NotificationMessage,
+// ) -> Result<()> {
+//     let buf = msg.serialise();
+//     tokens
+//         .0
+//         .write(tokens.1, &buf, WriteType::WithoutResponse)
+//         .await?;
+//     Ok(())
+// }
+
+
 
 // #[derive(Debug, Default, Clone)]
 // pub struct Tokens {

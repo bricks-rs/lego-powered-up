@@ -92,7 +92,8 @@ pub async fn io_event_handler(
                                             port_id,
                                             InformationType::ModeInfo,
                                         )
-                                        .await?;
+                                        // .await?;
+                                        ?;
                                         // hub.request_port_info(port_id, InformationType::PossibleModeCombinations).await?; // conditional req in PortInformation-arm
                                     }
                                     if ATTACHED {
@@ -127,8 +128,8 @@ pub async fn io_event_handler(
                                         hub.request_port_info(
                                             port_id,
                                             InformationType::ModeInfo,
-                                        )
-                                        .await?;
+                                        )?;
+                                        // .await?;
                                     }
                                     if ATTACHED {
                                         eprintln!(
@@ -158,19 +159,19 @@ pub async fn io_event_handler(
 
                                             // Req combinations if capability LogicalCombinable
                                             if (capabilities.0 >> 2) & 1 == 1  {
-                                                hub.request_port_info(port_id, InformationType::PossibleModeCombinations).await?;
+                                                hub.request_port_info(port_id, InformationType::PossibleModeCombinations)?;
                                             }
 
                                             for mode_id in 0..mode_count {
-                                                hub.req_mode_info(port_id, mode_id, ModeInformationType::Name).await?;
-                                                hub.req_mode_info(port_id, mode_id, ModeInformationType::Raw).await?;
-                                                hub.req_mode_info(port_id, mode_id, ModeInformationType::Pct).await?;
-                                                hub.req_mode_info(port_id, mode_id, ModeInformationType::Si).await?;
-                                                hub.req_mode_info(port_id, mode_id, ModeInformationType::Symbol).await?;
-                                                hub.req_mode_info(port_id, mode_id, ModeInformationType::Mapping).await?;
+                                                hub.req_mode_info(port_id, mode_id, ModeInformationType::Name)?;
+                                                hub.req_mode_info(port_id, mode_id, ModeInformationType::Raw)?;
+                                                hub.req_mode_info(port_id, mode_id, ModeInformationType::Pct)?;
+                                                hub.req_mode_info(port_id, mode_id, ModeInformationType::Si)?;
+                                                hub.req_mode_info(port_id, mode_id, ModeInformationType::Symbol)?;
+                                                hub.req_mode_info(port_id, mode_id, ModeInformationType::Mapping)?;
                                                 // hub.req_mode_info(port_id, mode_id, ModeInformationType::MotorBias).await?;          // Returns errorcode CommandNotRecognized on all devices I've tested
                                                 // hub.request_mode_info(port_id, mode_id, ModeInformationType::CapabilityBits).await;  // Don't have documentation to parse this
-                                                hub.req_mode_info(port_id, mode_id, ModeInformationType::ValueFormat).await?;
+                                                hub.req_mode_info(port_id, mode_id, ModeInformationType::ValueFormat)?;
                                             }
                                         }
                                     }

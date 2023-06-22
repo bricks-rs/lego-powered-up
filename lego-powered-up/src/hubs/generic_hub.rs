@@ -41,12 +41,12 @@ impl Hub for GenericHub {
     fn properties(&self) -> &HubProperties {
         &self.properties
     }
-    fn characteristic_old(&self) -> &Characteristic {
-        &self.lpf_characteristic
-    }
-    fn peripheral_old(&self) -> &Peripheral {
-        &self.peripheral
-    }
+    // fn characteristic_old(&self) -> &Characteristic {
+    //     &self.lpf_characteristic
+    // }
+    // fn peripheral_old(&self) -> &Peripheral {
+    //     &self.peripheral
+    // }
  
     fn peripheral(&self) -> Arc<Peripheral>{
         self.peripheral2.clone()
