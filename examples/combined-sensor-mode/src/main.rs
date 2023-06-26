@@ -54,7 +54,8 @@ async fn main() -> anyhow::Result<()> {
 
     {
         println!("\nCombined run");
-        let (mut rx, _task) = motor.motor_combined_sensor_enable(MotorSensorMode::Speed, 1, 1).await?;
+        let (mut rx, _task) = 
+        motor.motor_combined_sensor_enable( 1, 1).await?;
         let sensor_task = tokio::spawn(async move {
             while let Ok(data) = rx.recv().await {
                 println!("Combined: {:?}", data);

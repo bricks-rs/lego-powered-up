@@ -267,12 +267,13 @@ pub trait EncoderMotor: Debug + Send + Sync {
         self.commit(msg)
     }
 
-    // Note: Currently the returned channel assumes primary mode is Speed. 
+    // Note: Currently the returned channel assumes primary mode is Position. 
     async fn motor_combined_sensor_enable(
         &self,
-        primary_mode: MotorSensorMode,
+        // primary_mode: MotorSensorMode,
         speed_delta: u32,
         position_delta: u32,
+    // ) -> Result<(broadcast::Receiver<Vec<u8>>, JoinHandle<()>)> {
     ) -> Result<(broadcast::Receiver<(i8, i32)>, JoinHandle<()>)> {
         self.check()?;
         // Step 1: Lock device
@@ -301,23 +302,25 @@ pub trait EncoderMotor: Debug + Send + Sync {
         let sensor1_mode_nibble: u8;
         // let mut sensor2_mode_nibble: u8;
         let dataset_nibble: u8 = 0x00; // All motor modes have 1 dataset only
-        match primary_mode {
-            MotorSensorMode::Speed => {
-                sensor0_mode_nibble = 0x10; // Speed
-                sensor1_mode_nibble = 0x20; // Pos
-                                            // sensor2_mode_nibble = 0x30; // APos
-            }
-            MotorSensorMode::Pos => {
+        
+        // Only pos as primary for now
+        // match primary_mode {
+        //     MotorSensorMode::Speed => {
+        //         sensor0_mode_nibble = 0x10; // Speed
+        //         sensor1_mode_nibble = 0x20; // Pos
+        //                                     // sensor2_mode_nibble = 0x30; // APos
+        //     }
+        //     MotorSensorMode::Pos => {
                 sensor0_mode_nibble = 0x20; // Pos
                 sensor1_mode_nibble = 0x10; // Speed
                                             // sensor2_mode_nibble = 0x30; // APos
-            }
-            _ => {
-                sensor0_mode_nibble = 0x00;
-                sensor1_mode_nibble = 0x00;
-                // sensor2_mode_nibble = 0x00;
-            }
-        }
+            // }
+            // _ => {
+            //     sensor0_mode_nibble = 0x00;
+            //     sensor1_mode_nibble = 0x00;
+            //     // sensor2_mode_nibble = 0x00;
+            // }
+        // }
         let subcommand =
             InputSetupCombinedSubcommand::SetModeanddatasetCombinations {
                 combination_index: 0,
@@ -357,40 +360,64 @@ pub trait EncoderMotor: Debug + Send + Sync {
         // Set up channel
         let port_id = self.port();
         let (tx, rx) = broadcast::channel::<(i8, i32)>(8);
+        // let (tx, rx) = broadcast::channel::<Vec<u8>>(8);
         match self.get_rx_combined() {
             Ok(mut rx_from_main) => {
                 let task = tokio::spawn(async move {
+                    let mut position_buffer: i32 = 0;  // Position assumed to be 0 until first update
                     while let Ok(data) = rx_from_main.recv().await {
                         if data.port_id != port_id {
                             continue;
                         }
-                        // if data.data.len() == 3 {
-                        //     tx.send( (data.data[2] as i8, 0) ).expect("Error sending");
-                        // }
-                        if data.data.len() == 6 {
-                            let mut it = data.data.into_iter().skip(2);
-                            let pos = i32::from_le_bytes([
-                                it.next().unwrap() as u8,
-                                it.next().unwrap() as u8,
-                                it.next().unwrap() as u8,
-                                it.next().unwrap() as u8,
-                            ]);
-                            tx.send((0, pos)).expect("Error sending");
+                        // let _ = tx.send(data.data);
+
+                        // Pos primary
+                        // If position changes we always get a speed update even if it has not changed.
+                        // If only speed changes we only get speed => send speed with buffered position. 
+                        if data.data.len() == 3 {
+                            tx.send( (data.data[2] as i8, position_buffer) ).expect("Error sending");
                         }
                         else if data.data.len() == 7 {
                             let mut it = data.data.into_iter().skip(2);
-                            let speed = it.next().unwrap() as i8;
                             let pos = i32::from_le_bytes([
                                 it.next().unwrap() as u8,
                                 it.next().unwrap() as u8,
                                 it.next().unwrap() as u8,
                                 it.next().unwrap() as u8,
                             ]);
+                            let speed = it.next().unwrap() as i8;
                             tx.send( (speed, pos) ).expect("Error sending");
+                            position_buffer = pos;
                         }
                         else {
                             eprintln!("Combined mode unexpected length");
                         }
+
+                        // Speed primary
+                        // if data.data.len() == 6 {
+                        //     let mut it = data.data.into_iter().skip(2);
+                        //     let pos = i32::from_le_bytes([
+                        //         it.next().unwrap() as u8,
+                        //         it.next().unwrap() as u8,
+                        //         it.next().unwrap() as u8,
+                        //         it.next().unwrap() as u8,
+                        //     ]);
+                        //     tx.send((0, pos)).expect("Error sending");
+                        // }
+                        // else if data.data.len() == 7 {
+                        //     let mut it = data.data.into_iter().skip(2);
+                        //     let speed = it.next().unwrap() as i8;
+                        //     let pos = i32::from_le_bytes([
+                        //         it.next().unwrap() as u8,
+                        //         it.next().unwrap() as u8,
+                        //         it.next().unwrap() as u8,
+                        //         it.next().unwrap() as u8,
+                        //     ]);
+                        //     tx.send( (speed, pos) ).expect("Error sending");
+                        // }
+                        // else {
+                        //     eprintln!("Combined mode unexpected length");
+                        // }
                         
 
                         // let converted_data = data.data.into_iter().map(|x| x as i8).collect();
