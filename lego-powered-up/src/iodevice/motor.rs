@@ -265,12 +265,14 @@ pub trait EncoderMotor: Debug + Send + Sync {
             });
         self.commit(msg)
     }
+
+    // Note: Currently the returned channel assumes primary mode is Speed. 
     fn motor_combined_sensor_enable(
         &self,
         primary_mode: MotorSensorMode,
         speed_delta: u32,
         position_delta: u32,
-    ) -> Result<(broadcast::Receiver<Vec<u8>>, JoinHandle<()>)> {
+    ) -> Result<(broadcast::Receiver<(i8, i32)>, JoinHandle<()>)> {
         self.check()?;
         // Step 1: Lock device
         let subcommand =
@@ -348,7 +350,7 @@ pub trait EncoderMotor: Debug + Send + Sync {
 
         // Set up channel
         let port_id = self.port();
-        let (tx, rx) = broadcast::channel::<Vec<u8>>(8);
+        let (tx, rx) = broadcast::channel::<(i8, i32)>(8);
         match self.get_rx_combined() {
             Ok(mut rx_from_main) => {
                 let task = tokio::spawn(async move {
@@ -356,7 +358,34 @@ pub trait EncoderMotor: Debug + Send + Sync {
                         if data.port_id != port_id {
                             continue;
                         }
-                        tx.send(data.data).expect("Error sending");
+                        // if data.data.len() == 3 {
+                        //     tx.send( (data.data[2] as i8, 0) ).expect("Error sending");
+                        // }
+                        if data.data.len() == 6 {
+                            let mut it = data.data.into_iter().skip(2);
+                            let pos = i32::from_le_bytes([
+                                it.next().unwrap() as u8,
+                                it.next().unwrap() as u8,
+                                it.next().unwrap() as u8,
+                                it.next().unwrap() as u8,
+                            ]);
+                            tx.send((0, pos)).expect("Error sending");
+                        }
+                        else if data.data.len() == 7 {
+                            let mut it = data.data.into_iter().skip(2);
+                            let speed = it.next().unwrap() as i8;
+                            let pos = i32::from_le_bytes([
+                                it.next().unwrap() as u8,
+                                it.next().unwrap() as u8,
+                                it.next().unwrap() as u8,
+                                it.next().unwrap() as u8,
+                            ]);
+                            tx.send( (speed, pos) ).expect("Error sending");
+                        }
+                        else {
+                            eprintln!("Combined mode unexpected length");
+                        }
+                        
 
                         // let converted_data = data.data.into_iter().map(|x| x as i8).collect();
                         // tx.send(converted_data);

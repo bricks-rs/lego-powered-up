@@ -49,9 +49,6 @@ impl IoDevice {
     pub fn port(&self) -> u8 {
         self.def.port()
     }
-    // pub fn tokens(&self) -> &Tokens {
-    //     &self.tokens
-    // }
     pub fn channels(&self) -> &Channels {
         &self.channels
     }
@@ -63,12 +60,6 @@ impl IoDevice {
             // tokens2: Default::default(),
         }
     }
-    // pub fn cache_tokens_old(
-    //     &mut self,
-    //     tokens: (Option<Peripheral>, Option<Characteristic>),
-    // ) {
-    //     (self.tokens.p, self.tokens.c) = tokens;
-    // }
     pub fn cache_tokens(
         &mut self,
         tokens: (Option<Arc<Peripheral>>, Option<Arc<Characteristic>>),
