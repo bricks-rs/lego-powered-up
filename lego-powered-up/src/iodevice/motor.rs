@@ -7,6 +7,7 @@
 use async_trait::async_trait;
 use btleplug::{api::Characteristic, platform::Peripheral};
 use core::fmt::Debug;
+use std::time::Duration;
 use tokio::sync::broadcast;
 use tokio::task::JoinHandle;
 
@@ -267,7 +268,7 @@ pub trait EncoderMotor: Debug + Send + Sync {
     }
 
     // Note: Currently the returned channel assumes primary mode is Speed. 
-    fn motor_combined_sensor_enable(
+    async fn motor_combined_sensor_enable(
         &self,
         primary_mode: MotorSensorMode,
         speed_delta: u32,
@@ -284,14 +285,17 @@ pub trait EncoderMotor: Debug + Send + Sync {
             },
         );
         self.commit(msg)?;
+        tokio::time::sleep(Duration::from_millis(100)).await;
 
         // Step 2: Set up modes
         self.motor_sensor_enable(MotorSensorMode::Speed, speed_delta)
             ?;
+        tokio::time::sleep(Duration::from_millis(100)).await;    
         // self.motor_sensor_enable(MotorSensorMode::APos, position_delta).await;    // Availablie on TechnicLinear motors, not on InternalTacho (MoveHub)
         self.motor_sensor_enable(MotorSensorMode::Pos, position_delta)
             ?; // POS available on either
-
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        
         // Step 3: Set up combination
         let sensor0_mode_nibble: u8;
         let sensor1_mode_nibble: u8;
@@ -336,6 +340,7 @@ pub trait EncoderMotor: Debug + Send + Sync {
             },
         );
         self.commit(msg)?;
+        tokio::time::sleep(Duration::from_millis(100)).await;
 
         // Step 4: Unlock device and enable multi updates
         let subcommand =
@@ -347,6 +352,7 @@ pub trait EncoderMotor: Debug + Send + Sync {
             },
         );
         self.commit(msg)?;
+        tokio::time::sleep(Duration::from_millis(100)).await;
 
         // Set up channel
         let port_id = self.port();
