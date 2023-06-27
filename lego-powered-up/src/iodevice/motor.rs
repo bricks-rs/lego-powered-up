@@ -386,8 +386,15 @@ pub trait EncoderMotor: Debug + Send + Sync {
                                 it.next().unwrap() as u8,
                             ]);
                             let speed = it.next().unwrap() as i8;
-                            tx.send( (speed, pos) ).expect("Error sending");
                             position_buffer = pos;
+                            match tx.send( (speed, pos) ) {
+                                Ok(_) => {},
+                                Err(e) => { 
+                                    eprintln!("Motor combined error: {:?}", e);
+                                    break; 
+                                }
+                            } 
+                            // tx.send( (speed, pos) ).expect("Error sending");
                         }
                         else {
                             eprintln!("Combined mode unexpected length");
