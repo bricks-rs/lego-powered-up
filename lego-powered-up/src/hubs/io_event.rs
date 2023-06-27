@@ -22,6 +22,35 @@ use crate::IoDevice;
 type HubMutex = Arc<Mutex<Box<dyn crate::Hub>>>;
 type PinnedStream = Pin<Box<dyn Stream<Item = ValueNotification> + Send>>;
 
+// pub enum Verbosity {
+//     Attached(bool),
+//     Hub(bool),
+//     Input(bool),
+//     Output(bool),
+//     Values(bool),
+// }
+pub struct Verbosity {
+    attached: bool,
+    hub: bool,
+    input: bool,
+    output: bool,
+    values: bool,
+}
+impl Verbosity {
+    pub fn new() -> Self {
+        Self {
+            attached: false,
+            hub: false,
+            input: false,
+            output: false,
+            values: false,
+        }
+    }
+    pub fn set(&mut self, attached: bool, hub: bool, input: bool, output: bool, values: bool)  {
+        self.attached = attached;
+    }
+}
+
 pub async fn io_event_handler(
     mut stream: PinnedStream,
     mutex: HubMutex,
@@ -31,6 +60,7 @@ pub async fn io_event_handler(
         Sender<NetworkCommand>,
         Sender<HubNotification>,
     ),
+    // verbosity: Verbosity,
 ) -> Result<()> {
     // Verbosity
     const ATTACHED: bool = true;
