@@ -59,14 +59,15 @@ pub async fn io_event_handler(
         Sender<PortValueCombinedFormat>,
         Sender<NetworkCommand>,
         Sender<HubNotification>,
+        Sender<PortOutputCommandFeedbackFormat>
     ),
     // verbosity: Verbosity,
 ) -> Result<()> {
     // Verbosity
     const ATTACHED: bool = true;
     const HUB: bool = false;
-    const INPUT: bool = true;
-    const OUTPUT: bool = true;
+    const INPUT: bool = false;
+    const OUTPUT: bool = false;
     const _VALUES: bool = false;
     while let Some(data) = stream.next().await {
         // println!("Received data from {:?} [{:?}]: {:?}", hub_name, data.uuid, data.value);  // Dev use
@@ -98,6 +99,19 @@ pub async fn io_event_handler(
                             Ok(_) => (),
                             Err(e) => {
                                 eprintln!("No receiver? Error forwarding HwNetworkCommands: {:?}", e);
+                            }
+                        }
+                    }
+                    NotificationMessage::PortOutputCommandFeedback(val) => {
+                        if OUTPUT {
+                            eprintln!("{:?}", val);
+                        }
+                        if senders.4.receiver_count() > 0 {
+                            match senders.4.send(val) {
+                                Ok(_) => (),
+                                Err(e) => {
+                                    eprintln!("No receiver? Error forwarding PortOutputCommandFeedback: {:?}", e);
+                                }
                             }
                         }
                     }
@@ -246,7 +260,7 @@ pub async fn io_event_handler(
                                 let mut hub = mutex.lock().await;
                                 hub.connected_io_mut()
                                     .get_mut(&port_id)
-                                    .unwrap()
+                                    .unwrap()   // panic
                                     .def
                                     .set_mode_si(mode, min, max);
                             }
@@ -254,7 +268,7 @@ pub async fn io_event_handler(
                                 let mut hub = mutex.lock().await;
                                 hub.connected_io_mut()
                                     .get_mut(&port_id)
-                                    .unwrap()
+                                    .unwrap()   // panic
                                     .def
                                     .set_mode_symbol(mode, symbol);
                             }
@@ -383,11 +397,7 @@ pub async fn io_event_handler(
                             eprintln!("{:?}", val);
                         }
                     }
-                    NotificationMessage::PortOutputCommandFeedback(val) => {
-                        if OUTPUT {
-                            eprintln!("{:?}", val);
-                        }
-                    }
+                   
                     _ => (),
                 }
             }
