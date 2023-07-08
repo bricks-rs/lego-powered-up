@@ -21,9 +21,11 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 use btleplug::api::{Characteristic, Peripheral as _, WriteType};
 use btleplug::platform::Peripheral;
+use tokio_util::sync::CancellationToken;
 
 use std::collections::BTreeMap;
 use std::fmt::Debug;
+use parking_lot::Mutex;
 
 use crate::consts::{HubPropertyOperation, HubPropertyRef, HubType};
 use crate::error::{Error, OptionContext, Result};
@@ -32,9 +34,12 @@ use crate::notifications::{
     HubActionRequest, HubAlert, HubProperty, HubPropertyValue,
     InformationRequest, InformationType, InputSetupSingle,
     ModeInformationRequest, ModeInformationType, NetworkCommand,
-    NotificationMessage, PortValueCombinedFormat, PortValueSingleFormat,
+    NotificationMessage, PortValueCombinedFormat, PortValueSingleFormat, PortOutputCommandFeedbackFormat,
 };
 use crate::{IoDevice, IoTypeId};
+
+// pub type Tokens3 = Arc<Mutex< (Peripheral, Characteristic) >>;
+pub type Tokens = Arc<( Peripheral, Characteristic )>;
 
 pub mod generic_hub;
 pub mod io_event;
@@ -48,18 +53,16 @@ use std::sync::Arc;
 pub trait Hub: Debug + Send + Sync {
     async fn name(&self) -> Result<String>;
     async fn disconnect(&self) -> Result<()>;
+    async fn shutdown(&self) -> Result<()>;
     async fn is_connected(&self) -> Result<bool>;
     // The init function cannot be a trait method until we have GAT :(
     //fn init(peripheral: P);
     fn properties(&self) -> &HubProperties;
-    // fn peripheral_old(&self) -> &Peripheral;
-    // fn characteristic_old(&self) -> &Characteristic;
     fn kind(&self) -> HubType;
     fn connected_io(&self) -> &BTreeMap<u8, IoDevice>;
     fn connected_io_mut(&mut self) -> &mut BTreeMap<u8, IoDevice>;
     fn channels(&mut self) -> &mut crate::hubs::Channels;
-    // fn device_cache_old(&self, d: IoDevice) -> IoDevice;
-    fn attach_io(&mut self, device_to_insert: IoDevice) -> Result<()>;
+    // fn attach_io(&mut self, device_to_insert: IoDevice) -> Result<()>;
     // fn detach_io(&mut self, ) -> Result<()>;
     async fn subscribe(&self, char: Characteristic) -> Result<()>;
     fn io_from_port(&self, port_id: u8) -> Result<IoDevice>;
@@ -67,9 +70,12 @@ pub trait Hub: Debug + Send + Sync {
     fn io_multi_from_kind(&self, kind: IoTypeId)
         -> Result<Vec<IoDevice>>;
 
+    fn tokens(&self) -> Tokens;
+    fn attach_io(&mut self, io_type_id:IoTypeId, port_id: u8) -> Result<()>;
     fn peripheral(&self) -> Arc<Peripheral>;
     fn characteristic(&self) -> Arc<Characteristic>;
     fn device_cache(&self, d: IoDevice) -> IoDevice;
+    fn cancel_token(&self) -> CancellationToken;
 
     // Port information
     fn request_port_info(
@@ -152,20 +158,23 @@ pub trait Hub: Debug + Send + Sync {
         self.send(msg)
     }
 
+    // #[cfg(not(feature = "syncsend"))]
     // async fn send(&self, msg: NotificationMessage) -> Result<()> {
     //     let buf = msg.serialise();
-    //     self.peripheral()
-    //         .write(&self.characteristic(), &buf, WriteType::WithoutResponse)
+    //     let tokens = self.tokens();    
+    //     tokens.0.write(&tokens.1, &buf, WriteType::WithoutResponse)
     //         .await?;
     //     Ok(())
     // }
+
+    // #[cfg(feature = "syncsend")]
     fn send(&self, msg: NotificationMessage) -> Result<()> {
         let buf = msg.serialise();
-        let new_tokens = (self.peripheral().clone(), self.characteristic().clone() );
+        let tokens = self.tokens();
         tokio::spawn(async move {
-            let _ = new_tokens
+            let _ = tokens
                 .0
-                .write(&new_tokens.1, &buf, WriteType::WithoutResponse)
+                .write(&tokens.1, &buf, WriteType::WithoutResponse)
                 .await;
         });
         Ok(())
@@ -210,20 +219,34 @@ pub struct HubProperties {
 }
 
 /// Devices can use this with cached tokens and not need to mutex-lock hub
+// #[cfg(feature = "syncsend")]
 pub fn send(
-    tokens: (Arc<Peripheral>, Arc<Characteristic>),
+    tokens: Tokens,
     msg: NotificationMessage,
-) -> Result<()> {
+    ) -> Result<()> {
     let buf = msg.serialise();
-    let new_tokens = tokens.clone();
+    // let new_tokens = tokens.clone();
     tokio::spawn(async move {
-        let _ = new_tokens
+        let _ = tokens
             .0
-            .write(&new_tokens.1, &buf, WriteType::WithoutResponse)
+            .write(&tokens.1, &buf, WriteType::WithoutResponse)
             .await;
     });
     Ok(())
 }
+// #[cfg(not(feature = "syncsend"))]
+// pub async fn send(
+//     tokens: Tokens,
+//     msg: NotificationMessage,
+// ) -> Result<()> {
+//     let buf = msg.serialise();
+//     tokens
+//         .0
+//         .write(&tokens.1, &buf, WriteType::WithoutResponse)
+//         .await?;
+//     Ok(())
+// }
+
 // pub async fn send_old(
 //     tokens: (&Peripheral, &Characteristic),
 //     msg: NotificationMessage,
@@ -244,11 +267,17 @@ pub fn send(
 //     pub c: Option<Characteristic>,
 // }
 
-#[derive(Debug, Default, Clone)]
-pub struct Tokens {
-    pub p: Option<Arc<Peripheral>>,
-    pub c: Option<Arc<Characteristic>>,
-}
+// #[derive(Debug, Clone)]
+// pub struct Tokens {
+//      pub p: Peripheral,
+//      pub c: Characteristic,
+// }
+
+// #[derive(Debug, Default, Clone)]
+// pub struct Tokens {
+//     pub p: Option<Arc<Peripheral>>,
+//     pub c: Option<Arc<Characteristic>>,
+// }
 #[derive(Debug, Default, Clone)]
 pub struct Channels {
     pub singlevalue_sender:
@@ -259,6 +288,8 @@ pub struct Channels {
         Option<tokio::sync::broadcast::Sender<NetworkCommand>>,
     pub hubnotification_sender:
         Option<tokio::sync::broadcast::Sender<HubNotification>>,
+    pub commandfeedback_sender:
+        Option<tokio::sync::broadcast::Sender<PortOutputCommandFeedbackFormat>>,
 }
 
 #[derive(Debug, Default, Clone)]

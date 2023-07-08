@@ -3,10 +3,9 @@
 /// https://rebrickable.com/sets/88006-1/move-hub/
 /// https://rebrickable.com/parts/28739/control-unit-powered-up/
 use async_trait::async_trait;
-use btleplug::{api::Characteristic, platform::Peripheral};
 use core::fmt::Debug;
-use std::sync::Arc;
 
+use crate::hubs::Tokens;
 pub use crate::consts::Color;
 use crate::notifications::CompletionInfo;
 use crate::notifications::InputSetupSingle;
@@ -69,8 +68,8 @@ pub trait HubLed: Debug + Send + Sync {
 
     /// Device trait boilerplate
     fn port(&self) -> u8;
-    fn tokens(&self) -> (Arc<Peripheral>, Arc<Characteristic>);
     fn check(&self) -> Result<()>;
+    fn tokens(&self) -> Tokens;
     fn commit(&self, msg: NotificationMessage) -> Result<()> {
         match crate::hubs::send(self.tokens(), msg) {
             Ok(()) => Ok(()),

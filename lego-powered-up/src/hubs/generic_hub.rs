@@ -1,3 +1,5 @@
+use tokio_util::sync::CancellationToken;
+
 use super::*;
 /// Generic hub implementation, tested compatible with:
 ///
@@ -12,26 +14,31 @@ use super::*;
 /// no obvious reason why they shouldn't work as long as they
 /// use the LEGO Wireless Protocol 3.0.00.
 use std::sync::Arc;
+use parking_lot::Mutex;
 
 use std::collections::BTreeMap;
 #[derive(Debug)]
 pub struct GenericHub {
-    peripheral: Peripheral,
-    lpf_characteristic: Characteristic,
+    // peripheral: Peripheral,
+    // lpf_characteristic: Characteristic,
     properties: HubProperties,
     pub connected_io: BTreeMap<u8, IoDevice>,
     pub kind: crate::consts::HubType,
     pub channels: Channels,
+    cancel: CancellationToken,
 
-    peripheral2: Arc<Peripheral>,
-    lpf_characteristic2: Arc<Characteristic>,
+    // peripheral2: Arc<Peripheral>,
+    // lpf_characteristic2: Arc<Characteristic>,
+
+    // tokens: Arc<Mutex<( Peripheral, Characteristic )>>,
+    tokens: Tokens,
 }
 
 #[async_trait::async_trait]
 impl Hub for GenericHub {
     async fn name(&self) -> Result<String> {
         Ok(self
-            .peripheral
+            .tokens.0 //peripheral
             .properties()
             .await?
             .context("No properties found for hub")?
@@ -49,10 +56,12 @@ impl Hub for GenericHub {
     // }
  
     fn peripheral(&self) -> Arc<Peripheral>{
-        self.peripheral2.clone()
+        // self.peripheral2.clone()
+        Arc::new(self.tokens.0.clone())
     }
     fn characteristic(&self) -> Arc<Characteristic>{
-        self.lpf_characteristic2.clone()
+        // self.lpf_characteristic2.clone()
+        Arc::new(self.tokens.1.clone())
     }
     fn connected_io(&self) -> &BTreeMap<u8, IoDevice> {
         &self.connected_io
@@ -67,29 +76,39 @@ impl Hub for GenericHub {
         &mut self.channels
     }
 
-    fn attach_io(&mut self, device_to_insert: IoDevice) -> Result<()> {
-        self.connected_io
-            .insert(device_to_insert.port(), device_to_insert);
-        Ok(())
-    }
+    // fn attach_io(&mut self, device_to_insert: IoDevice) -> Result<()> {
+    //     self.connected_io
+    //         .insert(device_to_insert.port(), device_to_insert);
+    //     Ok(())
+    // }
     async fn disconnect(&self) -> Result<()> {
         if self.is_connected().await? {
-            self.peripheral.disconnect().await?;
+            self.cancel.cancel();
+            self.tokens.0.disconnect().await?;
         }
         Ok(())
     }
     async fn is_connected(&self) -> Result<bool> {
-        Ok(self.peripheral.is_connected().await?)
+        Ok(self.tokens.0.is_connected().await?)
+    }
+    async fn shutdown(&self) -> Result<()> {
+        self.cancel.cancel();
+        self.hub_action(
+            crate::notifications::HubAction::SwitchOffHub,
+        )
     }
     async fn send_raw(&self, msg: &[u8]) -> Result<()> {
         let write_type = WriteType::WithoutResponse;
         Ok(self
-            .peripheral
-            .write(&self.lpf_characteristic, msg, write_type)
+            .tokens.0
+            .write(&self.tokens.1, msg, write_type)
             .await?)
     }
     async fn subscribe(&self, char: Characteristic) -> Result<()> {
-        Ok(self.peripheral.subscribe(&char).await?)
+        Ok(self.tokens.0.subscribe(&char).await?)
+    }
+    fn cancel_token(&self) -> CancellationToken {
+        self.cancel.clone()
     }
 
     // async fn attached_io(&self) -> Vec<IoDevice> {
@@ -129,43 +148,37 @@ impl Hub for GenericHub {
     //     })
     // }
 
+    fn tokens(&self) -> Tokens {
+        self.tokens.clone()
+    }
+    fn attach_io(&mut self, io_type_id:IoTypeId, port_id: u8) -> Result<()> {
+        let device = IoDevice::new(
+            io_type_id, 
+            port_id,
+            self.tokens.clone(),
+        );
+        self.connected_io
+            .insert(port_id, device);
+
+        Ok(())
+    }
+
+
     /// Cache handles held by hub on device so we don't need to lock hub mutex as often    
     fn device_cache(&self, mut d: IoDevice) -> IoDevice {
         // Channels that forward some notification message types
         d.cache_channels((
-            self.channels.singlevalue_sender.clone(),
-            self.channels.combinedvalue_sender.clone(),
-            self.channels.networkcmd_sender.clone(),
+           self.channels.clone()
         ));
 
         // BT handles for calling send
-        d.cache_tokens((
-            Some(self.peripheral().clone()),
-            Some(self.characteristic().clone()),
-        ));
+        // d.cache_tokens((
+        //     Some(self.peripheral().clone()),
+        //     Some(self.characteristic().clone()),
+        // ));
 
         d
     }
-    // fn device_cache2(&self, mut d: IoDevice) -> IoDevice {
-    //     // Channels that forward some notification message types
-    //     d.cache_channels((
-    //         self.channels.singlevalue_sender.clone(),
-    //         self.channels.combinedvalue_sender.clone(),
-    //         self.channels.networkcmd_sender.clone(),
-    //     ));
-
-    //     // BT handles for calling send
-    //     d.cache_tokens((
-    //         Some(self.peripheral().clone()),
-    //         Some(self.characteristic().clone()),
-    //     ));
-    //     d.cache_tokens2((
-    //         Some(self.peripheral2().clone()),
-    //         Some(self.characteristic2().clone()),
-    //     ));
-
-    //     d
-    // }
 
     fn io_from_port(&self, port_id: u8) -> Result<IoDevice> {
         match self.connected_io.get(&port_id) {
@@ -236,6 +249,7 @@ impl GenericHub {
         peripheral: Peripheral,
         lpf_characteristic: Characteristic,
         kind: crate::consts::HubType,
+        cancel: CancellationToken,
     ) -> Result<Self> {
         // Peripheral is already connected before we get here
 
@@ -258,19 +272,20 @@ impl GenericHub {
             // port_map,
             ..Default::default()
         };
-        let p2 = Arc::new(peripheral.clone());
-        let c2= Arc::new(lpf_characteristic.clone());
 
         Ok(Self {
-            peripheral,
-            lpf_characteristic,
+            // tokens: Arc::new(Mutex::new(( peripheral.clone(), lpf_characteristic.clone() ))),
+            tokens: Arc::new(( peripheral, lpf_characteristic )),
+            // peripheral,
+            // lpf_characteristic,
             properties,
             connected_io: Default::default(),
             kind,
             channels: Default::default(),
-
-            peripheral2: p2,
-            lpf_characteristic2: c2,
+            cancel,
+            // peripheral2: p2,
+            // lpf_characteristic2: c2,
+            
         })
     }
 }

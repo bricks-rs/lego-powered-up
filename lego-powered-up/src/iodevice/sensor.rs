@@ -3,13 +3,13 @@
 /// higher level support.
 use async_trait::async_trait;
 use core::fmt::Debug;
-use std::sync::Arc;
 
-use btleplug::api::Characteristic;
-use btleplug::platform::Peripheral;
+
+
+
 use tokio::sync::broadcast;
 use tokio::task::JoinHandle;
-
+use crate::hubs::Tokens;
 use crate::error::{Error, Result};
 use crate::notifications::{
     DatasetType, InputSetupSingle, NotificationMessage, PortValueSingleFormat,
@@ -22,9 +22,9 @@ use crate::notifications::{
 pub trait GenericSensor: Debug + Send + Sync {
     /// Device trait boilerplate
     fn port(&self) -> u8;
-    fn tokens(&self) -> (Arc<Peripheral>, Arc<Characteristic>);
     fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>>;
     fn check(&self, mode: u8, datasettype: DatasetType) -> Result<()>;
+    fn tokens(&self) -> Tokens;
     fn commit(&self, msg: NotificationMessage) -> Result<()> {
         match crate::hubs::send(self.tokens(), msg) {
             Ok(()) => Ok(()),
@@ -66,7 +66,7 @@ pub trait GenericSensor: Debug + Send + Sync {
 
         // Set up channel
         let port_id = self.port();
-        let (tx, rx) = broadcast::channel::<Vec<i8>>(8);
+        let (tx, rx) = broadcast::channel::<Vec<i8>>(64);
         match self.get_rx() {
             Ok(mut rx_from_main) => {
                 let task = tokio::spawn(async move {
@@ -106,7 +106,7 @@ pub trait GenericSensor: Debug + Send + Sync {
 
         // Set up channel
         let port_id = self.port();
-        let (tx, rx) = broadcast::channel::<Vec<i16>>(8);
+        let (tx, rx) = broadcast::channel::<Vec<i16>>(64);
         match self.get_rx() {
             Ok(mut rx_from_main) => {
                 let task = tokio::spawn(async move {
@@ -163,7 +163,7 @@ pub trait GenericSensor: Debug + Send + Sync {
 
         // Set up channel
         let port_id = self.port();
-        let (tx, rx) = broadcast::channel::<Vec<i32>>(16);
+        let (tx, rx) = broadcast::channel::<Vec<i32>>(64);
         match self.get_rx() {
             Ok(mut rx_from_main) => {
                 let task = tokio::spawn(async move {
@@ -202,7 +202,7 @@ pub trait GenericSensor: Debug + Send + Sync {
         &self,
     ) -> Result<(broadcast::Receiver<Vec<i8>>, JoinHandle<()>)> {
         let port_id = self.port();
-        let (tx, rx) = broadcast::channel::<Vec<i8>>(8);
+        let (tx, rx) = broadcast::channel::<Vec<i8>>(64);
         match self.get_rx() {
             Ok(mut rx_from_main) => {
                 let task = tokio::spawn(async move {

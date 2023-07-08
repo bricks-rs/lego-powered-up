@@ -1,12 +1,13 @@
 /// Support for
 /// https://rebrickable.com/parts/26912/sensor-color-and-distance-powered-up-2-x-4-x-2/
 use async_trait::async_trait;
-use btleplug::{api::Characteristic, platform::Peripheral};
+
 use core::fmt::Debug;
 use tokio::sync::broadcast;
 use tokio::task::JoinHandle;
-use std::sync::Arc;
 
+
+use crate::hubs::Tokens;
 use super::modes;
 use super::modes::VisionSensor as visionmode;
 use crate::error::Result;
@@ -151,9 +152,9 @@ pub trait VisionSensor: Debug + Send + Sync {
 
     /// Device trait boilerplate
     fn port(&self) -> u8;
-    fn tokens(&self) -> (Arc<Peripheral>, Arc<Characteristic>);
     fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>>;
     fn check(&self) -> Result<()>;
+    fn tokens(&self) -> Tokens;
     fn commit(&self, msg: NotificationMessage) -> Result<()> {
         match crate::hubs::send(self.tokens(), msg) {
             Ok(()) => Ok(()),

@@ -4,12 +4,13 @@ use crate::Result;
 /// The unit as a whole functions as a hub that connects the
 /// two button devices, hubled and voltage and rssi sensors.
 use async_trait::async_trait;
-use btleplug::api::Characteristic;
-use btleplug::platform::Peripheral;
+
+
 use core::fmt::Debug;
-use std::sync::Arc;
+
 use tokio::sync::broadcast;
 // use tokio::sync::mpsc;
+use crate::hubs::Tokens;
 use crate::notifications::{
     ButtonState, InputSetupSingle,
     NetworkCommand::{self},
@@ -35,10 +36,10 @@ pub enum RcButtonState {
 pub trait RcDevice: Debug + Send + Sync {
     /// Device trait boilerplate
     fn port(&self) -> u8;
-    fn tokens(&self) -> (Arc<Peripheral>, Arc<Characteristic>);
     fn get_rx_pvs(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>>;
     fn get_rx_nwc(&self) -> Result<broadcast::Receiver<NetworkCommand>>;
     fn check(&self) -> Result<()>;
+    fn tokens(&self) -> Tokens;
     fn commit(&self, msg: NotificationMessage) -> Result<()> {
         match crate::hubs::send(self.tokens(), msg) {
             Ok(()) => Ok(()),
@@ -77,7 +78,7 @@ pub trait RcDevice: Debug + Send + Sync {
         self.remote_buttons_enable_by_port(0x1)?;
 
         // Set up channel
-        let (tx, rx) = broadcast::channel::<RcButtonState>(8);
+        let (tx, rx) = broadcast::channel::<RcButtonState>(64);
         let mut pvs_from_main = self
             .get_rx_pvs()
             .expect("Single value sender not in device cache");

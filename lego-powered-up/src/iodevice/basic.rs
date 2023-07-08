@@ -1,9 +1,8 @@
 /// The basic bricks of device control.
 /// All the other device traits are sugar for these 3 commands.
 use async_trait::async_trait;
-use btleplug::{api::Characteristic, platform::Peripheral};
 use core::fmt::Debug;
-use std::sync::Arc;
+use crate::hubs::Tokens;
 
 use crate::error::Result;
 use crate::notifications::{
@@ -61,8 +60,7 @@ pub trait Basic: Debug + Send + Sync {
 
     /// Device trait boilerplate
     fn port(&self) -> u8;
-    // fn tokens(&self) -> Result<(&Peripheral, &Characteristic)>;
-    fn tokens(&self) -> (Arc<Peripheral>, Arc<Characteristic>);
+    fn tokens(&self) -> Tokens;
     fn commit(&self, msg: NotificationMessage) -> Result<()> {
         match crate::hubs::send(self.tokens(), msg) {
             Ok(()) => Ok(()),

@@ -5,14 +5,15 @@
 /// And the internal motors in: https://rebrickable.com/parts/26910/hub-move-powered-up-6-x-16-x-4/
 /// The start_power commands should work with train motors.
 use async_trait::async_trait;
-use btleplug::{api::Characteristic, platform::Peripheral};
+
 use core::fmt::Debug;
 use std::time::Duration;
 use tokio::sync::broadcast;
 use tokio::task::JoinHandle;
 
+use crate::hubs::Tokens;
 use crate::error::{Error, Result};
-use crate::notifications::InputSetupSingle;
+use crate::notifications::{InputSetupSingle, PortOutputCommandFeedbackFormat, FeedbackMessage};
 use crate::notifications::NotificationMessage;
 use crate::notifications::WriteDirectModeDataPayload;
 use crate::notifications::{
@@ -23,7 +24,7 @@ use crate::notifications::{PortValueCombinedFormat, PortValueSingleFormat};
 
 pub use crate::consts::MotorSensorMode;
 pub use crate::notifications::{EndState, Power};
-use std::sync::Arc;
+
 
 
 // #[derive(Debug, Copy, Clone)]
@@ -33,20 +34,90 @@ use std::sync::Arc;
 //     Apos(i32)
 // }
 
+/// Fields of a Command feedback message, already modeled in notifications::FeedbackMessage
+// struct CommandFeedback {
+//     port_id: u8,
+//     cmd_in_progress_empty_queue: bool,
+//     cmd_completed_empty_queue: bool,
+//     discarded: bool,
+//     idle: bool,
+//     busy_queue_full: bool
+// }
+
+/// State model of a command receiver. 
+/// https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#buffering-state-machine
+
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Eq, Ord, Default)]
+pub struct CmdReceiverState {
+    pub state: BufferState,
+
+    // The progress is implied by bufferstate, so this isn't really needed? 
+    // pub progress: CmdProgress,
+
+    // 1 or 2 commands discarded. This happens when a command is sent with StartupInfo::ExecuteImmediately
+    // (the other alt. is BufferIfNecessary) when state was BusyEmpty (discards cmd in progress) or
+    // BusyFull (discards cmd in progress and queued command.) The queue can hold 1 command only.
+    pub discarded: bool,           
+}
+// #[derive(Debug, Default, Clone)]
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Eq, Ord, Default)]
+pub enum BufferState {
+    #[default] Idle,               // Nothing in progress, buffer empty. (“Idle”)
+    BusyEmpty,                     // Command in progress, buffer empty (“Busy/Empty”)
+    BusyFull                       // Command in progress, buffer full (“Busy/Full”)
+}
+// #[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord, Default)]
+// pub enum CmdProgress {
+//     InProgress,
+//     #[default] Completed,
+// }
+
 #[async_trait]
 pub trait EncoderMotor: Debug + Send + Sync {
+    // This supports only single motors for now, synced motors is TODO 
+    fn cmd_feedback_handler(
+        &self,
+    ) -> Result<(broadcast::Receiver<CmdReceiverState>, JoinHandle<()>)> {
+        let port_id = self.port();
+        // Set up channel
+        let (tx, rx) = broadcast::channel::<CmdReceiverState>(16);
+        let mut rx_from_main = self
+            .get_rx_feedback()
+            .expect("CmdReceiverState sender not in device cache");
+        let task = tokio::spawn(async move {
+            while let Ok(data) = rx_from_main.recv().await {
+                match data {
+                    PortOutputCommandFeedbackFormat {msg1, .. } if msg1.port_id == port_id => {
+                        // println!("LPU_cmdfb: {:?}", &data);
+                        match msg1  {
+                            FeedbackMessage { port_id:_, empty_cmd_in_progress, empty_cmd_completed:_ , discarded, idle:_, busy_full } => {
+                                // Is it correct that the fields 'empty_cmd_completed' and 'idle' are redundant?
+                                
+                                // let mut progress = CmdProgress::Completed;
+                                // if empty_cmd_in_progress | busy_full { progress = CmdProgress::InProgress }
+
+                                let mut state: BufferState = BufferState::Idle; 
+                                if busy_full { state = BufferState::BusyFull }
+                                else if empty_cmd_in_progress { state = BufferState::BusyEmpty }
+                                
+                                let _ = tx.send( CmdReceiverState {
+                                    discarded,
+                                    // progress,
+                                    state,
+                                });
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        });
+
+        Ok((rx, task))
+    }
+    
     // Motor settings
     fn preset_encoder(&self, position: i32) -> Result<()> {
-        // let msg =
-        //     NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
-        //         port_id: 0x01, // Port B
-        //         mode: 0x01,
-        //         delta: 0x00000001,
-        //         notification_enabled: false,
-        //     });
-        // let tokens = self.tokens();
-        // crate::hubs::send(tokens.0, tokens.1, msg).await.expect("Error while setting mode");
-
         self.check()?;
         let subcommand = PortOutputSubcommand::WriteDirectModeData(
             WriteDirectModeDataPayload::PresetEncoder(position),
@@ -359,7 +430,7 @@ pub trait EncoderMotor: Debug + Send + Sync {
 
         // Set up channel
         let port_id = self.port();
-        let (tx, rx) = broadcast::channel::<(i8, i32)>(8);
+        let (tx, rx) = broadcast::channel::<(i8, i32)>(64);
         // let (tx, rx) = broadcast::channel::<Vec<u8>>(8);
         match self.get_rx_combined() {
             Ok(mut rx_from_main) => {
@@ -373,9 +444,15 @@ pub trait EncoderMotor: Debug + Send + Sync {
 
                         // Pos primary
                         // If position changes we always get a speed update even if it has not changed.
-                        // If only speed changes we only get speed => send speed with buffered position. 
+                        // If only speed changes then we only get speed => send speed with buffered position. 
                         if data.data.len() == 3 {
-                            tx.send( (data.data[2] as i8, position_buffer) ).expect("Error sending");
+                            // tx.send( (data.data[2] as i8, position_buffer) ).expect("Error sending");
+                            match tx.send( (data.data[2] as i8, position_buffer) ) {
+                                Ok(_) => {},
+                                Err(_) => { 
+                                    // eprintln!("Motor combined error: {:?}", e);
+                                }
+                            } 
                         }
                         else if data.data.len() == 7 {
                             let mut it = data.data.into_iter().skip(2);
@@ -389,12 +466,10 @@ pub trait EncoderMotor: Debug + Send + Sync {
                             position_buffer = pos;
                             match tx.send( (speed, pos) ) {
                                 Ok(_) => {},
-                                Err(e) => { 
-                                    eprintln!("Motor combined error: {:?}", e);
-                                    break; 
+                                Err(_) => { 
+                                    // eprintln!("Motor combined error: {:?}", e);
                                 }
                             } 
-                            // tx.send( (speed, pos) ).expect("Error sending");
                         }
                         else {
                             eprintln!("Combined mode unexpected length");
@@ -444,19 +519,13 @@ pub trait EncoderMotor: Debug + Send + Sync {
     fn get_rx_combined(
         &self,
     ) -> Result<broadcast::Receiver<PortValueCombinedFormat>>;
-    // fn tokens(&self) -> (&Peripheral, &Characteristic);
+    fn get_rx_feedback(&self) -> Result<broadcast::Receiver<PortOutputCommandFeedbackFormat>>;
     fn check(&self) -> Result<()>;
+    fn tokens(&self) -> Tokens;
     fn commit(&self, msg: NotificationMessage) -> Result<()> {
         match crate::hubs::send(self.tokens(), msg) {
             Ok(()) => Ok(()),
             Err(e) => Err(e),
         }
     }
-    // fn commit2(&self, msg: NotificationMessage) -> Result<()> {
-    //     match crate::hubs::send2(self.tokens2(), msg) {
-    //         Ok(()) => Ok(()),
-    //         Err(e) => Err(e),
-    //     }
-    // }
-    fn tokens(&self) -> (Arc<Peripheral>, Arc<Characteristic>);
 }

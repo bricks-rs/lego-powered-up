@@ -5,16 +5,17 @@ use crate::Result;
 ///
 /// Needs mode information about this unit to complete
 use async_trait::async_trait;
-use btleplug::api::Characteristic;
-use btleplug::platform::Peripheral;
+
+
 use core::fmt::Debug;
-use std::sync::Arc;
+
+use crate::hubs::Tokens;
 #[async_trait]
 pub trait HeadLight: Debug + Send + Sync {
     /// Device trait boilerplate
     fn port(&self) -> u8;
-    fn tokens(&self) -> (Arc<Peripheral>, Arc<Characteristic>);
     fn check(&self) -> Result<()>;
+    fn tokens(&self) -> Tokens;
     fn commit(&self, msg: NotificationMessage) -> Result<()> {
         match crate::hubs::send(self.tokens(), msg) {
             Ok(()) => Ok(()),

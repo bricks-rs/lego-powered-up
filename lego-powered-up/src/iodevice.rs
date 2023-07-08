@@ -1,15 +1,9 @@
-use btleplug::api::Characteristic;
-/// Representation of an IoDevice
-// use std::collections::{BTreeMap};
-// use std::fmt;
-use btleplug::platform::Peripheral;
+
 use tokio::sync::broadcast;
-use std::sync::Arc;
 
 use crate::hubs::{Channels, Tokens};
-// use crate::hubs::Tokens2;
 use crate::notifications::{
-    DatasetType, NetworkCommand, PortValueCombinedFormat, PortValueSingleFormat,
+    DatasetType, NetworkCommand, PortValueCombinedFormat, PortValueSingleFormat, PortOutputCommandFeedbackFormat,
 };
 use crate::IoTypeId;
 use crate::{Error, Result};
@@ -31,11 +25,10 @@ pub mod remote;
 pub mod sensor;
 pub mod visionsensor;
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 pub struct IoDevice {
     pub def: Definition,
     tokens: Tokens,
-    // tokens2: Tokens2,
     channels: Channels,
 }
 
@@ -52,35 +45,30 @@ impl IoDevice {
     pub fn channels(&self) -> &Channels {
         &self.channels
     }
-    pub fn new(kind: IoTypeId, port: u8) -> Self {
+    pub fn new(kind: IoTypeId, port: u8, tokens: Tokens) -> Self {
         Self {
             def: Definition::new(kind, port),
-            tokens: Default::default(),
+            tokens,
             channels: Default::default(),
-            // tokens2: Default::default(),
         }
     }
-    pub fn cache_tokens(
-        &mut self,
-        tokens: (Option<Arc<Peripheral>>, Option<Arc<Characteristic>>),
-    ) {
-        (self.tokens.p, self.tokens.c) = tokens;
+    // pub fn new(kind: IoTypeId, port: u8) -> Self {
+    //     Self {
+    //         def: Definition::new(kind, port),
+    //         tokens: Default::default(),
+    //         channels: Default::default(),
+    //     }
+    // }
+    // pub fn cache_tokens(
+    //     &mut self,
+    //     tokens: (Option<Arc<Peripheral>>, Option<Arc<Characteristic>>),
+    // ) {
+    //     (self.tokens.p, self.tokens.c) = tokens;
+    // }
+    pub fn cache_channels(&mut self, channels: Channels) {
+        self.channels = channels;
     }
-    #[allow(clippy::type_complexity)]
-    pub fn cache_channels(
-        &mut self,
-        senders: (
-            Option<broadcast::Sender<PortValueSingleFormat>>,
-            Option<broadcast::Sender<PortValueCombinedFormat>>,
-            Option<broadcast::Sender<NetworkCommand>>,
-        ),
-    ) {
-        (
-            self.channels.singlevalue_sender,
-            self.channels.combinedvalue_sender,
-            self.channels.networkcmd_sender,
-        ) = senders;
-    }
+
 }
 
 //
@@ -90,11 +78,8 @@ impl Basic for IoDevice {
     fn port(&self) -> u8 {
         self.def.port()
     }
-    fn tokens(&self) -> (Arc<Peripheral>, Arc<Characteristic>) {
-        (
-            (self.tokens.p.as_ref().expect("No peripheral").clone()),
-            (self.tokens.c.as_ref().expect("No characteristic").clone()),
-        )
+    fn tokens(&self) -> Tokens {
+        self.tokens.clone()
     }
 
 }
@@ -102,17 +87,8 @@ impl GenericSensor for IoDevice {
     fn port(&self) -> u8 {
         self.def.port()
     }
-    // fn tokens(&self) -> (&Peripheral, &Characteristic) {
-    //     (
-    //         (self.tokens.p.as_ref().unwrap()),
-    //         (self.tokens.c.as_ref().unwrap()),
-    //     )
-    // }
-    fn tokens(&self) -> (Arc<Peripheral>, Arc<Characteristic>) {
-        (
-            (self.tokens.p.as_ref().expect("No peripheral").clone()),
-            (self.tokens.c.as_ref().expect("No characteristic").clone()),
-        )
+    fn tokens(&self) -> Tokens {
+        self.tokens.clone()
     }
     fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>> {
         if let Some(sender) = &self.channels.singlevalue_sender {
@@ -141,11 +117,8 @@ impl RcDevice for IoDevice {
     fn port(&self) -> u8 {
         self.def.port()
     }
-    fn tokens(&self) -> (Arc<Peripheral>, Arc<Characteristic>) {
-        (
-            (self.tokens.p.as_ref().expect("No peripheral").clone()),
-            (self.tokens.c.as_ref().expect("No characteristic").clone()),
-        )
+    fn tokens(&self) -> Tokens {
+        self.tokens.clone()
     }
     fn get_rx_pvs(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>> {
         if let Some(sender) = &self.channels.singlevalue_sender {
@@ -175,17 +148,8 @@ impl EncoderMotor for IoDevice {
     fn port(&self) -> u8 {
         self.def.port()
     }
-    // fn tokens_old(&self) -> (&Peripheral, &Characteristic) {
-    //     (
-    //         (self.tokens.p.as_ref().expect("No peripheral")),
-    //         (self.tokens.c.as_ref().expect("No characteristic")),
-    //     )
-    // }
-    fn tokens(&self) -> (Arc<Peripheral>, Arc<Characteristic>) {
-        (
-            (self.tokens.p.as_ref().expect("No peripheral").clone()),
-            (self.tokens.c.as_ref().expect("No characteristic").clone()),
-        )
+    fn tokens(&self) -> Tokens {
+        self.tokens.clone()
     }
     fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>> {
         if let Some(sender) = &self.channels.singlevalue_sender {
@@ -198,6 +162,13 @@ impl EncoderMotor for IoDevice {
         &self,
     ) -> Result<broadcast::Receiver<PortValueCombinedFormat>> {
         if let Some(sender) = &self.channels.combinedvalue_sender {
+            Ok(sender.subscribe())
+        } else {
+            Err(Error::NoneError(String::from("Sender not found")))
+        }
+    }
+    fn get_rx_feedback(&self) -> Result<broadcast::Receiver<PortOutputCommandFeedbackFormat>> {
+        if let Some(sender) = &self.channels.commandfeedback_sender {
             Ok(sender.subscribe())
         } else {
             Err(Error::NoneError(String::from("Sender not found")))
@@ -217,11 +188,8 @@ impl HubLed for IoDevice {
     fn port(&self) -> u8 {
         self.def.port()
     }
-    fn tokens(&self) -> (Arc<Peripheral>, Arc<Characteristic>) {
-        (
-            (self.tokens.p.as_ref().expect("No peripheral").clone()),
-            (self.tokens.c.as_ref().expect("No characteristic").clone()),
-        )
+    fn tokens(&self) -> Tokens {
+        self.tokens.clone()
     }
     fn check(&self) -> Result<()> {
         match self.def.kind() {
@@ -235,11 +203,8 @@ impl VisionSensor for IoDevice {
     fn port(&self) -> u8 {
         self.def.port()
     }
-    fn tokens(&self) -> (Arc<Peripheral>, Arc<Characteristic>) {
-        (
-            (self.tokens.p.as_ref().expect("No peripheral").clone()),
-            (self.tokens.c.as_ref().expect("No characteristic").clone()),
-        )
+    fn tokens(&self) -> Tokens {
+        self.tokens.clone()
     }
     fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>> {
         if let Some(sender) = &self.channels.singlevalue_sender {
