@@ -124,7 +124,8 @@ impl PoweredUp {
         filter: HubFilter,
     ) -> Result<DiscoveredHub> {
         let mut events = self.adapter.events().await?;
-        self.adapter.start_scan(ScanFilter::default()).await?;
+        // self.adapter.start_scan(ScanFilter::default()).await?;
+        self.adapter.start_scan(scanfilter()).await?;
         while let Some(event) = events.next().await {
             let CentralEvent::DeviceDiscovered(id) = event else { continue };
             // get peripheral info
@@ -155,7 +156,7 @@ impl PoweredUp {
     ) -> Result<Vec<DiscoveredHub>> {
         let mut events = self.adapter.events().await?;
         let mut hubs = Vec::new();
-        self.adapter.start_scan(ScanFilter::default()).await?;
+        self.adapter.start_scan(scanfilter()).await?;
         while let Some(event) = events.next().await {
             let CentralEvent::DeviceDiscovered(id) = event else { continue };
             // get peripheral info
@@ -247,7 +248,8 @@ impl PoweredUp {
         &mut self,
     ) -> Result<impl Stream<Item = DiscoveredHub> + '_> {
         let events = self.adapter.events().await?;
-        self.adapter.start_scan(ScanFilter::default()).await?;
+        // self.adapter.start_scan(ScanFilter::default()).await?;
+        self.adapter.start_scan(scanfilter()).await?;
         Ok(events.filter_map(|event| async {
             let CentralEvent::DeviceDiscovered(id) = event else { None? };
             // get peripheral info
@@ -271,7 +273,7 @@ impl PoweredUp {
         &mut self,
     ) -> Result<Pin<Box<dyn Stream<Item = DiscoveredHub> + Send + '_>>> {
         let events = self.adapter.events().await?;
-        self.adapter.start_scan(ScanFilter::default()).await?;
+        self.adapter.start_scan(scanfilter()).await?;
         Ok(Box::pin(events.filter_map(|event| async {
             let CentralEvent::DeviceDiscovered(id) = event else { None? };
             // get peripheral info
@@ -289,6 +291,12 @@ impl PoweredUp {
                 Some(hub)
             } else { None }
         })))
+    }
+}
+
+fn scanfilter() -> ScanFilter {
+    ScanFilter { 
+        services: vec![*consts::bleservice::LPF2_HUB, *consts::bleservice::WEDO2_SMART_HUB] 
     }
 }
 
