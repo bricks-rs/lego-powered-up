@@ -7,7 +7,7 @@
 use async_trait::async_trait;
 
 use core::fmt::Debug;
-use std::time::Duration;
+// use std::time::Duration;
 use tokio::sync::broadcast;
 use tokio::task::JoinHandle;
 
@@ -415,7 +415,7 @@ pub trait EncoderMotor: Debug + Send + Sync {
             },
         );
         self.commit(msg).await?;
-        tokio::time::sleep(Duration::from_millis(100)).await;
+        // tokio::time::sleep(Duration::from_millis(100)).await;
 
         // Step 4: Unlock device and enable multi updates
         let subcommand =
@@ -427,7 +427,7 @@ pub trait EncoderMotor: Debug + Send + Sync {
             },
         );
         self.commit(msg).await?;
-        tokio::time::sleep(Duration::from_millis(100)).await;
+        // tokio::time::sleep(Duration::from_millis(100)).await;
 
         // Set up channel
         let port_id = self.port();
