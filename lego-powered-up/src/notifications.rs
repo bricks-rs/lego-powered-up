@@ -34,9 +34,9 @@ pub enum HubLedMode {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HubProperty {
-    pub(crate) property: HubPropertyValue,
-    pub(crate) operation: HubPropertyOperation,
-    pub(crate) reference: HubPropertyRef,
+    pub property: HubPropertyValue,
+    pub operation: HubPropertyOperation,
+    pub reference: HubPropertyRef,
 }
 
 impl HubProperty {
@@ -2246,9 +2246,9 @@ impl Orientation {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct PortOutputCommandFeedbackFormat {
-    msg1: FeedbackMessage,
-    msg2: Option<FeedbackMessage>,
-    msg3: Option<FeedbackMessage>,
+   pub msg1: FeedbackMessage,
+   pub msg2: Option<FeedbackMessage>,
+   pub  msg3: Option<FeedbackMessage>,
 }
 
 impl PortOutputCommandFeedbackFormat {
@@ -2262,12 +2262,12 @@ impl PortOutputCommandFeedbackFormat {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct FeedbackMessage {
-    port_id: u8,
-    empty_cmd_in_progress: bool,
-    empty_cmd_completed: bool,
-    discarded: bool,
-    idle: bool,
-    busy_full: bool,
+    pub port_id: u8,
+    pub empty_cmd_in_progress: bool,   // Command in progress, queue empty
+    pub empty_cmd_completed: bool,     // Command in progress, queue full
+    pub discarded: bool,               // Command discarded 
+    pub idle: bool,                    // Nothing in progress, buffer empty. (“Idle”)
+    pub busy_full: bool,               // Command in progress, buffer full (“Busy/Full”) 
 }
 
 impl FeedbackMessage {
