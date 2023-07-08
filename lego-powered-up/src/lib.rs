@@ -7,6 +7,7 @@ use btleplug::api::{
     ScanFilter, ValueNotification,
 };
 use btleplug::platform::{Adapter, Manager, PeripheralId};
+use tokio_util::sync::{CancellationToken, };
 
 // std
 use core::time::Duration;
@@ -41,7 +42,7 @@ pub use hubs::Hub;
 
 use consts::{BLEManufacturerData, HubType};
 use notifications::{
-    NetworkCommand, PortValueCombinedFormat, PortValueSingleFormat,
+    NetworkCommand, PortValueCombinedFormat, PortValueSingleFormat, PortOutputCommandFeedbackFormat,
 };
 
 pub use error::{Error, OptionContext, Result};
@@ -200,7 +201,7 @@ impl PoweredUp {
             .find(|c| c.uuid == *consts::blecharacteristic::LPF2_ALL)
             .context("Device does not advertise LPF2_ALL characteristic")?
             .clone();
-
+        let cancel = CancellationToken::new(); 
         match hub.hub_type {
             // These have had some real life-testing.
             HubType::TechnicMediumHub
@@ -210,6 +211,7 @@ impl PoweredUp {
                     peripheral,
                     lpf_char,
                     hub.hub_type,
+                    cancel,
                 )
                 .await?,
             )),
@@ -223,6 +225,7 @@ impl PoweredUp {
                     peripheral,
                     lpf_char,
                     hub.hub_type,
+                    cancel,
                 )
                 .await?,
             )),
@@ -233,6 +236,7 @@ impl PoweredUp {
                     peripheral,
                     lpf_char,
                     HubType::Unknown,
+                    cancel,
                 )
                 .await?,
             )),
@@ -359,50 +363,61 @@ pub struct ConnectedHub {
     pub name: String,
     pub mutex: HubMutex,
     pub kind: HubType,
+    pub cancel: CancellationToken,
+    // pub dropguard: DropGuard,
 }
 impl ConnectedHub {
     pub async fn setup_hub(created_hub: Box<dyn Hub>) -> Result<ConnectedHub> {
         let connected_hub = ConnectedHub {
             kind: created_hub.kind(),
             name: created_hub.name().await?,
+            cancel: created_hub.cancel_token(),
             mutex: Arc::new(Mutex::new(created_hub)),
         };
         // Create forwarding channels and store in hub so we can create receivers on demand
         {
             let lock = &mut connected_hub.mutex.lock().await;
             lock.channels().singlevalue_sender =
-                Some(broadcast::channel::<PortValueSingleFormat>(16).0);
+                Some(broadcast::channel::<PortValueSingleFormat>(32).0);
             lock.channels().combinedvalue_sender =
-                Some(broadcast::channel::<PortValueCombinedFormat>(16).0);
+                Some(broadcast::channel::<PortValueCombinedFormat>(32).0);
             lock.channels().networkcmd_sender =
                 Some(broadcast::channel::<NetworkCommand>(16).0);
             lock.channels().hubnotification_sender =
                 Some(broadcast::channel::<HubNotification>(16).0);
+            lock.channels().commandfeedback_sender =
+                Some(broadcast::channel::<PortOutputCommandFeedbackFormat>(16).0);
         }
-
         // Set up notification handler
         let hub_mutex = connected_hub.mutex.clone();
         {
             let lock = &mut connected_hub.mutex.lock().await;
             let stream: NotificationStream =
                 lock.peripheral().notifications().await?;
-            let senders = (
-                lock.channels().singlevalue_sender.as_ref().unwrap().clone(),
-                lock.channels()
-                    .combinedvalue_sender
-                    .as_ref()
-                    .unwrap()
-                    .clone(),
-                lock.channels().networkcmd_sender.as_ref().unwrap().clone(),
-                lock.channels()
-                    .hubnotification_sender
-                    .as_ref()
-                    .unwrap()
-                    .clone(),
-            );
-            tokio::spawn(async move {
+            let senders = lock.channels().clone();
+            // let senders = (
+            //     lock.channels().singlevalue_sender.as_ref().unwrap().clone(),
+            //     lock.channels()
+            //         .combinedvalue_sender
+            //         .as_ref()
+            //         .unwrap()
+            //         .clone(),
+            //     lock.channels().networkcmd_sender.as_ref().unwrap().clone(),
+            //     lock.channels()
+            //         .hubnotification_sender
+            //         .as_ref()
+            //         .unwrap()
+            //         .clone(),
+            //     lock.channels()
+            //         .commandfeedback_sender
+            //         .as_ref()
+            //         .unwrap()
+            //         .clone(),
+            // );
+            let io_handler_cancel = connected_hub.cancel.clone();
+            let _io_handler_task = tokio::spawn(async move {
                 crate::hubs::io_event::io_event_handler(
-                    stream, hub_mutex, senders,
+                    stream, hub_mutex, senders, io_handler_cancel,
                 )
                 .await
                 .expect("Error setting up main notification handler");
