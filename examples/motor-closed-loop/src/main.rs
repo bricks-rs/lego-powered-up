@@ -26,7 +26,7 @@ async fn main() -> anyhow::Result<()> {
         rc = lock.io_from_port(named_port::A)?;
         // rc = lock.io_from_port(16).await?;
     }
-    let (mut rc_rx, _rc_task) = rc.remote_connect_with_green()?;
+    let (mut rc_rx, _rc_task) = rc.remote_connect_with_green().await?;
 
     // Set up motor feedback
     let motor: IoDevice;
@@ -35,7 +35,7 @@ async fn main() -> anyhow::Result<()> {
         motor = lock.io_from_port(named_port::A)?;
     }
     let (mut motor_rx, _position_task) = motor
-        .enable_32bit_sensor(modes::InternalMotorTacho::POS, 1)?;
+        .enable_32bit_sensor(modes::InternalMotorTacho::POS, 1).await?;
         // .await?;
 
     // Control task

@@ -62,14 +62,14 @@ pub async fn run(args: &HubArgs) -> Result<()> {
             let lock = hub.mutex.lock().await;
             hub_led = lock.io_from_kind(IoTypeId::HubLed)?;
         }
-        hub_led.set_hubled_mode(hubled::HubLedMode::Colour)?;
+        hub_led.set_hubled_mode(hubled::HubLedMode::Colour).await?;
         for colour in [[0_u8, 0xff, 0], [0xff, 0, 0], [0, 0, 0xff]]
             .iter()
             .cycle()
             .take(10)
         {
             println!("Setting to: {:02x?}", colour);
-            hub_led.set_hubled_rgb(colour)?;
+            hub_led.set_hubled_rgb(colour).await?;
             tokio::time::sleep(Duration::from_millis(400)).await;
         }
 
@@ -79,9 +79,9 @@ pub async fn run(args: &HubArgs) -> Result<()> {
             let lock = hub.mutex.lock().await;
             motor = lock.io_from_port(consts::named_port::A)?;
         }
-        motor.start_speed(50, 50)?;
+        motor.start_speed(50, 50).await?;
         tokio::time::sleep(Duration::from_secs(4)).await;
-        motor.start_power(Power::Float)?;
+        motor.start_power(Power::Float).await?;
 
         println!("Done!");
 

@@ -95,7 +95,7 @@ impl Hub for GenericHub {
         self.cancel.cancel();
         self.hub_action(
             crate::notifications::HubAction::SwitchOffHub,
-        )
+        ).await
     }
     async fn send_raw(&self, msg: &[u8]) -> Result<()> {
         let write_type = WriteType::WithoutResponse;

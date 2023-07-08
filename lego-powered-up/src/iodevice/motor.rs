@@ -117,7 +117,7 @@ pub trait EncoderMotor: Debug + Send + Sync {
     }
     
     // Motor settings
-    fn preset_encoder(&self, position: i32) -> Result<()> {
+    async fn preset_encoder(&self, position: i32) -> Result<()> {
         self.check()?;
         let subcommand = PortOutputSubcommand::WriteDirectModeData(
             WriteDirectModeDataPayload::PresetEncoder(position),
@@ -129,10 +129,10 @@ pub trait EncoderMotor: Debug + Send + Sync {
                 completion_info: CompletionInfo::NoAction,
                 subcommand,
             });
-        self.commit(msg)
+        self.commit(msg).await
     }
 
-    fn set_acc_time(&self, time: i16, profile_number: i8) -> Result<()> {
+    async fn set_acc_time(&self, time: i16, profile_number: i8) -> Result<()> {
         self.check()?;
         let subcommand = PortOutputSubcommand::SetAccTime {
             time,
@@ -145,10 +145,10 @@ pub trait EncoderMotor: Debug + Send + Sync {
                 completion_info: CompletionInfo::NoAction,
                 subcommand,
             });
-        self.commit(msg)
+        self.commit(msg).await
     }
 
-    fn set_dec_time(&self, time: i16, profile_number: i8) -> Result<()> {
+    async fn set_dec_time(&self, time: i16, profile_number: i8) -> Result<()> {
         self.check()?;
         let subcommand = PortOutputSubcommand::SetDecTime {
             time,
@@ -161,12 +161,12 @@ pub trait EncoderMotor: Debug + Send + Sync {
                 completion_info: CompletionInfo::NoAction,
                 subcommand,
             });
-        self.commit(msg)
+        self.commit(msg).await
     }
 
     // Commands
     // To do: "2" variants of all commands, except done: start_power2
-    fn start_power(&self, power: Power) -> Result<()> {
+    async fn start_power(&self, power: Power) -> Result<()> {
         self.check()?;
         let subcommand = PortOutputSubcommand::WriteDirectModeData(
             WriteDirectModeDataPayload::StartPower(power),
@@ -178,9 +178,9 @@ pub trait EncoderMotor: Debug + Send + Sync {
                 completion_info: CompletionInfo::NoAction,
                 subcommand,
             });
-        self.commit(msg)
+        self.commit(msg).await
     }
-    fn start_power2(&self, power1: Power, power2: Power) -> Result<()> {
+    async fn start_power2(&self, power1: Power, power2: Power) -> Result<()> {
         self.check()?;
         let subcommand = PortOutputSubcommand::StartPower2 { power1, power2 };
         let msg =
@@ -190,9 +190,9 @@ pub trait EncoderMotor: Debug + Send + Sync {
                 completion_info: CompletionInfo::NoAction,
                 subcommand,
             });
-        self.commit(msg)
+        self.commit(msg).await
     }
-    fn start_speed(&self, speed: i8, max_power: u8) -> Result<()> {
+    async fn start_speed(&self, speed: i8, max_power: u8) -> Result<()> {
         self.check()?;
         let subcommand = PortOutputSubcommand::StartSpeed {
             speed,
@@ -207,9 +207,9 @@ pub trait EncoderMotor: Debug + Send + Sync {
                 completion_info: CompletionInfo::NoAction,
                 subcommand,
             });
-        self.commit(msg)
+        self.commit(msg).await
     }
-    fn start_speed_for_degrees(
+    async fn start_speed_for_degrees(
         &self,
         degrees: i32,
         speed: i8,
@@ -232,9 +232,9 @@ pub trait EncoderMotor: Debug + Send + Sync {
                 completion_info: CompletionInfo::NoAction,
                 subcommand,
             });
-        self.commit(msg)
+        self.commit(msg).await
     }
-    fn start_speed_for_degrees2(
+    async fn start_speed_for_degrees2(
         &self,
         degrees: i32,
         speed: i8,
@@ -257,9 +257,9 @@ pub trait EncoderMotor: Debug + Send + Sync {
                 completion_info: CompletionInfo::NoAction,
                 subcommand,
             });
-        self.commit(msg)
+        self.commit(msg).await
     }
-    fn start_speed_for_time(
+    async fn start_speed_for_time(
         &self,
         time: i16,
         speed: i8,
@@ -282,9 +282,9 @@ pub trait EncoderMotor: Debug + Send + Sync {
                 completion_info: CompletionInfo::NoAction,
                 subcommand,
             });
-        self.commit(msg)
+        self.commit(msg).await
     }
-    fn goto_absolute_position(
+    async fn goto_absolute_position(
         &self,
         abs_pos: i32,
         speed: i8,
@@ -307,11 +307,11 @@ pub trait EncoderMotor: Debug + Send + Sync {
                 completion_info: CompletionInfo::NoAction,
                 subcommand,
             });
-        self.commit(msg)
+        self.commit(msg).await
     }
 
     // Encoder sensor data
-    fn motor_sensor_enable(
+    async fn motor_sensor_enable(
         &self,
         mode: MotorSensorMode,
         delta: u32,
@@ -324,9 +324,9 @@ pub trait EncoderMotor: Debug + Send + Sync {
                 delta,
                 notification_enabled: true,
             });
-        self.commit(msg)
+        self.commit(msg).await
     }
-    fn motor_sensor_disable(&self) -> Result<()> {
+    async fn motor_sensor_disable(&self) -> Result<()> {
         self.check()?;
         let msg =
             NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
@@ -335,7 +335,7 @@ pub trait EncoderMotor: Debug + Send + Sync {
                 delta: u32::MAX,
                 notification_enabled: false,
             });
-        self.commit(msg)
+        self.commit(msg).await
     }
 
     // Note: Currently the returned channel assumes primary mode is Position. 
@@ -356,15 +356,15 @@ pub trait EncoderMotor: Debug + Send + Sync {
                 subcommand,
             },
         );
-        self.commit(msg)?;
+        self.commit(msg).await?;
         tokio::time::sleep(Duration::from_millis(100)).await;
 
         // Step 2: Set up modes
-        self.motor_sensor_enable(MotorSensorMode::Speed, speed_delta)
+        self.motor_sensor_enable(MotorSensorMode::Speed, speed_delta).await
             ?;
         tokio::time::sleep(Duration::from_millis(100)).await;    
         // self.motor_sensor_enable(MotorSensorMode::APos, position_delta).await;    // Availablie on TechnicLinear motors, not on InternalTacho (MoveHub)
-        self.motor_sensor_enable(MotorSensorMode::Pos, position_delta)
+        self.motor_sensor_enable(MotorSensorMode::Pos, position_delta).await
             ?; // POS available on either
         tokio::time::sleep(Duration::from_millis(100)).await;
         
@@ -413,7 +413,7 @@ pub trait EncoderMotor: Debug + Send + Sync {
                 subcommand,
             },
         );
-        self.commit(msg)?;
+        self.commit(msg).await?;
         tokio::time::sleep(Duration::from_millis(100)).await;
 
         // Step 4: Unlock device and enable multi updates
@@ -425,7 +425,7 @@ pub trait EncoderMotor: Debug + Send + Sync {
                 subcommand,
             },
         );
-        self.commit(msg)?;
+        self.commit(msg).await?;
         tokio::time::sleep(Duration::from_millis(100)).await;
 
         // Set up channel
@@ -522,6 +522,14 @@ pub trait EncoderMotor: Debug + Send + Sync {
     fn get_rx_feedback(&self) -> Result<broadcast::Receiver<PortOutputCommandFeedbackFormat>>;
     fn check(&self) -> Result<()>;
     fn tokens(&self) -> Tokens;
+    #[cfg(not(feature = "syncsend"))]
+    async fn commit(&self, msg: NotificationMessage) -> Result<()> {
+        match crate::hubs::send(self.tokens(), msg).await {
+            Ok(()) => Ok(()),
+            Err(e) => Err(e),
+        }
+    }
+    #[cfg(feature = "syncsend")]
     fn commit(&self, msg: NotificationMessage) -> Result<()> {
         match crate::hubs::send(self.tokens(), msg) {
             Ok(()) => Ok(()),

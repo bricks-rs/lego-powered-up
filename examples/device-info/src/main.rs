@@ -31,12 +31,12 @@ async fn main() -> anyhow::Result<()> {
         // LEGO colors
         hubled
             .set_hubled_mode(HubLedMode::Colour)
-            // .await
+            .await
             .expect("Error setting mode");
         for c in LEGO_COLORS {
             hubled
                 .set_hubled_color(c)
-                // .await
+                .await
                 .expect("Error setting color");
             sleep(Duration::from_millis(1000)).await;
         }
@@ -45,7 +45,7 @@ async fn main() -> anyhow::Result<()> {
         // Rainbow
         hubled
             .set_hubled_mode(HubLedMode::Rgb)
-            // .await
+            .await
             .expect("Error setting mode");
         let mut rgb: [u8; 3] = [0; 3];
         loop {
@@ -55,7 +55,7 @@ async fn main() -> anyhow::Result<()> {
                 rgb[2] = RAINBOW_TABLE[(angle + 240) % 360];
                 hubled
                     .set_hubled_rgb(&rgb)
-                    // .await
+                    .await
                     .expect("Error setting RGB");
                 sleep(Duration::from_millis(30)).await;
             }
@@ -167,7 +167,7 @@ async fn reader(
         match mode.value_format.dataset_type {
             DatasetType::Bits8 => {
                 let (mut rx, _) =
-                    device.enable_8bit_sensor(mode_id, delta).unwrap();
+                    device.enable_8bit_sensor(mode_id, delta).await.unwrap();
                 Ok(tokio::spawn(async move {
                     while let Ok(data) = rx.recv().await {
                         println!(
@@ -179,7 +179,7 @@ async fn reader(
             }
             DatasetType::Bits16 => {
                 let (mut rx, _) =
-                    device.enable_16bit_sensor(mode_id, delta).unwrap();
+                    device.enable_16bit_sensor(mode_id, delta).await.unwrap();
                 Ok(tokio::spawn(async move {
                     while let Ok(data) = rx.recv().await {
                         println!(
@@ -191,7 +191,7 @@ async fn reader(
             }
             DatasetType::Bits32 => {
                 let (mut rx, _) =
-                    device.enable_32bit_sensor(mode_id, delta).unwrap();
+                    device.enable_32bit_sensor(mode_id, delta).await.unwrap();
                 Ok(tokio::spawn(async move {
                     while let Ok(data) = rx.recv().await {
                         println!(
@@ -203,7 +203,7 @@ async fn reader(
             }
             DatasetType::Float => {
                 let (mut rx, _) =
-                    device.enable_32bit_sensor(mode_id, delta).unwrap();
+                    device.enable_32bit_sensor(mode_id, delta).await.unwrap();
                 Ok(tokio::spawn(async move {
                     while let Ok(data) = rx.recv().await {
                         println!(

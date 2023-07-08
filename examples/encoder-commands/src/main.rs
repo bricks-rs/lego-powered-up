@@ -25,7 +25,7 @@ async fn main() -> anyhow::Result<()> {
         motor = lock.io_from_port(named_port::B)?;
     }
     let (mut motor_rx, _position_task) = motor
-        .enable_32bit_sensor(modes::InternalMotorTacho::POS, 1)?;
+        .enable_32bit_sensor(modes::InternalMotorTacho::POS, 1).await?;
         // .await?;
 
     tokio::spawn(async move {
@@ -39,7 +39,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Rotate by degrees (180 cw)
     println!("Rotate by degrees (180 cw)");
-    motor.start_speed_for_degrees(180, 50, 50, EndState::Brake)?;
+    motor.start_speed_for_degrees(180, 50, 50, EndState::Brake).await?;
     sleep(Duration::from_secs(2)).await;
 
     // Experimental sync command
@@ -54,7 +54,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Run for time (hub-controlled)
     println!("Run for time (hub-controlled)");
-    motor.start_speed_for_time(5, 50, 50, EndState::Float)?;
+    motor.start_speed_for_time(5, 50, 50, EndState::Float).await?;
     sleep(Duration::from_secs(10)).await;
 
 

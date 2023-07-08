@@ -72,11 +72,11 @@ impl Robot {
         self.left_motor
             // .start_speed(self.left_speed, Power::from_i8(self.left_speed)?)
             .start_speed(self.left_speed, self.left_speed as u8)
-            ?;
+            .await?;
         self.right_motor
             // .start_speed(self.right_speed, Power::from_i8(self.right_speed)?)
             .start_speed(self.left_speed, self.left_speed as u8)
-            ?;
+            .await?;
         Ok(())
     }
 }
@@ -101,8 +101,8 @@ async fn main() -> Result<()> {
     }
 
     println!("Change the hub LED to green");
-    hub_led.set_hubled_mode(hubled::HubLedMode::Colour)?;
-    hub_led.set_hubled_color(consts::Color::Green)?;
+    hub_led.set_hubled_mode(hubled::HubLedMode::Colour).await?;
+    hub_led.set_hubled_color(consts::Color::Green).await?;
 
     // initializes a screen of 20x10 characters with a target of 3 frames
     // per second

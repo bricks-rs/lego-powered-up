@@ -13,7 +13,7 @@ use crate::notifications::{
 
 #[async_trait]
 pub trait Basic: Debug + Send + Sync {
-    fn device_mode(
+    async fn device_mode(
         &self,
         mode: u8,
         delta: u32,
@@ -26,10 +26,10 @@ pub trait Basic: Debug + Send + Sync {
                 delta,
                 notification_enabled,
             });
-        self.commit(msg)
+        self.commit(msg).await
     }
 
-    fn device_mode_combined(
+    async fn device_mode_combined(
         &self,
         subcommand: InputSetupCombinedSubcommand,
     ) -> Result<()> {
@@ -39,10 +39,10 @@ pub trait Basic: Debug + Send + Sync {
                 subcommand,
             },
         );
-        self.commit(msg)
+        self.commit(msg).await
     }
 
-    fn device_command(
+    async fn device_command(
         &self,
         subcommand: PortOutputSubcommand,
         startup_info: StartupInfo,
@@ -55,16 +55,25 @@ pub trait Basic: Debug + Send + Sync {
                 completion_info,
                 subcommand,
             });
-        self.commit(msg)
+        self.commit(msg).await
     }
 
     /// Device trait boilerplate
     fn port(&self) -> u8;
     fn tokens(&self) -> Tokens;
+    #[cfg(not(feature = "syncsend"))]
+    async fn commit(&self, msg: NotificationMessage) -> Result<()> {
+        match crate::hubs::send(self.tokens(), msg).await {
+            Ok(()) => Ok(()),
+            Err(e) => Err(e),
+        }
+    }
+    #[cfg(feature = "syncsend")]
     fn commit(&self, msg: NotificationMessage) -> Result<()> {
         match crate::hubs::send(self.tokens(), msg) {
             Ok(()) => Ok(()),
             Err(e) => Err(e),
         }
     }
+   
 }

@@ -16,7 +16,7 @@ async fn main() -> anyhow::Result<()> {
         let lock = rc_hub.mutex.lock().await;
         rc = lock.io_from_port(named_port::A)?;
     }
-    let (mut rc_rx, _rc_task) = rc.remote_connect_with_green()?;
+    let (mut rc_rx, _rc_task) = rc.remote_connect_with_green().await?;
 
     // Print some feedback for button presses. Both red buttons together to exit.
     let button_feedback = tokio::spawn(async move {

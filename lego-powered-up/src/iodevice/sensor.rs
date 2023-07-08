@@ -25,6 +25,14 @@ pub trait GenericSensor: Debug + Send + Sync {
     fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>>;
     fn check(&self, mode: u8, datasettype: DatasetType) -> Result<()>;
     fn tokens(&self) -> Tokens;
+    #[cfg(not(feature = "syncsend"))]
+    async fn commit(&self, msg: NotificationMessage) -> Result<()> {
+        match crate::hubs::send(self.tokens(), msg).await {
+            Ok(()) => Ok(()),
+            Err(e) => Err(e),
+        }
+    }
+    #[cfg(feature = "syncsend")]
     fn commit(&self, msg: NotificationMessage) -> Result<()> {
         match crate::hubs::send(self.tokens(), msg) {
             Ok(()) => Ok(()),
@@ -32,7 +40,7 @@ pub trait GenericSensor: Debug + Send + Sync {
         }
     }
 
-    fn set_device_mode(
+    async fn set_device_mode(
         &self,
         mode: u8,
         delta: u32,
@@ -46,10 +54,10 @@ pub trait GenericSensor: Debug + Send + Sync {
                 notification_enabled,
             });
 
-        self.commit(msg)
+        self.commit(msg).await
     }
 
-    fn enable_8bit_sensor(
+    async fn enable_8bit_sensor(
         &self,
         mode: u8,
         delta: u32,
@@ -62,7 +70,7 @@ pub trait GenericSensor: Debug + Send + Sync {
                 )))
             }
         }
-        self.set_device_mode(mode, delta, true)?;
+        self.set_device_mode(mode, delta, true).await?;
 
         // Set up channel
         let port_id = self.port();
@@ -89,7 +97,7 @@ pub trait GenericSensor: Debug + Send + Sync {
         }
     }
 
-    fn enable_16bit_sensor(
+    async fn enable_16bit_sensor(
         &self,
         mode: u8,
         delta: u32,
@@ -102,7 +110,7 @@ pub trait GenericSensor: Debug + Send + Sync {
                 )))
             }
         }
-        self.set_device_mode(mode, delta, true)?;
+        self.set_device_mode(mode, delta, true).await?;
 
         // Set up channel
         let port_id = self.port();
@@ -146,7 +154,7 @@ pub trait GenericSensor: Debug + Send + Sync {
         }
     }
 
-    fn enable_32bit_sensor(
+    async fn enable_32bit_sensor(
         &self,
         mode: u8,
         delta: u32,
@@ -159,7 +167,7 @@ pub trait GenericSensor: Debug + Send + Sync {
                 )))
             }
         }
-        self.set_device_mode(mode, delta, true)?;
+        self.set_device_mode(mode, delta, true).await?;
 
         // Set up channel
         let port_id = self.port();

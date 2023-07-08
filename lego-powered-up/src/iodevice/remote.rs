@@ -40,6 +40,14 @@ pub trait RcDevice: Debug + Send + Sync {
     fn get_rx_nwc(&self) -> Result<broadcast::Receiver<NetworkCommand>>;
     fn check(&self) -> Result<()>;
     fn tokens(&self) -> Tokens;
+    #[cfg(not(feature = "syncsend"))]
+    async fn commit(&self, msg: NotificationMessage) -> Result<()> {
+        match crate::hubs::send(self.tokens(), msg).await {
+            Ok(()) => Ok(()),
+            Err(e) => Err(e),
+        }
+    }
+    #[cfg(feature = "syncsend")]
     fn commit(&self, msg: NotificationMessage) -> Result<()> {
         match crate::hubs::send(self.tokens(), msg) {
             Ok(()) => Ok(()),
@@ -47,7 +55,7 @@ pub trait RcDevice: Debug + Send + Sync {
         }
     }
 
-    fn remote_buttons_enable(&self, mode: u8, delta: u32) -> Result<()> {
+    async fn remote_buttons_enable(&self, mode: u8, delta: u32) -> Result<()> {
         self.check()?;
         let msg =
             NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
@@ -56,10 +64,10 @@ pub trait RcDevice: Debug + Send + Sync {
                 delta,
                 notification_enabled: true,
             });
-        self.commit(msg)
+        self.commit(msg).await
     }
 
-    fn remote_buttons_enable_by_port(&self, port_id: u8) -> Result<()> {
+    async fn remote_buttons_enable_by_port(&self, port_id: u8) -> Result<()> {
         self.check()?;
         let msg =
             NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
@@ -68,14 +76,14 @@ pub trait RcDevice: Debug + Send + Sync {
                 delta: 1,
                 notification_enabled: true,
             });
-        self.commit(msg)
+        self.commit(msg).await
     }
 
-    fn remote_connect(
+    async fn remote_connect(
         &self,
     ) -> Result<(broadcast::Receiver<RcButtonState>, JoinHandle<()>)> {
-        self.remote_buttons_enable_by_port(0x0)?;
-        self.remote_buttons_enable_by_port(0x1)?;
+        self.remote_buttons_enable_by_port(0x0).await?;
+        self.remote_buttons_enable_by_port(0x1).await?;
 
         // Set up channel
         let (tx, rx) = broadcast::channel::<RcButtonState>(64);
@@ -123,11 +131,11 @@ pub trait RcDevice: Debug + Send + Sync {
         Ok((rx, task))
     }
 
-    fn remote_connect_with_green(
+    async fn remote_connect_with_green(
         &self,
     ) -> Result<(broadcast::Receiver<RcButtonState>, JoinHandle<()>)> {
-        self.remote_buttons_enable_by_port(0x0)?;
-        self.remote_buttons_enable_by_port(0x1)?;
+        self.remote_buttons_enable_by_port(0x0).await?;
+        self.remote_buttons_enable_by_port(0x1).await?;
 
         // Set up channel
         let (tx, rx) = broadcast::channel::<RcButtonState>(8);

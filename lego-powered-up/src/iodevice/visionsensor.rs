@@ -46,7 +46,7 @@ pub enum OutputColor {
 
 #[async_trait]
 pub trait VisionSensor: Debug + Send + Sync {
-    fn vison_sensor_single_enable(
+    async fn vison_sensor_single_enable(
         &self,
         mode: u8,
         delta: u32,
@@ -59,13 +59,13 @@ pub trait VisionSensor: Debug + Send + Sync {
                 delta,
                 notification_enabled: true,
             });
-        self.commit(msg)
+        self.commit(msg).await
     }
 
-    fn visionsensor_color(
+    async fn visionsensor_color(
         &self,
     ) -> Result<(broadcast::Receiver<DetectedColor>, JoinHandle<()>)> {
-        self.vison_sensor_single_enable(visionmode::COLOR, 1)?;
+        self.vison_sensor_single_enable(visionmode::COLOR, 1).await?;
         let port_id = self.port();
         // Set up channel
         let (tx, rx) = broadcast::channel::<DetectedColor>(8);
@@ -122,7 +122,7 @@ pub trait VisionSensor: Debug + Send + Sync {
     }
 
     // Just setting output mode turns the light off, which may be useful
-    fn visionsensor_light_output_mode(&self) -> Result<()> {
+    async fn visionsensor_light_output_mode(&self) -> Result<()> {
         self.check()?;
         let msg =
             NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
@@ -131,10 +131,10 @@ pub trait VisionSensor: Debug + Send + Sync {
                 delta: 1,
                 notification_enabled: true,
             });
-        self.commit(msg)
+        self.commit(msg).await
     }
     // Output colors are limited to R, G, B and W (all three)
-    fn visionsensor_set_color(&self, color: OutputColor) -> Result<()> {
+    async fn visionsensor_set_color(&self, color: OutputColor) -> Result<()> {
         self.check()?;
         let subcommand = PortOutputSubcommand::WriteDirectModeData(
             WriteDirectModeDataPayload::SetVisionSensorColor(color as i8),
@@ -147,7 +147,7 @@ pub trait VisionSensor: Debug + Send + Sync {
                 completion_info: CompletionInfo::NoAction,
                 subcommand,
             });
-        self.commit(msg)
+        self.commit(msg).await
     }
 
     /// Device trait boilerplate
@@ -155,6 +155,14 @@ pub trait VisionSensor: Debug + Send + Sync {
     fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>>;
     fn check(&self) -> Result<()>;
     fn tokens(&self) -> Tokens;
+    #[cfg(not(feature = "syncsend"))]
+    async fn commit(&self, msg: NotificationMessage) -> Result<()> {
+        match crate::hubs::send(self.tokens(), msg).await {
+            Ok(()) => Ok(()),
+            Err(e) => Err(e),
+        }
+    }
+    #[cfg(feature = "syncsend")]
     fn commit(&self, msg: NotificationMessage) -> Result<()> {
         match crate::hubs::send(self.tokens(), msg) {
             Ok(()) => Ok(()),

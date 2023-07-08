@@ -58,7 +58,7 @@ pub async fn vision_sensor_ui(mutex: HubMutex) -> Result<()> {
             }
             device
                 .set_device_mode(0, 1, false)
-                // .await
+                .await
                 .expect("Error disabling notifications");
             continue;
         } else if line.trim().eq_ignore_ascii_case("color") {
@@ -251,7 +251,7 @@ async fn reader(
         // panics on non-existant mode_id
         DatasetType::Bits8 => {
             let (mut rx, _) =
-                device.enable_8bit_sensor(mode_id, delta).unwrap();
+                device.enable_8bit_sensor(mode_id, delta).await.unwrap();
             Ok(tokio::spawn(async move {
                 while let Ok(data) = rx.recv().await {
                     println!(
@@ -263,7 +263,7 @@ async fn reader(
         }
         DatasetType::Bits16 => {
             let (mut rx, _) =
-                device.enable_16bit_sensor(mode_id, delta).unwrap();
+                device.enable_16bit_sensor(mode_id, delta).await.unwrap();
             Ok(tokio::spawn(async move {
                 while let Ok(data) = rx.recv().await {
                     println!(
@@ -275,7 +275,7 @@ async fn reader(
         }
         DatasetType::Bits32 => {
             let (mut rx, _) =
-                device.enable_32bit_sensor(mode_id, delta).unwrap();
+                device.enable_32bit_sensor(mode_id, delta).await.unwrap();
             Ok(tokio::spawn(async move {
                 while let Ok(data) = rx.recv().await {
                     println!(
@@ -287,7 +287,7 @@ async fn reader(
         }
         DatasetType::Float => {
             let (mut rx, _) =
-                device.enable_32bit_sensor(mode_id, delta).unwrap();
+                device.enable_32bit_sensor(mode_id, delta).await.unwrap();
             Ok(tokio::spawn(async move {
                 while let Ok(data) = rx.recv().await {
                     println!(
@@ -312,10 +312,10 @@ async fn vision_to_hub_color(
             // .await
             .expect("Can't access Hubled");
     }
-    let (mut vision_rx, _) = device.visionsensor_color().unwrap();
+    let (mut vision_rx, _) = device.visionsensor_color().await.unwrap();
     hubled
         .set_hubled_mode(HubLedMode::Colour)
-        // .await
+        .await
         .expect("Error setting mode");
     Ok(tokio::spawn(async move {
         while let Ok(data) = vision_rx.recv().await {
@@ -368,12 +368,12 @@ async fn vision_to_hub_rgb(
     }
     hubled
         .set_hubled_mode(HubLedMode::Rgb)
-        // .await
+        .await
         .expect("Error setting mode");
     let _ = hubled.set_hubled_rgb(&[0x00, 0x00, 0x00]);
     let (mut vision_rx, _) = device
         .enable_16bit_sensor(modes::VisionSensor::RGB_I, 1)
-        // .await
+        .await
         .unwrap();
     Ok(tokio::spawn(async move {
         while let Ok(data) = vision_rx.recv().await {
