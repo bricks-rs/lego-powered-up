@@ -92,7 +92,7 @@ pub async fn io_event_handler(
     loop {
         tokio::select! {
             _ = cancel.cancelled() => {
-                eprintln!("io_event_handler cancelled");
+                // println!("io_event_handler cancelled");
                 break;
             }
 

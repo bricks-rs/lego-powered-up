@@ -525,16 +525,8 @@ pub trait EncoderMotor: Debug + Send + Sync {
     fn get_rx_feedback(&self) -> Result<broadcast::Receiver<PortOutputCommandFeedbackFormat>>;
     fn check(&self) -> Result<()>;
     fn tokens(&self) -> Tokens;
-    #[cfg(not(feature = "syncsend"))]
     async fn commit(&self, msg: NotificationMessage) -> Result<()> {
         match crate::hubs::send(self.tokens(), msg).await {
-            Ok(()) => Ok(()),
-            Err(e) => Err(e),
-        }
-    }
-    #[cfg(feature = "syncsend")]
-    fn commit(&self, msg: NotificationMessage) -> Result<()> {
-        match crate::hubs::send(self.tokens(), msg) {
             Ok(()) => Ok(()),
             Err(e) => Err(e),
         }

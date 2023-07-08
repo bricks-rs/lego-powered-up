@@ -3,10 +3,6 @@
 /// higher level support.
 use async_trait::async_trait;
 use core::fmt::Debug;
-
-
-
-
 use tokio::sync::broadcast;
 use tokio::task::JoinHandle;
 use crate::hubs::Tokens;
@@ -25,16 +21,8 @@ pub trait GenericSensor: Debug + Send + Sync {
     fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>>;
     fn check(&self, mode: u8, datasettype: DatasetType) -> Result<()>;
     fn tokens(&self) -> Tokens;
-    #[cfg(not(feature = "syncsend"))]
     async fn commit(&self, msg: NotificationMessage) -> Result<()> {
         match crate::hubs::send(self.tokens(), msg).await {
-            Ok(()) => Ok(()),
-            Err(e) => Err(e),
-        }
-    }
-    #[cfg(feature = "syncsend")]
-    fn commit(&self, msg: NotificationMessage) -> Result<()> {
-        match crate::hubs::send(self.tokens(), msg) {
             Ok(()) => Ok(()),
             Err(e) => Err(e),
         }

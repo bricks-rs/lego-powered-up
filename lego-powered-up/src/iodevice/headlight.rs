@@ -16,16 +16,8 @@ pub trait HeadLight: Debug + Send + Sync {
     fn port(&self) -> u8;
     fn check(&self) -> Result<()>;
     fn tokens(&self) -> Tokens;
-    #[cfg(not(feature = "syncsend"))]
     async fn commit(&self, msg: NotificationMessage) -> Result<()> {
         match crate::hubs::send(self.tokens(), msg).await {
-            Ok(()) => Ok(()),
-            Err(e) => Err(e),
-        }
-    }
-    #[cfg(feature = "syncsend")]
-    fn commit(&self, msg: NotificationMessage) -> Result<()> {
-        match crate::hubs::send(self.tokens(), msg) {
             Ok(()) => Ok(()),
             Err(e) => Err(e),
         }

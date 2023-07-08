@@ -44,9 +44,7 @@ use consts::{BLEManufacturerData, HubType};
 use notifications::{
     NetworkCommand, PortValueCombinedFormat, PortValueSingleFormat, PortOutputCommandFeedbackFormat,
 };
-
 pub use error::{Error, OptionContext, Result};
-// pub use consts::IoTypeId;
 
 pub type HubMutex = Arc<Mutex<Box<dyn Hub>>>;
 type NotificationStream = Pin<Box<dyn Stream<Item = ValueNotification> + Send>>;
