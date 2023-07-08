@@ -89,6 +89,7 @@ pub trait EncoderMotor: Debug + Send + Sync {
                 match data {
                     PortOutputCommandFeedbackFormat {msg1, .. } if msg1.port_id == port_id => {
                         // println!("LPU_cmdfb: {:?}", &data);
+                        #[allow(clippy::match_single_binding)]
                         match msg1  {
                             FeedbackMessage { port_id:_, empty_cmd_in_progress, empty_cmd_completed:_ , discarded, idle:_, busy_full } => {
                                 // Is it correct that the fields 'empty_cmd_completed' and 'idle' are redundant?
@@ -357,20 +358,20 @@ pub trait EncoderMotor: Debug + Send + Sync {
             },
         );
         self.commit(msg).await?;
-        tokio::time::sleep(Duration::from_millis(100)).await;
+        // tokio::time::sleep(Duration::from_millis(100)).await;
 
         // Step 2: Set up modes
         self.motor_sensor_enable(MotorSensorMode::Speed, speed_delta).await
             ?;
-        tokio::time::sleep(Duration::from_millis(100)).await;    
+        // tokio::time::sleep(Duration::from_millis(100)).await;    
         // self.motor_sensor_enable(MotorSensorMode::APos, position_delta).await;    // Availablie on TechnicLinear motors, not on InternalTacho (MoveHub)
         self.motor_sensor_enable(MotorSensorMode::Pos, position_delta).await
             ?; // POS available on either
-        tokio::time::sleep(Duration::from_millis(100)).await;
+        // tokio::time::sleep(Duration::from_millis(100)).await;
         
         // Step 3: Set up combination
-        let sensor0_mode_nibble: u8;
-        let sensor1_mode_nibble: u8;
+        
+        
         // let mut sensor2_mode_nibble: u8;
         let dataset_nibble: u8 = 0x00; // All motor modes have 1 dataset only
         
@@ -382,8 +383,8 @@ pub trait EncoderMotor: Debug + Send + Sync {
         //                                     // sensor2_mode_nibble = 0x30; // APos
         //     }
         //     MotorSensorMode::Pos => {
-                sensor0_mode_nibble = 0x20; // Pos
-                sensor1_mode_nibble = 0x10; // Speed
+                let sensor0_mode_nibble: u8 = 0x20; // Pos
+                let sensor1_mode_nibble: u8 = 0x10; // Speed
                                             // sensor2_mode_nibble = 0x30; // APos
             // }
             // _ => {
@@ -447,6 +448,7 @@ pub trait EncoderMotor: Debug + Send + Sync {
                         // If only speed changes then we only get speed => send speed with buffered position. 
                         if data.data.len() == 3 {
                             // tx.send( (data.data[2] as i8, position_buffer) ).expect("Error sending");
+                            #[allow(clippy::single_match)]
                             match tx.send( (data.data[2] as i8, position_buffer) ) {
                                 Ok(_) => {},
                                 Err(_) => { 
@@ -457,13 +459,14 @@ pub trait EncoderMotor: Debug + Send + Sync {
                         else if data.data.len() == 7 {
                             let mut it = data.data.into_iter().skip(2);
                             let pos = i32::from_le_bytes([
-                                it.next().unwrap() as u8,
-                                it.next().unwrap() as u8,
-                                it.next().unwrap() as u8,
-                                it.next().unwrap() as u8,
+                                it.next().unwrap(),
+                                it.next().unwrap(),
+                                it.next().unwrap(),
+                                it.next().unwrap(),
                             ]);
                             let speed = it.next().unwrap() as i8;
                             position_buffer = pos;
+                            #[allow(clippy::single_match)]
                             match tx.send( (speed, pos) ) {
                                 Ok(_) => {},
                                 Err(_) => { 

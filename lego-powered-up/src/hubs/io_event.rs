@@ -53,6 +53,11 @@ impl Verbosity {
         self.attached = attached;
     }
 }
+impl Default for Verbosity {
+    fn default() -> Self {
+        Self::new()
+     }
+}
 
 pub async fn io_event_handler(
     mut stream: PinnedStream,
@@ -70,7 +75,7 @@ pub async fn io_event_handler(
 ) -> Result<()> {
     // println!("io_event_handler spawned");
     if senders.networkcmd_sender.is_none() | senders.combinedvalue_sender.is_none() | senders.hubnotification_sender.is_none() | senders.singlevalue_sender.is_none() | senders.commandfeedback_sender.is_none() {
-        return Err(crate::Error::HubError((format!("Sender was none"))));
+        return Err(crate::Error::HubError(format!("Sender was none")));
     } 
     let combinedvalue_sender = senders.combinedvalue_sender.unwrap();
     let commandfeedback_sender = senders.commandfeedback_sender.unwrap();

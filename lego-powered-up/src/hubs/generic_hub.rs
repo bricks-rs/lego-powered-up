@@ -167,9 +167,9 @@ impl Hub for GenericHub {
     /// Cache handles held by hub on device so we don't need to lock hub mutex as often    
     fn device_cache(&self, mut d: IoDevice) -> IoDevice {
         // Channels that forward some notification message types
-        d.cache_channels((
+        d.cache_channels(
            self.channels.clone()
-        ));
+        );
 
         // BT handles for calling send
         // d.cache_tokens((
