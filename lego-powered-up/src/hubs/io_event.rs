@@ -84,7 +84,7 @@ pub async fn io_event_handler(
     let singlevalue_sender = senders.singlevalue_sender.unwrap();
 
     // Verbosity
-    const ATTACHED: bool = false;
+    const ATTACHED: bool = true;
     const HUB: bool = false;
     const INPUT: bool = false;
     const OUTPUT: bool = false;
@@ -92,7 +92,7 @@ pub async fn io_event_handler(
     loop {
         tokio::select! {
             _ = cancel.cancelled() => {
-                // eprintln!("io_event_handler cancelled");
+                eprintln!("io_event_handler cancelled");
                 break;
             }
 
