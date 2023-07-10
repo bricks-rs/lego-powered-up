@@ -5,6 +5,7 @@
 use async_trait::async_trait;
 use core::fmt::Debug;
 
+use crate::device_trait;
 use crate::hubs::Tokens;
 pub use crate::consts::Color;
 use crate::notifications::CompletionInfo;
@@ -16,6 +17,65 @@ use crate::notifications::StartupInfo;
 use crate::notifications::WriteDirectModeDataPayload;
 use crate::Result;
 
+#[derive(Debug, Copy, Clone)]
+pub enum HubLedMode {
+    /// Colour may be set to one of a number of specific named colours
+    Colour = 0x0,
+    /// Colour may be set to any 12-bit RGB value
+    Rgb = 0x01,
+}
+
+device_trait!(HubLed, [ 
+    async fn set_hubled_mode(&self, mode: HubLedMode) -> Result<()> {
+        self.check()?;
+        let msg =
+            NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
+                port_id: self.port(),
+                mode: mode as u8,
+                delta: 1,
+                notification_enabled: false,
+            });
+        self.commit(msg).await
+    },
+
+    async fn set_hubled_rgb(&self, rgb: &[u8; 3]) -> Result<()> {
+        // self.check()?;  // Possible performance hit?
+        let subcommand = PortOutputSubcommand::WriteDirectModeData(
+            WriteDirectModeDataPayload::SetHubRgb {
+                red: rgb[0],
+                green: rgb[1],
+                blue: rgb[2],
+            },
+        );
+
+        let msg =
+            NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
+                port_id: self.port(),
+                startup_info: StartupInfo::ExecuteImmediately,
+                completion_info: CompletionInfo::NoAction,
+                subcommand,
+            });
+        self.commit(msg).await
+    },
+
+    async fn set_hubled_color(&self, color: Color) -> Result<()> {
+        self.check()?;
+        let subcommand = PortOutputSubcommand::WriteDirectModeData(
+            WriteDirectModeDataPayload::SetHubColor(color as i8),
+        );
+
+        let msg =
+            NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
+                port_id: self.port(),
+                startup_info: StartupInfo::ExecuteImmediately,
+                completion_info: CompletionInfo::NoAction,
+                subcommand,
+            });
+        self.commit(msg).await
+    }
+]);
+
+/*
 #[async_trait]
 pub trait HubLed: Debug + Send + Sync {
     async fn set_hubled_mode(&self, mode: HubLedMode) -> Result<()> {
@@ -77,10 +137,4 @@ pub trait HubLed: Debug + Send + Sync {
         }
     }
 }
-
-pub enum HubLedMode {
-    /// Colour may be set to one of a number of specific named colours
-    Colour = 0x0,
-    /// Colour may be set to any 12-bit RGB value
-    Rgb = 0x01,
-}
+*/

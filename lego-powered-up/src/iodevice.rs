@@ -81,6 +81,9 @@ impl Basic for IoDevice {
     fn tokens(&self) -> Tokens {
         self.tokens.clone()
     }
+    fn check(&self) -> Result<()> {
+       Ok(())
+    }
 
 }
 impl GenericSensor for IoDevice {
@@ -97,7 +100,10 @@ impl GenericSensor for IoDevice {
             Err(Error::NoneError(String::from("Sender not found")))
         }
     }
-    fn check(&self, mode: u8, datasettype: DatasetType) -> Result<()> {
+    fn check(&self) -> Result<()> {
+        Ok(())
+     }
+    fn check_dataset(&self, mode: u8, datasettype: DatasetType) -> Result<()> {
         if let Some(pm) = self.def.modes().get(&mode) {
             let vf = pm.value_format;
             // println!("Dataset for call: {:?}  Dataset for device: {:?} Device kind: {:?} ", &datasettype, &vf.dataset_type, &self.kind);
@@ -219,6 +225,27 @@ impl VisionSensor for IoDevice {
             _ => {
                 Err(Error::HubError(String::from("Not a Vision sensor Motor")))
             }
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! device_trait {
+    ($name:tt, [$( $b:item ),*])  => { 
+        #[async_trait]
+        pub trait $name: Debug + Send + Sync {
+            fn port(&self) -> u8;
+            fn check(&self) -> Result<()>;
+            fn tokens(&self) -> Tokens;
+            async fn commit(&self, msg: NotificationMessage) -> Result<()> {
+                match crate::hubs::send(self.tokens(), msg).await {
+                    Ok(()) => Ok(()),
+                    Err(e) => Err(e),
+                }
+            }
+            $(
+                $b
+            )*
         }
     }
 }
