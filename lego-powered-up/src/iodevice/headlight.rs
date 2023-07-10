@@ -5,21 +5,54 @@ use crate::Result;
 ///
 /// Needs mode information about this unit to complete
 use async_trait::async_trait;
-
-
 use core::fmt::Debug;
-
 use crate::hubs::Tokens;
-#[async_trait]
-pub trait HeadLight: Debug + Send + Sync {
-    /// Device trait boilerplate
-    fn port(&self) -> u8;
-    fn check(&self) -> Result<()>;
-    fn tokens(&self) -> Tokens;
-    async fn commit(&self, msg: NotificationMessage) -> Result<()> {
-        match crate::hubs::send(self.tokens(), msg).await {
-            Ok(()) => Ok(()),
-            Err(e) => Err(e),
-        }
-    }
+
+
+// macro_rules! device_trait_boilerplate {
+//     () => { 
+//         fn port(&self) -> u8;
+//         fn check(&self) -> Result<()>;
+//         fn tokens(&self) -> Tokens;
+//         async fn commit(&self, msg: NotificationMessage) -> Result<()> {
+//             match crate::hubs::send(self.tokens(), msg).await {
+//                 Ok(()) => Ok(()),
+//                 Err(e) => Err(e),
+//             }
+//         }     
+//     };
+// }
+
+#[macro_export]
+macro_rules! device_trait {
+    ($name:tt) => { 
+        #[async_trait]
+        pub trait $name: Debug + Send + Sync {
+            fn port(&self) -> u8;
+            fn check(&self) -> Result<()>;
+            fn tokens(&self) -> Tokens;
+            async fn commit(&self, msg: NotificationMessage) -> Result<()> {
+                match crate::hubs::send(self.tokens(), msg).await {
+                    Ok(()) => Ok(()),
+                    Err(e) => Err(e),
+                }
+            }
+        }     
+    };
 }
+
+device_trait!(HeadLight);
+
+// #[async_trait]
+// pub trait HeadLight: Debug + Send + Sync {
+//     // Device trait boilerplate
+//     device_trait_boilerplate!();
+//     // fn port(&self) -> u8;
+//     // fn tokens(&self) -> Tokens;
+//     // async fn commit(&self, msg: NotificationMessage) -> Result<()> {
+//     //     match crate::hubs::send(self.tokens(), msg).await {
+//     //         Ok(()) => Ok(()),
+//     //         Err(e) => Err(e),
+//     //     }
+//     // }
+// }
