@@ -13,31 +13,3 @@ use crate::device_trait;
 
 device_trait!(HeadLight, []);
 
-
-// macro_rules! device_trait_boilerplate {
-//     () => { 
-//         fn port(&self) -> u8;
-//         fn check(&self) -> Result<()>;
-//         fn tokens(&self) -> Tokens;
-//         async fn commit(&self, msg: NotificationMessage) -> Result<()> {
-//             match crate::hubs::send(self.tokens(), msg).await {
-//                 Ok(()) => Ok(()),
-//                 Err(e) => Err(e),
-//             }
-//         }     
-//     };
-// }
-
-// #[async_trait]
-// pub trait HeadLight: Debug + Send + Sync {
-//     // Device trait boilerplate
-//     device_trait_boilerplate!();
-//     // fn port(&self) -> u8;
-//     // fn tokens(&self) -> Tokens;
-//     // async fn commit(&self, msg: NotificationMessage) -> Result<()> {
-//     //     match crate::hubs::send(self.tokens(), msg).await {
-//     //         Ok(()) => Ok(()),
-//     //         Err(e) => Err(e),
-//     //     }
-//     // }
-// }
