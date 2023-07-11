@@ -26,14 +26,10 @@ async fn main() -> anyhow::Result<()> {
     }
     let (mut motor_rx, _position_task) = motor
         .enable_32bit_sensor(modes::InternalMotorTacho::POS, 1).await?;
-        // .await?;
 
     tokio::spawn(async move {
         while let Ok(data) = motor_rx.recv().await {
-            println!(
-                "Pos: {:?}",
-                data
-            );
+            println!("Pos: {:?}", data);
         }
     });
 
@@ -42,28 +38,20 @@ async fn main() -> anyhow::Result<()> {
     motor.start_speed_for_degrees(180, 50, 50, EndState::Brake).await?;
     sleep(Duration::from_secs(2)).await;
 
-    // Experimental sync command
-    // println!("SYNC Rotate by degrees (180 cw)");
-    // motor.start_speed_for_degrees2(180, 50, 50, EndState::Brake)?;
-    // sleep(Duration::from_secs(2)).await;
-
     // Go to position (back to start)
     println!("Go to position (back to start)");
-    
-    sleep(Duration::from_secs(5)).await;
+    motor.goto_absolute_position(0, 50, 50, EndState::Brake).await?;
+    sleep(Duration::from_secs(2)).await;
 
-    // Run for time (hub-controlled)
-    println!("Run for time (hub-controlled)");
-    motor.start_speed_for_time(5, 50, 50, EndState::Float).await?;
-    sleep(Duration::from_secs(10)).await;
+    // Run for time (hub-controlled) - currently does not work
+    println!("Run for time (hub-controlled) - currently does not work");
+    motor.start_speed_for_time(2, 50, 50, EndState::Float).await?;
+    sleep(Duration::from_secs(5)).await;
 
 
     // Cleanup
     println!("Disconnect from hub `{}`", hub.name);
-    {
-        let lock = hub.mutex.lock().await;
-        lock.disconnect().await?;
-    }
+    hub.mutex.lock().await.disconnect().await?;
 
     Ok(())
 }

@@ -3,7 +3,6 @@
 
 // #![allow(unused)]
 use core::time::Duration;
-
 use std::collections::HashMap;
 use tokio::task::JoinHandle;
 use tokio::time::sleep;
@@ -11,7 +10,7 @@ use tokio::time::sleep;
 use lego_powered_up::consts::LEGO_COLORS;
 use lego_powered_up::error::{Error, Result};
 use lego_powered_up::iodevice::basic::Basic;
-use lego_powered_up::iodevice::hubled::*;
+use lego_powered_up::iodevice::hubled::{HubLed, HubLedMode};
 use lego_powered_up::iodevice::sensor::GenericSensor;
 use lego_powered_up::notifications::DatasetType;
 use lego_powered_up::HubMutex;
@@ -22,11 +21,7 @@ async fn main() -> anyhow::Result<()> {
     let hub = lego_powered_up::setup::single_hub().await?;
 
     // Demo hub RGB
-    let hubled: IoDevice;
-    {
-        let lock = hub.mutex.lock().await;
-        hubled = lock.io_from_kind(IoTypeId::HubLed)?;
-    }
+    let hubled = hub.mutex.lock().await.io_from_kind(IoTypeId::HubLed)?;
     let _led_task = tokio::spawn(async move {
         // LEGO colors
         hubled
@@ -67,10 +62,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Cleanup after ui exit
     println!("Disconnect from hub `{}`", hub.name);
-    {
-        let lock = hub.mutex.lock().await;
-        lock.disconnect().await?;
-    }
+    hub.mutex.lock().await.disconnect().await?;
     println!("Done!");
 
     Ok(())

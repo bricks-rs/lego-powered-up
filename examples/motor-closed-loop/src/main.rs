@@ -1,13 +1,7 @@
 // Any copyright is dedicated to the Public Domain.
 // https://creativecommons.org/publicdomain/zero/1.0/
 
-// #![allow(unused)]
 
-// use core::time::Duration;
-// use tokio::time::sleep as sleep;
-
-use lego_powered_up::IoDevice;
-// use lego_powered_up::consts::MotorSensorMode;
 use lego_powered_up::consts::named_port;
 use lego_powered_up::iodevice::modes;
 use lego_powered_up::iodevice::motor::EncoderMotor;
@@ -20,27 +14,16 @@ async fn main() -> anyhow::Result<()> {
     let (main_hub, rc_hub) = lego_powered_up::setup::main_and_rc().await?;
 
     // Set up RC input
-    let rc: IoDevice;
-    {
-        let lock = rc_hub.mutex.lock().await;
-        rc = lock.io_from_port(named_port::A)?;
-        // rc = lock.io_from_port(16).await?;
-    }
+    let rc = rc_hub.mutex.lock().await.io_from_port(named_port::A)?;
     let (mut rc_rx, _rc_task) = rc.remote_connect_with_green().await?;
 
     // Set up motor feedback
-    let motor: IoDevice;
-    {
-        let lock = main_hub.mutex.lock().await;
-        motor = lock.io_from_port(named_port::A)?;
-    }
+    let motor = main_hub.mutex.lock().await.io_from_port(named_port::A)?;
     let (mut motor_rx, _position_task) = motor
         .enable_32bit_sensor(modes::InternalMotorTacho::POS, 1).await?;
-        // .await?;
 
     // Control task
     let motor_control = tokio::spawn(async move {
-        // const MAX_POWER: Power = Power::Cw(100);
         const MAX_POWER: u8 = 100;
         let mut set_limit: (Option<i32>, Option<i32>) = (None, None);
         let mut set_speed: i8 = 20;
@@ -55,7 +38,7 @@ async fn main() -> anyhow::Result<()> {
                         None => (),
                         Some(limit) => {
                             if (pos <= limit) & cmd.0 {
-                                let _ = motor.start_power(Power::Brake);
+                                let _ = motor.start_power(Power::Brake).await;
                                 at_limit.0 = true;
                                 println!("Left LIMIT: {}", limit);
                             } else {
@@ -67,7 +50,7 @@ async fn main() -> anyhow::Result<()> {
                         None => (),
                         Some(limit) => {
                             if (pos >= limit) & cmd.1 {
-                                let _ = motor.start_power(Power::Brake);
+                                let _ = motor.start_power(Power::Brake).await;
                                 at_limit.1 = true;
                                 println!("Right LIMIT: {}", limit);
                             } else {
@@ -81,19 +64,19 @@ async fn main() -> anyhow::Result<()> {
                 Ok(msg) = rc_rx.recv() => {
                     match msg {
                         RcButtonState::Aup => {
-                            let _ = motor.start_power(Power::Brake);
+                            let _ = motor.start_power(Power::Brake).await;
                             cmd = (false, false);
                         }
                         RcButtonState::Aminus => {
                             if !at_limit.0 {
                                 cmd.0 = true;
-                                let _ = motor.start_speed(-set_speed, MAX_POWER);
+                                let _ = motor.start_speed(-set_speed, MAX_POWER).await;
                             }
                         }
                         RcButtonState::Aplus => {
                             if !at_limit.1 {
                                 cmd.1 = true;
-                                let _ = motor.start_speed(set_speed, MAX_POWER);
+                                let _ = motor.start_speed(set_speed, MAX_POWER).await;
                             }
                         }
                         RcButtonState::Ared => {
@@ -153,15 +136,9 @@ async fn main() -> anyhow::Result<()> {
 
     // Cleanup
     println!("Disconnect from hub `{}`", rc_hub.name);
-    {
-        let lock = rc_hub.mutex.lock().await;
-        lock.disconnect().await?;
-    }
+    rc_hub.mutex.lock().await.disconnect().await?;
     println!("Disconnect from hub `{}`", main_hub.name);
-    {
-        let lock = main_hub.mutex.lock().await;
-        lock.disconnect().await?;
-    }
+    main_hub.mutex.lock().await.disconnect().await?;
 
     println!("Done!");
 

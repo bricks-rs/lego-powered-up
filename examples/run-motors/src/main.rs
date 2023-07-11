@@ -15,13 +15,13 @@ async fn main() -> anyhow::Result<()> {
 
     // Devices to be used
     let hub_led: IoDevice;
-    let motor_c: IoDevice;
-    let motor_d: IoDevice;
+    let motor_a: IoDevice;
+    let motor_b: IoDevice;
     {
         let lock = hub.mutex.lock().await;
         hub_led = lock.io_from_kind(IoTypeId::HubLed)?;
-        motor_c = lock.io_from_port(consts::named_port::C)?;
-        motor_d = lock.io_from_port(consts::named_port::D)?;
+        motor_a = lock.io_from_port(consts::named_port::A)?;
+        motor_b = lock.io_from_port(consts::named_port::B)?;
     }
 
     println!("Change the hub LED to green");
@@ -29,14 +29,14 @@ async fn main() -> anyhow::Result<()> {
     hub_led.set_hubled_color(consts::Color::Green).await?;
 
     println!("Run motors");
-    motor_c.start_speed(50, 50).await?;
-    motor_d.start_speed(50, 50).await?;
+    motor_a.start_speed(50, 50).await?;
+    motor_b.start_speed(50, 50).await?;
 
     tokio::time::sleep(Duration::from_secs(3)).await;
 
     println!("Stop motors");
-    motor_c.start_power(Power::Float).await?;
-    motor_d.start_power(Power::Brake).await?;
+    motor_a.start_power(Power::Float).await?;
+    motor_b.start_power(Power::Brake).await?;
 
     println!("Disconnect from hub `{}`", hub.name);
     {

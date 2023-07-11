@@ -29,19 +29,19 @@ async fn main() -> anyhow::Result<()> {
             }
         });
         sleep(Duration::from_secs(2)).await;
-        motor.preset_encoder(0);   
+        motor.preset_encoder(0).await;   
         sleep(Duration::from_secs(1)).await;
-        motor.start_speed_for_degrees(45, 20, 50, EndState::Brake);
+        motor.start_speed_for_degrees(45, 20, 50, EndState::Brake).await;
         sleep(Duration::from_secs(1)).await;
-        motor.goto_absolute_position(0, 20, 50, EndState::Brake);
+        motor.goto_absolute_position(0, 20, 50, EndState::Brake).await;
         sleep(Duration::from_secs(1)).await;
-        motor.preset_encoder(0);   
+        motor.preset_encoder(0).await;   
         sleep(Duration::from_secs(1)).await;
-        motor.start_speed_for_degrees(180, 50, 50, EndState::Brake);
+        motor.start_speed_for_degrees(180, 50, 50, EndState::Brake).await;
         sleep(Duration::from_secs(2)).await;
-        motor.goto_absolute_position(360, 20, 50, EndState::Brake);
+        motor.goto_absolute_position(360, 20, 50, EndState::Brake).await;
         sleep(Duration::from_secs(2)).await;
-        motor.goto_absolute_position(0, 20, 50, EndState::Brake);
+        motor.goto_absolute_position(0, 20, 50, EndState::Brake).await;
         sleep(Duration::from_secs(2)).await;
     
     // Cleanup
