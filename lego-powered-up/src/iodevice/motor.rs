@@ -6,17 +6,16 @@
 /// The start_power commands should work with train motors.
 use async_trait::async_trait;
 use core::fmt::Debug;
-// use std::time::Duration;
 use tokio::sync::broadcast;
 use tokio::task::JoinHandle;
 
 use crate::device_trait;
 use super::Basic;
 use crate::error::{Error, Result};
-use crate::notifications::{NotificationMessage, PortOutputCommandFeedbackFormat, FeedbackMessage};
+use crate::notifications::{PortOutputCommandFeedbackFormat, FeedbackMessage};
 use crate::notifications::{StartupInfo, CompletionInfo};
 use crate::notifications::{PortOutputSubcommand, WriteDirectModeDataPayload};
-use crate::notifications::{InputSetupCombined, InputSetupCombinedSubcommand, PortValueCombinedFormat};
+use crate::notifications::{InputSetupCombinedSubcommand, PortValueCombinedFormat};
 pub use crate::consts::MotorSensorMode;
 pub use crate::notifications::{EndState, Power};
 
@@ -47,7 +46,6 @@ pub enum BufferState {
 // }
 
 device_trait!(EncoderMotor, [
-    // fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>>;,
     fn get_rx_combined(&self) -> Result<broadcast::Receiver<PortValueCombinedFormat>>;,
     fn get_rx_feedback(&self) -> Result<broadcast::Receiver<PortOutputCommandFeedbackFormat>>;,
 
@@ -102,14 +100,6 @@ device_trait!(EncoderMotor, [
             WriteDirectModeDataPayload::PresetEncoder(position),
         );
         self.device_command(subcommand, StartupInfo::ExecuteImmediately, CompletionInfo::NoAction).await
-        // let msg =
-        //     NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
-        //         port_id: self.port(),
-        //         startup_info: StartupInfo::ExecuteImmediately,
-        //         completion_info: CompletionInfo::NoAction,
-        //         subcommand,
-        //     });
-        // self.commit(msg).await
     },
     async fn set_acc_time(&self, time: i16, profile_number: i8) -> Result<()> {
         self.check()?;
@@ -118,14 +108,6 @@ device_trait!(EncoderMotor, [
             profile_number,
         };
         self.device_command(subcommand, StartupInfo::ExecuteImmediately, CompletionInfo::NoAction).await
-        // let msg =
-        //     NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
-        //         port_id: self.port(),
-        //         startup_info: StartupInfo::ExecuteImmediately,
-        //         completion_info: CompletionInfo::NoAction,
-        //         subcommand,
-        //     });
-        // self.commit(msg).await
     },
     async fn set_dec_time(&self, time: i16, profile_number: i8) -> Result<()> {
         self.check()?;
@@ -134,14 +116,6 @@ device_trait!(EncoderMotor, [
             profile_number,
         };
         self.device_command(subcommand, StartupInfo::ExecuteImmediately, CompletionInfo::NoAction).await
-        // let msg =
-        //     NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
-        //         port_id: self.port(),
-        //         startup_info: StartupInfo::ExecuteImmediately,
-        //         completion_info: CompletionInfo::NoAction,
-        //         subcommand,
-        //     });
-        // self.commit(msg).await
     },
 
     // Commands
@@ -152,27 +126,11 @@ device_trait!(EncoderMotor, [
             WriteDirectModeDataPayload::StartPower(power),
         );
         self.device_command(subcommand, StartupInfo::ExecuteImmediately, CompletionInfo::NoAction).await
-        // let msg =
-        //     NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
-        //         port_id: self.port(),
-        //         startup_info: StartupInfo::ExecuteImmediately,
-        //         completion_info: CompletionInfo::NoAction,
-        //         subcommand,
-        //     });
-        // self.commit(msg).await
     },
     async fn start_power2(&self, power1: Power, power2: Power) -> Result<()> {
         self.check()?;
         let subcommand = PortOutputSubcommand::StartPower2 { power1, power2 };
         self.device_command(subcommand, StartupInfo::ExecuteImmediately, CompletionInfo::NoAction).await
-        // let msg =
-        //     NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
-        //         port_id: self.port(),
-        //         startup_info: StartupInfo::ExecuteImmediately,
-        //         completion_info: CompletionInfo::NoAction,
-        //         subcommand,
-        //     });
-        // self.commit(msg).await
     },
     async fn start_speed(&self, speed: i8, max_power: u8) -> Result<()> {
         self.check()?;
@@ -183,14 +141,6 @@ device_trait!(EncoderMotor, [
             use_dec_profile: true,
         };
         self.device_command(subcommand, StartupInfo::ExecuteImmediately, CompletionInfo::NoAction).await
-        // let msg =
-        //     NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
-        //         port_id: self.port(),
-        //         startup_info: StartupInfo::ExecuteImmediately,
-        //         completion_info: CompletionInfo::NoAction,
-        //         subcommand,
-        //     });
-        // self.commit(msg).await
     },
     async fn start_speed_for_degrees(
         &self,
@@ -209,40 +159,6 @@ device_trait!(EncoderMotor, [
             use_dec_profile: true,
         };
         self.device_command(subcommand, StartupInfo::ExecuteImmediately, CompletionInfo::NoAction).await
-        // let msg =
-        //     NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
-        //         port_id: self.port(),
-        //         startup_info: StartupInfo::ExecuteImmediately,
-        //         completion_info: CompletionInfo::NoAction,
-        //         subcommand,
-        //     });
-        // self.commit(msg).await
-    },
-    async fn start_speed_for_degrees2(
-        &self,
-        degrees: i32,
-        speed: i8,
-        max_power: u8,
-        end_state: EndState,
-    ) -> Result<()> {
-        self.check()?;
-        let subcommand = PortOutputSubcommand::StartSpeedForDegrees {
-            degrees,
-            speed,
-            max_power,
-            end_state,
-            use_acc_profile: true,
-            use_dec_profile: true,
-        };
-        self.device_command(subcommand, StartupInfo::ExecuteImmediately, CompletionInfo::NoAction).await
-        // let msg =
-        //     NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
-        //         port_id: self.port(),
-        //         startup_info: StartupInfo::ExecuteImmediately,
-        //         completion_info: CompletionInfo::NoAction,
-        //         subcommand,
-        //     });
-        // self.commit(msg).await
     },
     async fn start_speed_for_time(
         &self,
@@ -261,14 +177,6 @@ device_trait!(EncoderMotor, [
             use_dec_profile: true,
         };
         self.device_command(subcommand, StartupInfo::ExecuteImmediately, CompletionInfo::NoAction).await
-        // let msg =
-        //     NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
-        //         port_id: self.port(),
-        //         startup_info: StartupInfo::ExecuteImmediately,
-        //         completion_info: CompletionInfo::NoAction,
-        //         subcommand,
-        //     });
-        // self.commit(msg).await
     },
     async fn goto_absolute_position(
         &self,
@@ -287,14 +195,6 @@ device_trait!(EncoderMotor, [
             use_dec_profile: true,
         };
         self.device_command(subcommand, StartupInfo::ExecuteImmediately, CompletionInfo::NoAction).await
-        // let msg =
-        //     NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
-        //         port_id: self.port(),
-        //         startup_info: StartupInfo::ExecuteImmediately,
-        //         completion_info: CompletionInfo::NoAction,
-        //         subcommand,
-        //     });
-        // self.commit(msg).await
     },
 
     // Encoder sensor data
@@ -305,26 +205,10 @@ device_trait!(EncoderMotor, [
     ) -> Result<()> {
         self.check()?;
         self.device_mode(mode as u8, delta, true).await
-        // let msg =
-        //     NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
-        //         port_id: self.port(),
-        //         mode: mode as u8,
-        //         delta,
-        //         notification_enabled: true,
-        //     });
-        // self.commit(msg).await
     },
     async fn motor_sensor_disable(&self) -> Result<()> {
         self.check()?;
         self.device_mode(0, u32::MAX, false).await
-        // let msg =
-        //     NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
-        //         port_id: self.port(),
-        //         mode: 0,
-        //         delta: u32::MAX,
-        //         notification_enabled: false,
-        //     });
-        // self.commit(msg).await
     },
 
     // Note: Currently the returned channel assumes primary mode is Position. 
@@ -333,33 +217,22 @@ device_trait!(EncoderMotor, [
         // primary_mode: MotorSensorMode,
         speed_delta: u32,
         position_delta: u32,
-    // ) -> Result<(broadcast::Receiver<Vec<u8>>, JoinHandle<()>)> {
     ) -> Result<(broadcast::Receiver<(i8, i32)>, JoinHandle<()>)> {
         self.check()?;
+
         // Step 1: Lock device
         let subcommand =
             InputSetupCombinedSubcommand::LockLpf2DeviceForSetup {};
-        let msg = NotificationMessage::PortInputFormatSetupCombinedmode(
-            InputSetupCombined {
-                port_id: self.port(),
-                subcommand,
-            },
-        );
-        self.commit(msg).await?;
-        // tokio::time::sleep(Duration::from_millis(100)).await;
-
+        self.device_mode_combined(subcommand).await?;
+     
         // Step 2: Set up modes
-        self.motor_sensor_enable(MotorSensorMode::Speed, speed_delta).await
-            ?;
-        // tokio::time::sleep(Duration::from_millis(100)).await;    
-        // self.motor_sensor_enable(MotorSensorMode::APos, position_delta).await;    // Availablie on TechnicLinear motors, not on InternalTacho (MoveHub)
-        self.motor_sensor_enable(MotorSensorMode::Pos, position_delta).await
-            ?; // POS available on either
-        // tokio::time::sleep(Duration::from_millis(100)).await;
+        self.motor_sensor_enable(MotorSensorMode::Speed, speed_delta).await?;
+        // APOS availablie on TechnicLinear motors, not on InternalTacho (MoveHub)
+        // self.motor_sensor_enable(MotorSensorMode::APos, position_delta).await?;
+        // POS available on either    
+        self.motor_sensor_enable(MotorSensorMode::Pos, position_delta).await?; 
         
         // Step 3: Set up combination
-        
-        
         // let mut sensor2_mode_nibble: u8;
         let dataset_nibble: u8 = 0x00; // All motor modes have 1 dataset only
         
@@ -368,12 +241,12 @@ device_trait!(EncoderMotor, [
         //     MotorSensorMode::Speed => {
         //         sensor0_mode_nibble = 0x10; // Speed
         //         sensor1_mode_nibble = 0x20; // Pos
-        //                                     // sensor2_mode_nibble = 0x30; // APos
+        //         // sensor2_mode_nibble = 0x30; // APos
         //     }
         //     MotorSensorMode::Pos => {
                 let sensor0_mode_nibble: u8 = 0x20; // Pos
                 let sensor1_mode_nibble: u8 = 0x10; // Speed
-                                            // sensor2_mode_nibble = 0x30; // APos
+                // sensor2_mode_nibble = 0x30; // APos
             // }
             // _ => {
             //     sensor0_mode_nibble = 0x00;
@@ -396,31 +269,16 @@ device_trait!(EncoderMotor, [
                     0, // 255-byte marks end, cf. comment in InputSetupCombined::serialise.
                 ],
             };
-        let msg = NotificationMessage::PortInputFormatSetupCombinedmode(
-            InputSetupCombined {
-                port_id: self.port(),
-                subcommand,
-            },
-        );
-        self.commit(msg).await?;
-        // tokio::time::sleep(Duration::from_millis(100)).await;
+        self.device_mode_combined(subcommand).await?;
 
         // Step 4: Unlock device and enable multi updates
         let subcommand =
             InputSetupCombinedSubcommand::UnlockAndStartMultiEnabled {};
-        let msg = NotificationMessage::PortInputFormatSetupCombinedmode(
-            InputSetupCombined {
-                port_id: self.port(),
-                subcommand,
-            },
-        );
-        self.commit(msg).await?;
-        // tokio::time::sleep(Duration::from_millis(100)).await;
+        self.device_mode_combined(subcommand).await?;
 
         // Set up channel
         let port_id = self.port();
-        let (tx, rx) = broadcast::channel::<(i8, i32)>(64);
-        // let (tx, rx) = broadcast::channel::<Vec<u8>>(8);
+        let (tx, rx) = broadcast::channel::<(i8, i32)>(32);
         match self.get_rx_combined() {
             Ok(mut rx_from_main) => {
                 let task = tokio::spawn(async move {
@@ -500,8 +358,7 @@ device_trait!(EncoderMotor, [
 
                 Ok((rx, task))
             }
-            _ => Err(Error::NoneError(String::from("Something went wrong"))),
+            _ => Err(Error::NoneError(String::from("Couldn't get sender"))),
         }
     }
-
 ]);

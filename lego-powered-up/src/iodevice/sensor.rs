@@ -12,25 +12,7 @@ use crate::error::{Error, Result};
 use crate::notifications::DatasetType;
 
 device_trait!(GenericSensor, [
-    // fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>>;,
     fn check_dataset(&self, mode: u8, datasettype: DatasetType) -> Result<()>;,
-
-    // async fn set_device_mode(
-    //     &self,
-    //     mode: u8,
-    //     delta: u32,
-    //     notification_enabled: bool,
-    // ) -> Result<()> {
-    //     let msg =
-    //         NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
-    //             port_id: self.port(),
-    //             mode,
-    //             delta,
-    //             notification_enabled,
-    //         });
-
-    //     self.commit(msg).await
-    // },
 
     async fn enable_8bit_sensor(
         &self,
