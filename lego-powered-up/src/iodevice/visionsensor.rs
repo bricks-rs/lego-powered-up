@@ -10,7 +10,6 @@ use crate::device_trait;
 use super::Basic;
 use crate::hubs::Tokens;
 use super::modes;
-use super::modes::VisionSensor as visionmode;
 use crate::error::Result;
 use crate::notifications::{
     CompletionInfo, InputSetupSingle, NotificationMessage,
@@ -45,26 +44,28 @@ pub enum OutputColor {
 device_trait!(VisionSensor, [
     // fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>>;,
 
-    async fn vison_sensor_single_enable(
-        &self,
-        mode: u8,
-        delta: u32,
-    ) -> Result<()> {
-        self.check()?;
-        let msg =
-            NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
-                port_id: self.port(),
-                mode,
-                delta,
-                notification_enabled: true,
-            });
-        self.commit(msg).await
-    },
+    // async fn vison_sensor_single_enable(
+    //     &self,
+    //     mode: u8,
+    //     delta: u32,
+    // ) -> Result<()> {
+    //     self.check()?;
+    //     self.device_mode(mode, delta, true).await
+    //     // let msg =
+    //     //     NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
+    //     //         port_id: self.port(),
+    //     //         mode,
+    //     //         delta,
+    //     //         notification_enabled: true,
+    //     //     });
+    //     // self.commit(msg).await
+    // },
 
     async fn visionsensor_color(
         &self,
     ) -> Result<(broadcast::Receiver<DetectedColor>, JoinHandle<()>)> {
-        self.vison_sensor_single_enable(visionmode::COLOR, 1).await?;
+        // self.vison_sensor_single_enable(visionmode::COLOR, 1).await?;
+        self.device_mode(modes::VisionSensor::COLOR as u8, 1, true).await?;
         let port_id = self.port();
         // Set up channel
         let (tx, rx) = broadcast::channel::<DetectedColor>(8);
@@ -123,6 +124,7 @@ device_trait!(VisionSensor, [
     // Just setting output mode turns the light off, which may be useful
     async fn visionsensor_light_output_mode(&self) -> Result<()> {
         self.check()?;
+        self.device_mode(modes::VisionSensor::COL_O as u8, 1, true).await?;
         let msg =
             NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
                 port_id: self.port(),

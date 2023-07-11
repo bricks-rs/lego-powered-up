@@ -35,18 +35,6 @@ device_trait!(RcDevice, [
     fn get_rx_pvs(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>>;,
     fn get_rx_nwc(&self) -> Result<broadcast::Receiver<NetworkCommand>>;,
 
-    async fn remote_buttons_enable(&self, mode: u8, delta: u32) -> Result<()> {
-        self.check()?;
-        let msg =
-            NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
-                port_id: self.port(),
-                mode,
-                delta,
-                notification_enabled: true,
-            });
-        self.commit(msg).await
-    },
-
     async fn remote_buttons_enable_by_port(&self, port_id: u8) -> Result<()> {
         self.check()?;
         let msg =
