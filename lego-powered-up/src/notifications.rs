@@ -1373,8 +1373,6 @@ impl PortOutputCommandFormat {
     pub fn serialise(&self) -> Vec<u8> {
         use PortOutputSubcommand::*;
         let startup_and_completion_byte = ((self.startup_info as u8) << 4) + self.completion_info as u8;
-        println!("startup&cmd byte: {:b}", &startup_and_completion_byte);
-
         match &self.subcommand {
             WriteDirectModeData(data) => data.serialise(self),
             StartSpeed {
