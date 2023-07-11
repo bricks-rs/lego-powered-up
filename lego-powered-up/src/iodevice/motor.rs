@@ -53,7 +53,7 @@ pub enum BufferState {
 // }
 
 device_trait!(EncoderMotor, [
-    fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>>;,
+    // fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>>;,
     fn get_rx_combined(&self) -> Result<broadcast::Receiver<PortValueCombinedFormat>>;,
     fn get_rx_feedback(&self) -> Result<broadcast::Receiver<PortOutputCommandFeedbackFormat>>;,
 
@@ -107,14 +107,15 @@ device_trait!(EncoderMotor, [
         let subcommand = PortOutputSubcommand::WriteDirectModeData(
             WriteDirectModeDataPayload::PresetEncoder(position),
         );
-        let msg =
-            NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
-                port_id: self.port(),
-                startup_info: StartupInfo::ExecuteImmediately,
-                completion_info: CompletionInfo::NoAction,
-                subcommand,
-            });
-        self.commit(msg).await
+        self.device_command(subcommand, StartupInfo::ExecuteImmediately, CompletionInfo::NoAction).await
+        // let msg =
+        //     NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
+        //         port_id: self.port(),
+        //         startup_info: StartupInfo::ExecuteImmediately,
+        //         completion_info: CompletionInfo::NoAction,
+        //         subcommand,
+        //     });
+        // self.commit(msg).await
     },
     async fn set_acc_time(&self, time: i16, profile_number: i8) -> Result<()> {
         self.check()?;
@@ -122,14 +123,15 @@ device_trait!(EncoderMotor, [
             time,
             profile_number,
         };
-        let msg =
-            NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
-                port_id: self.port(),
-                startup_info: StartupInfo::ExecuteImmediately,
-                completion_info: CompletionInfo::NoAction,
-                subcommand,
-            });
-        self.commit(msg).await
+        self.device_command(subcommand, StartupInfo::ExecuteImmediately, CompletionInfo::NoAction).await
+        // let msg =
+        //     NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
+        //         port_id: self.port(),
+        //         startup_info: StartupInfo::ExecuteImmediately,
+        //         completion_info: CompletionInfo::NoAction,
+        //         subcommand,
+        //     });
+        // self.commit(msg).await
     },
     async fn set_dec_time(&self, time: i16, profile_number: i8) -> Result<()> {
         self.check()?;
@@ -137,14 +139,15 @@ device_trait!(EncoderMotor, [
             time,
             profile_number,
         };
-        let msg =
-            NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
-                port_id: self.port(),
-                startup_info: StartupInfo::ExecuteImmediately,
-                completion_info: CompletionInfo::NoAction,
-                subcommand,
-            });
-        self.commit(msg).await
+        self.device_command(subcommand, StartupInfo::ExecuteImmediately, CompletionInfo::NoAction).await
+        // let msg =
+        //     NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
+        //         port_id: self.port(),
+        //         startup_info: StartupInfo::ExecuteImmediately,
+        //         completion_info: CompletionInfo::NoAction,
+        //         subcommand,
+        //     });
+        // self.commit(msg).await
     },
 
     // Commands
@@ -154,26 +157,28 @@ device_trait!(EncoderMotor, [
         let subcommand = PortOutputSubcommand::WriteDirectModeData(
             WriteDirectModeDataPayload::StartPower(power),
         );
-        let msg =
-            NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
-                port_id: self.port(),
-                startup_info: StartupInfo::ExecuteImmediately,
-                completion_info: CompletionInfo::NoAction,
-                subcommand,
-            });
-        self.commit(msg).await
+        self.device_command(subcommand, StartupInfo::ExecuteImmediately, CompletionInfo::NoAction).await
+        // let msg =
+        //     NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
+        //         port_id: self.port(),
+        //         startup_info: StartupInfo::ExecuteImmediately,
+        //         completion_info: CompletionInfo::NoAction,
+        //         subcommand,
+        //     });
+        // self.commit(msg).await
     },
     async fn start_power2(&self, power1: Power, power2: Power) -> Result<()> {
         self.check()?;
         let subcommand = PortOutputSubcommand::StartPower2 { power1, power2 };
-        let msg =
-            NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
-                port_id: self.port(),
-                startup_info: StartupInfo::ExecuteImmediately,
-                completion_info: CompletionInfo::NoAction,
-                subcommand,
-            });
-        self.commit(msg).await
+        self.device_command(subcommand, StartupInfo::ExecuteImmediately, CompletionInfo::NoAction).await
+        // let msg =
+        //     NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
+        //         port_id: self.port(),
+        //         startup_info: StartupInfo::ExecuteImmediately,
+        //         completion_info: CompletionInfo::NoAction,
+        //         subcommand,
+        //     });
+        // self.commit(msg).await
     },
     async fn start_speed(&self, speed: i8, max_power: u8) -> Result<()> {
         self.check()?;
@@ -183,14 +188,15 @@ device_trait!(EncoderMotor, [
             use_acc_profile: true,
             use_dec_profile: true,
         };
-        let msg =
-            NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
-                port_id: self.port(),
-                startup_info: StartupInfo::ExecuteImmediately,
-                completion_info: CompletionInfo::NoAction,
-                subcommand,
-            });
-        self.commit(msg).await
+        self.device_command(subcommand, StartupInfo::ExecuteImmediately, CompletionInfo::NoAction).await
+        // let msg =
+        //     NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
+        //         port_id: self.port(),
+        //         startup_info: StartupInfo::ExecuteImmediately,
+        //         completion_info: CompletionInfo::NoAction,
+        //         subcommand,
+        //     });
+        // self.commit(msg).await
     },
     async fn start_speed_for_degrees(
         &self,
@@ -208,14 +214,15 @@ device_trait!(EncoderMotor, [
             use_acc_profile: true,
             use_dec_profile: true,
         };
-        let msg =
-            NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
-                port_id: self.port(),
-                startup_info: StartupInfo::ExecuteImmediately,
-                completion_info: CompletionInfo::NoAction,
-                subcommand,
-            });
-        self.commit(msg).await
+        self.device_command(subcommand, StartupInfo::ExecuteImmediately, CompletionInfo::NoAction).await
+        // let msg =
+        //     NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
+        //         port_id: self.port(),
+        //         startup_info: StartupInfo::ExecuteImmediately,
+        //         completion_info: CompletionInfo::NoAction,
+        //         subcommand,
+        //     });
+        // self.commit(msg).await
     },
     async fn start_speed_for_degrees2(
         &self,
@@ -233,14 +240,15 @@ device_trait!(EncoderMotor, [
             use_acc_profile: true,
             use_dec_profile: true,
         };
-        let msg =
-            NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
-                port_id: self.port(),
-                startup_info: StartupInfo::ExecuteImmediately,
-                completion_info: CompletionInfo::NoAction,
-                subcommand,
-            });
-        self.commit(msg).await
+        self.device_command(subcommand, StartupInfo::ExecuteImmediately, CompletionInfo::NoAction).await
+        // let msg =
+        //     NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
+        //         port_id: self.port(),
+        //         startup_info: StartupInfo::ExecuteImmediately,
+        //         completion_info: CompletionInfo::NoAction,
+        //         subcommand,
+        //     });
+        // self.commit(msg).await
     },
     async fn start_speed_for_time(
         &self,
@@ -258,14 +266,15 @@ device_trait!(EncoderMotor, [
             use_acc_profile: true,
             use_dec_profile: true,
         };
-        let msg =
-            NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
-                port_id: self.port(),
-                startup_info: StartupInfo::ExecuteImmediately,
-                completion_info: CompletionInfo::NoAction,
-                subcommand,
-            });
-        self.commit(msg).await
+        self.device_command(subcommand, StartupInfo::ExecuteImmediately, CompletionInfo::NoAction).await
+        // let msg =
+        //     NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
+        //         port_id: self.port(),
+        //         startup_info: StartupInfo::ExecuteImmediately,
+        //         completion_info: CompletionInfo::NoAction,
+        //         subcommand,
+        //     });
+        // self.commit(msg).await
     },
     async fn goto_absolute_position(
         &self,
@@ -283,14 +292,15 @@ device_trait!(EncoderMotor, [
             use_acc_profile: true,
             use_dec_profile: true,
         };
-        let msg =
-            NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
-                port_id: self.port(),
-                startup_info: StartupInfo::ExecuteImmediately,
-                completion_info: CompletionInfo::NoAction,
-                subcommand,
-            });
-        self.commit(msg).await
+        self.device_command(subcommand, StartupInfo::ExecuteImmediately, CompletionInfo::NoAction).await
+        // let msg =
+        //     NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
+        //         port_id: self.port(),
+        //         startup_info: StartupInfo::ExecuteImmediately,
+        //         completion_info: CompletionInfo::NoAction,
+        //         subcommand,
+        //     });
+        // self.commit(msg).await
     },
 
     // Encoder sensor data
@@ -300,25 +310,27 @@ device_trait!(EncoderMotor, [
         delta: u32,
     ) -> Result<()> {
         self.check()?;
-        let msg =
-            NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
-                port_id: self.port(),
-                mode: mode as u8,
-                delta,
-                notification_enabled: true,
-            });
-        self.commit(msg).await
+        self.set_device_mode(mode as u8, delta, true).await
+        // let msg =
+        //     NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
+        //         port_id: self.port(),
+        //         mode: mode as u8,
+        //         delta,
+        //         notification_enabled: true,
+        //     });
+        // self.commit(msg).await
     },
     async fn motor_sensor_disable(&self) -> Result<()> {
         self.check()?;
-        let msg =
-            NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
-                port_id: self.port(),
-                mode: 0,
-                delta: u32::MAX,
-                notification_enabled: false,
-            });
-        self.commit(msg).await
+        self.set_device_mode(0, u32::MAX, false).await
+        // let msg =
+        //     NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
+        //         port_id: self.port(),
+        //         mode: 0,
+        //         delta: u32::MAX,
+        //         notification_enabled: false,
+        //     });
+        // self.commit(msg).await
     },
 
     // Note: Currently the returned channel assumes primary mode is Position. 

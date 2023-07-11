@@ -14,6 +14,7 @@ use lego_powered_up::setup;
 use lego_powered_up::{IoDevice, IoTypeId};
 // use lego_powered_up::error::{Error, Result, OptionContext};
 use lego_powered_up::iodevice::modes;
+use lego_powered_up::iodevice::basic::Basic;
 use lego_powered_up::iodevice::{hubled::*, sensor::*, visionsensor::*};
 use lego_powered_up::notifications::DatasetType;
 use lego_powered_up::HubMutex;

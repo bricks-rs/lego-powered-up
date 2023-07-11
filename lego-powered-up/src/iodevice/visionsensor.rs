@@ -43,7 +43,7 @@ pub enum OutputColor {
 }
 
 device_trait!(VisionSensor, [
-    fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>>;,
+    // fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>>;,
 
     async fn vison_sensor_single_enable(
         &self,

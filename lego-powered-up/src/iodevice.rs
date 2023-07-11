@@ -81,18 +81,9 @@ impl Basic for IoDevice {
     fn tokens(&self) -> Tokens {
         self.tokens.clone()
     }
-    fn check(&self) -> Result<()> {
-       Ok(())
-    }
-
-}
-impl GenericSensor for IoDevice {
-    fn port(&self) -> u8 {
-        self.def.port()
-    }
-    fn tokens(&self) -> Tokens {
-        self.tokens.clone()
-    }
+    // fn check(&self) -> Result<()> {
+    //    Ok(())
+    // }
     fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>> {
         if let Some(sender) = &self.channels.singlevalue_sender {
             Ok(sender.subscribe())
@@ -100,6 +91,22 @@ impl GenericSensor for IoDevice {
             Err(Error::NoneError(String::from("Sender not found")))
         }
     }
+
+}
+impl GenericSensor for IoDevice {
+    // fn port(&self) -> u8 {
+    //     self.def.port()
+    // }
+    // fn tokens(&self) -> Tokens {
+    //     self.tokens.clone()
+    // }
+    // fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>> {
+    //     if let Some(sender) = &self.channels.singlevalue_sender {
+    //         Ok(sender.subscribe())
+    //     } else {
+    //         Err(Error::NoneError(String::from("Sender not found")))
+    //     }
+    // }
     fn check(&self) -> Result<()> {
         Ok(())
      }
@@ -120,12 +127,12 @@ impl GenericSensor for IoDevice {
 }
 
 impl RcDevice for IoDevice {
-    fn port(&self) -> u8 {
-        self.def.port()
-    }
-    fn tokens(&self) -> Tokens {
-        self.tokens.clone()
-    }
+    // fn port(&self) -> u8 {
+    //     self.def.port()
+    // }
+    // fn tokens(&self) -> Tokens {
+    //     self.tokens.clone()
+    // }
     fn get_rx_pvs(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>> {
         if let Some(sender) = &self.channels.singlevalue_sender {
             Ok(sender.subscribe())
@@ -151,19 +158,19 @@ impl RcDevice for IoDevice {
 }
 
 impl EncoderMotor for IoDevice {
-    fn port(&self) -> u8 {
-        self.def.port()
-    }
-    fn tokens(&self) -> Tokens {
-        self.tokens.clone()
-    }
-    fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>> {
-        if let Some(sender) = &self.channels.singlevalue_sender {
-            Ok(sender.subscribe())
-        } else {
-            Err(Error::NoneError(String::from("Sender not found")))
-        }
-    }
+    // fn port(&self) -> u8 {
+    //     self.def.port()
+    // }
+    // fn tokens(&self) -> Tokens {
+    //     self.tokens.clone()
+    // }
+    // fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>> {
+    //     if let Some(sender) = &self.channels.singlevalue_sender {
+    //         Ok(sender.subscribe())
+    //     } else {
+    //         Err(Error::NoneError(String::from("Sender not found")))
+    //     }
+    // }
     fn get_rx_combined(
         &self,
     ) -> Result<broadcast::Receiver<PortValueCombinedFormat>> {
@@ -191,12 +198,12 @@ impl EncoderMotor for IoDevice {
 }
 
 impl HubLed for IoDevice {
-    fn port(&self) -> u8 {
-        self.def.port()
-    }
-    fn tokens(&self) -> Tokens {
-        self.tokens.clone()
-    }
+    // fn port(&self) -> u8 {
+    //     self.def.port()
+    // }
+    // fn tokens(&self) -> Tokens {
+    //     self.tokens.clone()
+    // }
     fn check(&self) -> Result<()> {
         match self.def.kind() {
             IoTypeId::HubLed => Ok(()),
@@ -206,19 +213,19 @@ impl HubLed for IoDevice {
 }
 
 impl VisionSensor for IoDevice {
-    fn port(&self) -> u8 {
-        self.def.port()
-    }
-    fn tokens(&self) -> Tokens {
-        self.tokens.clone()
-    }
-    fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>> {
-        if let Some(sender) = &self.channels.singlevalue_sender {
-            Ok(sender.subscribe())
-        } else {
-            Err(Error::NoneError(String::from("Sender not found")))
-        }
-    }
+    // fn port(&self) -> u8 {
+    //     self.def.port()
+    // }
+    // fn tokens(&self) -> Tokens {
+    //     self.tokens.clone()
+    // }
+    // fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>> {
+    //     if let Some(sender) = &self.channels.singlevalue_sender {
+    //         Ok(sender.subscribe())
+    //     } else {
+    //         Err(Error::NoneError(String::from("Sender not found")))
+    //     }
+    // }
     fn check(&self) -> Result<()> {
         match self.def.kind() {
             IoTypeId::VisionSensor => Ok(()),
@@ -234,15 +241,15 @@ macro_rules! device_trait {
     ($name:tt, [$( $b:item ),*])  => { 
         #[async_trait]
         pub trait $name: Debug + Send + Sync + Basic {
-            fn port(&self) -> u8;
+            // fn port(&self) -> u8;
             fn check(&self) -> Result<()>;
-            fn tokens(&self) -> Tokens;
-            async fn commit(&self, msg: NotificationMessage) -> Result<()> {
-                match crate::hubs::send(self.tokens(), msg).await {
-                    Ok(()) => Ok(()),
-                    Err(e) => Err(e),
-                }
-            }
+            // fn tokens(&self) -> Tokens;
+            // async fn commit(&self, msg: NotificationMessage) -> Result<()> {
+            //     match crate::hubs::send(self.tokens(), msg).await {
+            //         Ok(()) => Ok(()),
+            //         Err(e) => Err(e),
+            //     }
+            // }
             $(
                 $b
             )*
