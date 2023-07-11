@@ -310,7 +310,7 @@ device_trait!(EncoderMotor, [
         delta: u32,
     ) -> Result<()> {
         self.check()?;
-        self.set_device_mode(mode as u8, delta, true).await
+        self.device_mode(mode as u8, delta, true).await
         // let msg =
         //     NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
         //         port_id: self.port(),
@@ -322,7 +322,7 @@ device_trait!(EncoderMotor, [
     },
     async fn motor_sensor_disable(&self) -> Result<()> {
         self.check()?;
-        self.set_device_mode(0, u32::MAX, false).await
+        self.device_mode(0, u32::MAX, false).await
         // let msg =
         //     NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
         //         port_id: self.port(),

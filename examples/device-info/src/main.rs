@@ -110,7 +110,7 @@ pub async fn attached_device_info(mutex: HubMutex) -> Result<()> {
                 print!("Set mode; enable notifications (Y / n) > ");
                 let line: String = read!("{}\n");
                 if (line.len() > 1) & (line.contains("n")) {
-                    let _ = device.set_device_mode(mode_id, delta, false);
+                    let _ = device.device_mode(mode_id, delta, false);
                 } else {
                     if let Ok(task) =
                         reader(&device, port_id, mode_id, delta).await

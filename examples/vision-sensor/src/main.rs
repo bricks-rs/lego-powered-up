@@ -58,7 +58,7 @@ pub async fn vision_sensor_ui(mutex: HubMutex) -> Result<()> {
                 None => (),
             }
             device
-                .set_device_mode(0, 1, false)
+                .device_mode(0, 1, false)
                 .await
                 .expect("Error disabling notifications");
             continue;

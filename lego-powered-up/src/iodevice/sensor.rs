@@ -51,7 +51,7 @@ device_trait!(GenericSensor, [
             }
         }
 
-        self.set_device_mode(mode, delta, true).await?;
+        self.device_mode(mode, delta, true).await?;
 
         // Set up channel
         let port_id = self.port();
@@ -91,7 +91,7 @@ device_trait!(GenericSensor, [
                 )))
             }
         }
-        self.set_device_mode(mode, delta, true).await?;
+        self.device_mode(mode, delta, true).await?;
 
         // Set up channel
         let port_id = self.port();
@@ -148,7 +148,7 @@ device_trait!(GenericSensor, [
                 )))
             }
         }
-        self.set_device_mode(mode, delta, true).await?;
+        self.device_mode(mode, delta, true).await?;
 
         // Set up channel
         let port_id = self.port();

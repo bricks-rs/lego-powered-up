@@ -30,7 +30,7 @@ pub trait Basic: Debug + Send + Sync {
     }
     fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>>;
 
-    async fn set_device_mode(
+    async fn device_mode(
         &self,
         mode: u8,
         delta: u32,
