@@ -93,13 +93,13 @@ device_trait!(EncoderMotor, [
         Ok((rx, task))
     },
     
-    // Motor settings
+    /// Motor settings
     async fn preset_encoder(&self, position: i32) -> Result<()> {
         self.check()?;
         let subcommand = PortOutputSubcommand::WriteDirectModeData(
             WriteDirectModeDataPayload::PresetEncoder(position),
         );
-        self.device_command(subcommand, StartupInfo::ExecuteImmediately, CompletionInfo::NoAction).await
+        self.device_command(subcommand, StartupInfo::BufferIfNecessary, CompletionInfo::NoAction).await
     },
     async fn set_acc_time(&self, time: i16, profile_number: i8) -> Result<()> {
         self.check()?;
@@ -107,7 +107,7 @@ device_trait!(EncoderMotor, [
             time,
             profile_number,
         };
-        self.device_command(subcommand, StartupInfo::ExecuteImmediately, CompletionInfo::NoAction).await
+        self.device_command(subcommand, StartupInfo::BufferIfNecessary, CompletionInfo::NoAction).await
     },
     async fn set_dec_time(&self, time: i16, profile_number: i8) -> Result<()> {
         self.check()?;
@@ -115,10 +115,10 @@ device_trait!(EncoderMotor, [
             time,
             profile_number,
         };
-        self.device_command(subcommand, StartupInfo::ExecuteImmediately, CompletionInfo::NoAction).await
+        self.device_command(subcommand, StartupInfo::BufferIfNecessary, CompletionInfo::NoAction).await
     },
 
-    // Commands
+    /// Commands
     // To do: "2" variants of all commands, except done: start_power2
     async fn start_power(&self, power: Power) -> Result<()> {
         self.check()?;
@@ -197,7 +197,88 @@ device_trait!(EncoderMotor, [
         self.device_command(subcommand, StartupInfo::ExecuteImmediately, CompletionInfo::NoAction).await
     },
 
-    // Encoder sensor data
+    /// Command variants with control over StartupInfo and CompletionInfo
+    async fn start_power_soc(&self, power: Power, startup: StartupInfo,
+        completion: CompletionInfo) -> Result<()> {
+        self.check()?;
+        let subcommand = PortOutputSubcommand::WriteDirectModeData(
+            WriteDirectModeDataPayload::StartPower(power),
+        );
+        self.device_command(subcommand, startup, completion).await
+    },
+    async fn start_speed_soc(&self, speed: i8, max_power: u8, startup: StartupInfo,
+        completion: CompletionInfo) -> Result<()> {
+        self.check()?;
+        let subcommand = PortOutputSubcommand::StartSpeed {
+            speed,
+            max_power,
+            use_acc_profile: true,
+            use_dec_profile: true,
+        };
+        self.device_command(subcommand, startup, completion).await
+    },
+    async fn start_speed_for_degrees_soc(
+        &self,
+        degrees: i32,
+        speed: i8,
+        max_power: u8,
+        end_state: EndState,
+        startup: StartupInfo,
+        completion: CompletionInfo,
+    ) -> Result<()> {
+        self.check()?;
+        let subcommand = PortOutputSubcommand::StartSpeedForDegrees {
+            degrees,
+            speed,
+            max_power,
+            end_state,
+            use_acc_profile: true,
+            use_dec_profile: true,
+        };
+        self.device_command(subcommand, startup, completion).await
+    },
+    async fn start_speed_for_time_soc(
+        &self,
+        time: i16,
+        speed: i8,
+        max_power: u8,
+        end_state: EndState,
+        startup: StartupInfo,
+        completion: CompletionInfo,
+    ) -> Result<()> {
+        self.check()?;
+        let subcommand = PortOutputSubcommand::StartSpeedForTime {
+            time,
+            speed,
+            max_power,
+            end_state,
+            use_acc_profile: true,
+            use_dec_profile: true,
+        };
+        self.device_command(subcommand, startup, completion).await
+    },
+    async fn goto_absolute_position_soc(
+        &self,
+        abs_pos: i32,
+        speed: i8,
+        max_power: u8,
+        end_state: EndState,
+        startup: StartupInfo,
+        completion: CompletionInfo,
+    ) -> Result<()> {
+        self.check()?;
+        let subcommand = PortOutputSubcommand::GotoAbsolutePosition {
+            abs_pos,
+            speed,
+            max_power,
+            end_state,
+            use_acc_profile: true,
+            use_dec_profile: true,
+        };
+        self.device_command(subcommand, startup, completion).await
+    },
+
+    /// Encoder sensor data
     async fn motor_sensor_enable(
         &self,
         mode: MotorSensorMode,

@@ -1355,11 +1355,11 @@ pub struct PortOutputCommandFormat {
 impl PortOutputCommandFormat {
     pub fn parse<'a>(mut msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
         let port_id = next!(msg);
-        let startup_and_command_byte = next!(msg);
+        let startup_and_completion_byte = next!(msg);
         let startup_info =
-            ok!(StartupInfo::from_u8((startup_and_command_byte & 0xf0) >> 4));
+            ok!(StartupInfo::from_u8((startup_and_completion_byte & 0xf0) >> 4));
         let completion_info =
-            ok!(CompletionInfo::from_u8(startup_and_command_byte & 0x0f));
+            ok!(CompletionInfo::from_u8(startup_and_completion_byte & 0x0f));
         let subcommand = PortOutputSubcommand::parse(&mut msg)?;
 
         Ok(Self {
@@ -1372,8 +1372,11 @@ impl PortOutputCommandFormat {
 
     pub fn serialise(&self) -> Vec<u8> {
         use PortOutputSubcommand::*;
-        // use crate::consts::PortOutputSubCommandValue;
+        let startup_and_completion_byte = ((self.startup_info as u8) << 4) + self.completion_info as u8;
+        println!("startup&cmd byte: {:b}", &startup_and_completion_byte);
+
         match &self.subcommand {
+            WriteDirectModeData(data) => data.serialise(self),
             StartSpeed {
                 speed,
                 max_power,
@@ -1391,7 +1394,8 @@ impl PortOutputCommandFormat {
                     MessageType::PortOutputCommand as u8,
                     // Command
                     self.port_id,
-                    0x11, // 0001 Execute immediately, 0001 Command feedback
+                    // 0x11, // 0001 Execute immediately, 0001 Command feedback
+                    startup_and_completion_byte,
                     PortOutputSubCommandValue::StartSpeed as u8,
                     // Subcommand payload
                     speed,
@@ -1420,13 +1424,12 @@ impl PortOutputCommandFormat {
                     MessageType::PortOutputCommand as u8,
                     // Command
                     self.port_id,
-                    0x11, // 0001 Execute immediately, 0001 Command feedback
+                    startup_and_completion_byte,
                     PortOutputSubCommandValue::StartSpeedForDegrees as u8,
                 ];
                 // Subcommand payload
                 bytes.extend_from_slice(&degrees);
                 bytes.push(speed);
-                // bytes.push(max_power.to_u8());
                 bytes.push(max_power);
                 bytes.push(end_state.to_u8());
                 bytes.push(profile);
@@ -1453,7 +1456,7 @@ impl PortOutputCommandFormat {
                     MessageType::PortOutputCommand as u8,
                     // Command
                     self.port_id,
-                    0x11, // 0001 Execute immediately, 0001 Command feedback
+                    startup_and_completion_byte,
                     PortOutputSubCommandValue::GotoAbsolutePosition as u8,
                 ];
                 // Subcommand payload
@@ -1487,20 +1490,62 @@ impl PortOutputCommandFormat {
                     MessageType::PortOutputCommand as u8,
                     // Command
                     self.port_id,
-                    0x11, // 0001 Execute immediately, 0001 Command feedback
+                    startup_and_completion_byte,
                     PortOutputSubCommandValue::StartSpeedForTime as u8,
                 ];
                 // Subcommand payload
                 bytes.extend_from_slice(&time);
                 bytes.push(speed);
-                // bytes.push(max_power.to_u8());
                 bytes.push(max_power);
                 bytes.push(end_state.to_u8());
                 bytes.push(profile);
 
                 bytes
+            },
+            SetAccTime {
+                time,
+                profile_number,
+            } => {
+                let time = time.to_le_bytes();
+                let profile_number = profile_number.to_le_bytes();
+                let mut bytes = vec![
+                    // Header
+                    0, // len
+                    0, // hub id - always set to 0
+                    MessageType::PortOutputCommand as u8,
+                    // Command
+                    self.port_id,
+                    startup_and_completion_byte,
+                    PortOutputSubCommandValue::SetAccTime as u8,
+                ];
+                // Subcommand payload
+                bytes.extend_from_slice(&time);
+                bytes.extend_from_slice(&profile_number);
+
+                bytes
             }
-            WriteDirectModeData(data) => data.serialise(self),
+            SetDecTime {
+                time,
+                profile_number,
+            } => {
+                let time = time.to_le_bytes();
+                let profile_number = profile_number.to_le_bytes();
+                let mut bytes = vec![
+                    // Header
+                    0, // len
+                    0, // hub id - always set to 0
+                    MessageType::PortOutputCommand as u8,
+                    // Command
+                    self.port_id,
+                    startup_and_completion_byte,
+                    PortOutputSubCommandValue::SetDecTime as u8,
+                ];
+                // Subcommand payload
+                bytes.extend_from_slice(&time);
+                bytes.extend_from_slice(&profile_number);
+
+                bytes
+            }
             _ => todo!(),
         }
     }

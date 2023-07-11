@@ -45,7 +45,7 @@ impl Verbosity {
             attached: true,
             hub: false,
             input: false,
-            output: false,
+            output: true,
             values: false,
         }
     }
@@ -87,7 +87,7 @@ pub async fn io_event_handler(
     const ATTACHED: bool = true;
     const HUB: bool = false;
     const INPUT: bool = false;
-    const OUTPUT: bool = false;
+    const OUTPUT: bool = true;
     const _VALUES: bool = false;
     loop {
         tokio::select! {
@@ -121,10 +121,12 @@ pub async fn io_event_handler(
                             }
                         }
                         NotificationMessage::HwNetworkCommands(val) => {
-                            match networkcmd_sender.send(val) {
-                                Ok(_) => (),
-                                Err(e) => {
-                                    eprintln!("No receiver? Error forwarding HwNetworkCommands: {:?}", e);
+                            if networkcmd_sender.receiver_count() > 0 {
+                                match networkcmd_sender.send(val) {
+                                    Ok(_) => (),
+                                    Err(e) => {
+                                        eprintln!("No receiver? Error forwarding HwNetworkCommands: {:?}", e);
+                                    }
                                 }
                             }
                         }
@@ -348,9 +350,9 @@ pub async fn io_event_handler(
                             }
                         }
                         NotificationMessage::HubActions(val) => {
-                            // if HUB {
+                            if HUB {
                                 eprintln!("{:?}", &val);
-                            // }
+                            }
                             match hubnotification_sender.send(HubNotification {
                                 hub_property: None,
                                 hub_action: Some(val),
