@@ -6,8 +6,6 @@
 use async_trait::async_trait;
 use core::fmt::Debug;
 
-use crate::hubs::Tokens;
-use crate::notifications::NotificationMessage;
 use crate::Result;
 use crate::device_trait;
 use super::Basic;

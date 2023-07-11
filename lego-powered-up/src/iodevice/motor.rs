@@ -12,17 +12,13 @@ use tokio::task::JoinHandle;
 
 use crate::device_trait;
 use super::Basic;
-use crate::hubs::Tokens;
 use crate::error::{Error, Result};
-use crate::notifications::{InputSetupSingle, PortOutputCommandFeedbackFormat, FeedbackMessage};
+use crate::notifications::{PortOutputCommandFeedbackFormat, FeedbackMessage};
+use crate::notifications::{StartupInfo, CompletionInfo};
 use crate::notifications::NotificationMessage;
 use crate::notifications::WriteDirectModeDataPayload;
-use crate::notifications::{
-    CompletionInfo, PortOutputCommandFormat, PortOutputSubcommand, StartupInfo,
-};
-use crate::notifications::{InputSetupCombined, InputSetupCombinedSubcommand};
-use crate::notifications::{PortValueCombinedFormat, PortValueSingleFormat};
-
+use crate::notifications::PortOutputSubcommand;
+use crate::notifications::{InputSetupCombined, InputSetupCombinedSubcommand, PortValueCombinedFormat};
 pub use crate::consts::MotorSensorMode;
 pub use crate::notifications::{EndState, Power};
 

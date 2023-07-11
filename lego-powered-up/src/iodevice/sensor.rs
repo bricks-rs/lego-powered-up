@@ -8,13 +8,8 @@ use tokio::task::JoinHandle;
 
 use crate::device_trait;
 use super::Basic;
-use crate::hubs::Tokens;
 use crate::error::{Error, Result};
-use crate::notifications::{
-    DatasetType, InputSetupSingle, NotificationMessage, PortValueSingleFormat,
-};
-// use super::basic::device_mode;
-// use super::Basic::device_mode;
+use crate::notifications::DatasetType;
 
 device_trait!(GenericSensor, [
     // fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>>;,

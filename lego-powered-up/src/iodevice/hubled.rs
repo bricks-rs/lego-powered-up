@@ -7,14 +7,9 @@ use core::fmt::Debug;
 
 use crate::device_trait;
 use super::Basic;
-use crate::hubs::Tokens;
 pub use crate::consts::Color;
-use crate::notifications::CompletionInfo;
-use crate::notifications::InputSetupSingle;
-use crate::notifications::NotificationMessage;
-use crate::notifications::PortOutputCommandFormat;
+use crate::notifications::{StartupInfo, CompletionInfo};
 use crate::notifications::PortOutputSubcommand;
-use crate::notifications::StartupInfo;
 use crate::notifications::WriteDirectModeDataPayload;
 use crate::Result;
 

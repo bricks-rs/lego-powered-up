@@ -5,7 +5,6 @@ use async_trait::async_trait;
 use core::fmt::Debug;
 use tokio::sync::broadcast;
 
-// use crate::device_trait;
 use crate::hubs::Tokens;
 use crate::error::Result;
 use crate::notifications::{

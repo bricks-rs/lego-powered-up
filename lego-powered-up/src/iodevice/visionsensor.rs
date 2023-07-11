@@ -8,12 +8,10 @@ use tokio::task::JoinHandle;
 
 use crate::device_trait;
 use super::Basic;
-use crate::hubs::Tokens;
 use super::modes;
 use crate::error::Result;
 use crate::notifications::{
-    CompletionInfo, InputSetupSingle, NotificationMessage,
-    PortOutputCommandFormat, PortOutputSubcommand, PortValueSingleFormat,
+    CompletionInfo, PortOutputSubcommand,
     StartupInfo, WriteDirectModeDataPayload,
 };
 
