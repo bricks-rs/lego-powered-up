@@ -29,14 +29,15 @@ pub enum HubLedMode {
 device_trait!(HubLed, [ 
     async fn set_hubled_mode(&self, mode: HubLedMode) -> Result<()> {
         self.check()?;
-        let msg =
-            NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
-                port_id: self.port(),
-                mode: mode as u8,
-                delta: 1,
-                notification_enabled: false,
-            });
-        self.commit(msg).await
+        self.device_mode(mode as u8, 1, true).await
+        // let msg =
+        //     NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
+        //         port_id: self.port(),
+        //         mode: mode as u8,
+        //         delta: 1,
+        //         notification_enabled: false,
+        //     });
+        // self.commit(msg).await
     },
 
     async fn set_hubled_rgb(&self, rgb: &[u8; 3]) -> Result<()> {
@@ -48,15 +49,15 @@ device_trait!(HubLed, [
                 blue: rgb[2],
             },
         );
-
-        let msg =
-            NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
-                port_id: self.port(),
-                startup_info: StartupInfo::ExecuteImmediately,
-                completion_info: CompletionInfo::NoAction,
-                subcommand,
-            });
-        self.commit(msg).await
+        self.device_command(subcommand, StartupInfo::ExecuteImmediately, CompletionInfo::NoAction).await
+        // let msg =
+        //     NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
+        //         port_id: self.port(),
+        //         startup_info: StartupInfo::ExecuteImmediately,
+        //         completion_info: CompletionInfo::NoAction,
+        //         subcommand,
+        //     });
+        // self.commit(msg).await
     },
 
     async fn set_hubled_color(&self, color: Color) -> Result<()> {
@@ -64,14 +65,14 @@ device_trait!(HubLed, [
         let subcommand = PortOutputSubcommand::WriteDirectModeData(
             WriteDirectModeDataPayload::SetHubColor(color as i8),
         );
-
-        let msg =
-            NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
-                port_id: self.port(),
-                startup_info: StartupInfo::ExecuteImmediately,
-                completion_info: CompletionInfo::NoAction,
-                subcommand,
-            });
-        self.commit(msg).await
+        self.device_command(subcommand, StartupInfo::ExecuteImmediately, CompletionInfo::NoAction).await
+        // let msg =
+        //     NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
+        //         port_id: self.port(),
+        //         startup_info: StartupInfo::ExecuteImmediately,
+        //         completion_info: CompletionInfo::NoAction,
+        //         subcommand,
+        //     });
+        // self.commit(msg).await
     }
 ]);

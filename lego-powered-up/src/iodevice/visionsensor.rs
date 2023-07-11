@@ -124,15 +124,15 @@ device_trait!(VisionSensor, [
     // Just setting output mode turns the light off, which may be useful
     async fn visionsensor_light_output_mode(&self) -> Result<()> {
         self.check()?;
-        self.device_mode(modes::VisionSensor::COL_O as u8, 1, true).await?;
-        let msg =
-            NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
-                port_id: self.port(),
-                mode: modes::VisionSensor::COL_O,
-                delta: 1,
-                notification_enabled: true,
-            });
-        self.commit(msg).await
+        self.device_mode(modes::VisionSensor::COL_O as u8, 1, true).await
+        // let msg =
+        //     NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
+        //         port_id: self.port(),
+        //         mode: modes::VisionSensor::COL_O,
+        //         delta: 1,
+        //         notification_enabled: true,
+        //     });
+        // self.commit(msg).await
     },
 
     // Output colors are limited to R, G, B and W (all three)
@@ -141,15 +141,15 @@ device_trait!(VisionSensor, [
         let subcommand = PortOutputSubcommand::WriteDirectModeData(
             WriteDirectModeDataPayload::SetVisionSensorColor(color as i8),
         );
-
-        let msg =
-            NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
-                port_id: self.port(),
-                startup_info: StartupInfo::ExecuteImmediately,
-                completion_info: CompletionInfo::NoAction,
-                subcommand,
-            });
-        self.commit(msg).await
+        self.device_command(subcommand, StartupInfo::ExecuteImmediately, CompletionInfo::NoAction).await
+        // let msg =
+        //     NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
+        //         port_id: self.port(),
+        //         startup_info: StartupInfo::ExecuteImmediately,
+        //         completion_info: CompletionInfo::NoAction,
+        //         subcommand,
+        //     });
+        // self.commit(msg).await
     }
 
 
