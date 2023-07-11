@@ -7,6 +7,7 @@ use tokio::sync::broadcast;
 use tokio::task::JoinHandle;
 
 use crate::device_trait;
+use super::Basic;
 use crate::hubs::Tokens;
 use super::modes;
 use super::modes::VisionSensor as visionmode;

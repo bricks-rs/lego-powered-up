@@ -233,7 +233,7 @@ impl VisionSensor for IoDevice {
 macro_rules! device_trait {
     ($name:tt, [$( $b:item ),*])  => { 
         #[async_trait]
-        pub trait $name: Debug + Send + Sync {
+        pub trait $name: Debug + Send + Sync + Basic {
             fn port(&self) -> u8;
             fn check(&self) -> Result<()>;
             fn tokens(&self) -> Tokens;

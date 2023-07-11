@@ -13,7 +13,28 @@ use crate::notifications::{
     PortOutputSubcommand, StartupInfo,
 };
 
+// macro_rules! set_device_mode {
+//     () => {
+//         async fn device_mode(
+//             &self,
+//             mode: u8,
+//             delta: u32,
+//             notification_enabled: bool,
+//         ) -> Result<()> {
+//             let msg =
+//                 NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
+//                     port_id: self.port(),
+//                     mode,
+//                     delta,
+//                     notification_enabled,
+//                 });
+//             self.commit(msg).await
+//         }
+//     };
+// }
+
 device_trait!(Basic, [
+    // set_device_mode!();,
     async fn device_mode(
         &self,
         mode: u8,

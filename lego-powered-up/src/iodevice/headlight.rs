@@ -10,6 +10,7 @@ use crate::hubs::Tokens;
 use crate::notifications::NotificationMessage;
 use crate::Result;
 use crate::device_trait;
+use super::Basic;
 
 device_trait!(HeadLight, []);
 

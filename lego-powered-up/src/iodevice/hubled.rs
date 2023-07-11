@@ -6,6 +6,7 @@ use async_trait::async_trait;
 use core::fmt::Debug;
 
 use crate::device_trait;
+use super::Basic;
 use crate::hubs::Tokens;
 pub use crate::consts::Color;
 use crate::notifications::CompletionInfo;
