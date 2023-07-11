@@ -13,9 +13,6 @@ use crate::notifications::{
     PortOutputSubcommand, StartupInfo, PortValueSingleFormat,
 };
 
-
-
-
 #[async_trait]
 pub trait Basic: Debug + Send + Sync {
     fn port(&self) -> u8;
