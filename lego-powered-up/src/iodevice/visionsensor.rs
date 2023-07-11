@@ -43,7 +43,7 @@ device_trait!(VisionSensor, [
     async fn visionsensor_color(
         &self,
     ) -> Result<(broadcast::Receiver<DetectedColor>, JoinHandle<()>)> {
-        self.device_mode(modes::VisionSensor::COLOR as u8, 1, true).await?;
+        self.device_mode(modes::VisionSensor::COLOR, 1, true).await?;
         let port_id = self.port();
         
         // Set up channel
@@ -103,7 +103,7 @@ device_trait!(VisionSensor, [
     // Just setting output mode turns the light off, which may be useful
     async fn visionsensor_light_output_mode(&self) -> Result<()> {
         self.check()?;
-        self.device_mode(modes::VisionSensor::COL_O as u8, 1, true).await
+        self.device_mode(modes::VisionSensor::COL_O, 1, true).await
     },
 
     // Output colors are limited to R, G, B and W (all three)
