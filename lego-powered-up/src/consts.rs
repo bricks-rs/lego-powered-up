@@ -8,7 +8,87 @@
 use num_derive::FromPrimitive;
 use std::fmt::{self, Display};
 
-/// ```ignore
+/// ```text,ignore
+/// @typedef DeviceType
+/// @property {number} UNKNOWN 0
+/// @property {number} SIMPLE_MEDIUM_LINEAR_MOTOR 1
+/// @property {number} TRAIN_MOTOR 2
+/// @property {number} LED_LIGHTS 8
+/// @property {number} VOLTAGE 20
+/// @property {number} CURRENT 21
+/// @property {number} PIEZO_TONE 22
+/// @property {number} RGB_LIGHT 23
+/// @property {number} WEDO2_TILT 34
+/// @property {number} WEDO2_DISTANCE 35
+/// @property {number} COLOR_DISTANCE_SENSOR 37
+/// @property {number} MEDIUM_LINEAR_MOTOR 38
+/// @property {number} MOVE_HUB_MEDIUM_LINEAR_MOTOR 39
+/// @property {number} BOOST_TILT 40
+/// @property {number} DUPLO_TRAIN_BASE_MOTOR 41
+/// @property {number} DUPLO_TRAIN_BASE_SPEAKER 42
+/// @property {number} DUPLO_TRAIN_BASE_COLOR 43
+/// @property {number} DUPLO_TRAIN_BASE_SPEEDOMETER 44
+/// @property {number} CONTROL_PLUS_LARGE_MOTOR 46
+/// @property {number} CONTROL_PLUS_XLARGE_MOTOR 47
+/// @property {number} POWERED_UP_REMOTE_BUTTON 55
+/// @property {number} RSSI 56
+/// @property {number} CONTROL_PLUS_ACCELEROMETER 58
+/// @property {number} CONTROL_PLUS_TILT 59
+/// ```
+
+// Added more IDs, some observed and some from
+// https://github.com/nathankellenicki/node-poweredup/blob/master/src/consts.ts
+#[repr(u8)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive, Default)]
+pub enum IoTypeId {
+    #[default]
+    Unknown = 0x00,
+    Motor = 0x01,
+    SystemTrainMotor = 0x02,
+    Button = 0x05,
+    LedLight = 0x08,
+    Voltage = 0x14,        //20
+    Current = 0x15,        //21
+    PiezoToneSound = 0x16, //22
+    HubLed = 0x17,         //23
+
+    ExternalTiltSensor = 0x22,      //34
+    MotionSensor = 0x23,            //35
+    VisionSensor = 0x25,            //37
+    ExternalMotorTacho = 0x26,      //38
+    InternalMotorTacho = 0x27,      //39
+    InternalTilt = 0x28,            //40
+    DuploTrainBaseMotor = 41,       //41
+    DuploTrainBaseSpeaker = 42,     //42
+    DuploTrainBaseColorSensor = 43, //43
+    DuploTrainBaseSpeedometer = 44, //44
+    TechnicLargeLinearMotor = 46,   //46   // Technic Control+
+    TechnicXLargeLinearMotor = 47,  //47   // Technic Control+
+    TechnicMediumAngularMotor = 48, //48   // Spike Prime
+    TechnicLargeAngularMotor = 49,  //49   // Spike Prime
+
+    TechnicHubGestSensor = 0x36,        //54
+    RemoteButtons = 0x37,               //55
+    Rssi = 0x38,                        //56
+    TechnicHubAccelerometer = 0x39,     //57
+    TechnicHubGyroSensor = 0x3a,        //58
+    TechnicHubTiltSensor = 0x3b,        //59
+    TechnicHubTemperatureSensor = 0x3c, //60
+    TechnicColorSensor = 61,            //61    // Spike Prime
+    TechnicDistanceSensor = 62,         //62    // Spike Prime
+    TechnicForceSensor = 63,            //63    // Spike Prime
+    Technic3x3ColorLightMatrix = 64,    //64    // Spike Essential
+    TechnicSmallAngularMotor = 65,      //65    // Spike Essential
+    UnknownMovehubDevice = 0x42, //66    // Unknown MoveHub device. Its 3 modes are named TRIGGER, CANVAS and VAR
+
+    MarioAccelerometer = 71,            //71
+    MarioBarcodeSensor = 73,            //73
+    MarioPantsSensor = 74,              //74
+    TechnicMediumAngularMotorGrey = 75, //75     // Mindstorms
+    TechnicLargeAngularMotorGrey = 76,  //76     // Technic Control+
+}
+
+/// ```text,ignore
 /// @typedef HubType
 /// @property {number} UNKNOWN 0
 /// @property {number} WEDO2_SMART_HUB 1
@@ -45,76 +125,7 @@ impl Display for HubType {
     }
 }
 
-/// ```ignore
-/// @typedef DeviceType
-/// @property {number} UNKNOWN 0
-/// @property {number} SIMPLE_MEDIUM_LINEAR_MOTOR 1
-/// @property {number} TRAIN_MOTOR 2
-/// @property {number} LED_LIGHTS 8
-/// @property {number} VOLTAGE 20
-/// @property {number} CURRENT 21
-/// @property {number} PIEZO_TONE 22
-/// @property {number} RGB_LIGHT 23
-/// @property {number} WEDO2_TILT 34
-/// @property {number} WEDO2_DISTANCE 35
-/// @property {number} COLOR_DISTANCE_SENSOR 37
-/// @property {number} MEDIUM_LINEAR_MOTOR 38
-/// @property {number} MOVE_HUB_MEDIUM_LINEAR_MOTOR 39
-/// @property {number} BOOST_TILT 40
-/// @property {number} DUPLO_TRAIN_BASE_MOTOR 41
-/// @property {number} DUPLO_TRAIN_BASE_SPEAKER 42
-/// @property {number} DUPLO_TRAIN_BASE_COLOR 43
-/// @property {number} DUPLO_TRAIN_BASE_SPEEDOMETER 44
-/// @property {number} CONTROL_PLUS_LARGE_MOTOR 46
-/// @property {number} CONTROL_PLUS_XLARGE_MOTOR 47
-/// @property {number} POWERED_UP_REMOTE_BUTTON 55
-/// @property {number} RSSI 56
-/// @property {number} CONTROL_PLUS_ACCELEROMETER 58
-/// @property {number} CONTROL_PLUS_TILT 59
-/// ```
-#[repr(u8)]
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum DeviceType {
-    Unknown = 0,
-    SimpleMediumLinearMotor = 1,
-    TrainMotor = 2,
-    Light = 8,
-    VoltageSensor = 20,
-    CurrentSensor = 21,
-    PiezoBuzzer = 22,
-    HubLed = 23,
-    TiltSensor = 34,
-    MotionSensor = 35,
-    ColorDistanceSensor = 37,
-    MediumLinearMotor = 38,
-    MoveHubMediumLinearMotor = 39,
-    MoveHubTiltSensor = 40,
-    DuploTrainBaseMotor = 41,
-    DuploTrainBaseSpeaker = 42,
-    DuploTrainBaseColorSensor = 43,
-    DuploTrainBaseSpeedometer = 44,
-    TechnicLargeLinearMotor = 46, // Technic Control+
-    TechnicXlargeLinearMotor = 47, // Technic Control+
-    TechnicMediumAngularMotor = 48, // Spike Prime
-    TechnicLargeAngularMotor = 49, // Spike Prime
-    TechnicMediumHubGestSensor = 54,
-    RemoteControlButton = 55,
-    RemoteControlRssi = 56,
-    TechnicMediumHubAccelerometer = 57,
-    TechnicMediumHubGyroSensor = 58,
-    TechnicMediumHubTiltSensor = 59,
-    TechnicMediumHubTemperatureSensor = 60,
-    TechnicColorSensor = 61,    // Spike Prime
-    TechnicDistanceSensor = 62, // Spike Prime
-    TechnicForceSensor = 63,    // Spike Prime
-    MarioAccelerometer = 71,
-    MarioBarcodeSensor = 73,
-    MarioPantsSensor = 74,
-    TechnicMediumAngularMotorGrey = 75, // Mindstorms
-    TechnicLargeAngularMotorGrey = 76,  // Technic Control+
-}
-
-/// ```ignore
+/// ```text,ignore
 /// @typedef Color
 /// @property {number} BLACK 0
 /// @property {number} PINK 1
@@ -146,6 +157,28 @@ pub enum Color {
     None = 255,
 }
 
+pub const LEGO_COLORS: [Color; 11] = [
+    Color::Pink,
+    Color::Purple,
+    Color::Blue,
+    Color::LightBlue,
+    Color::Cyan,
+    Color::Green,
+    Color::Yellow,
+    Color::Orange,
+    Color::Red,
+    Color::White,
+    Color::Black,
+];
+
+pub mod named_port {
+    pub const A: u8 = 0x00;
+    pub const B: u8 = 0x01;
+    pub const C: u8 = 0x02;
+    pub const D: u8 = 0x03;
+    pub const MOVE_AB: u8 = 0x10;
+}
+
 // @typedef ButtonState
 // @property {number} PRESSED 0
 // @property {number} RELEASED 1
@@ -153,7 +186,7 @@ pub enum Color {
 // @property {number} DOWN 3
 // @property {number} STOP 4
 
-/// ```ignore
+/// ```text,ignore
 /// @typedef BrakingStyle
 /// @property {number} HOLD 127
 /// @property {number} BRAKE 128
@@ -166,7 +199,7 @@ pub enum BrakingStyle {
     Brake = 127,
 }
 
-/// ```ignore
+/// ```text,ignore
 /// @typedef DuploTrainBaseSound
 /// @property {number} BRAKE 3
 /// @property {number} STATION_DEPARTURE 5
@@ -239,7 +272,7 @@ pub mod blecharacteristic {
     }
 }
 
-/// ```ignore
+/// ```text,ignore
 /// @typedef MessageType
 /// @property {number} HUB_PROPERTIES 0x01
 /// @property {number} HUB_ACTIONS 0x02
@@ -267,7 +300,7 @@ pub mod blecharacteristic {
 /// @description <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#message-types>
 /// ```
 #[repr(u8)]
-#[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive, Hash)]
 pub enum MessageType {
     HubProperties = 0x01,
     HubActions = 0x02,
@@ -282,19 +315,19 @@ pub enum MessageType {
     PortInformationRequest = 0x21,
     PortModeInformationRequest = 0x22,
     PortInputFormatSetupSingle = 0x41,
-    PortInputFormatSetupCombinedmode = 0x42,
+    PortInputFormatSetupCombined = 0x42,
     PortInformation = 0x43,
     PortModeInformation = 0x44,
     PortValueSingle = 0x45,
-    PortValueCombinedmode = 0x46,
+    PortValueCombined = 0x46,
     PortInputFormatSingle = 0x47,
-    PortInputFormatCombinedmode = 0x48,
+    PortInputFormatCombined = 0x48,
     VirtualPortSetup = 0x61,
     PortOutputCommand = 0x81,
     PortOutputCommandFeedback = 0x82,
 }
 
-/// ```ignore
+/// ```text,ignore
 /// @typedef HubPropertyReference
 /// @param {number} ADVERTISING_NAME 0x01
 /// @param {number} BUTTON 0x02
@@ -315,7 +348,7 @@ pub enum MessageType {
 /// ```
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive)]
-pub enum HubPropertyReference {
+pub enum HubPropertyRef {
     AdvertisingName = 0x01,
     Button = 0x02,
     FwVersion = 0x03,
@@ -333,7 +366,7 @@ pub enum HubPropertyReference {
     HardwareNetworkFamily = 0x0F,
 }
 
-/// ```ignore
+/// ```text,ignore
 /// @typedef HubPropertyOperation
 /// @param {number} SET_DOWNSTREAM 0x01
 /// @param {number} ENABLE_UPDATES_DOWNSTREAM 0x02
@@ -354,7 +387,7 @@ pub enum HubPropertyOperation {
     UpdateUpstream = 0x06,
 }
 
-/// ```ignore
+/// ```text,ignore
 /// @typedef HubPropertyPayload
 /// @param {number} ADVERTISING_NAME 0x01
 /// @param {number} BUTTON_STATE 0x02
@@ -393,7 +426,7 @@ pub enum HubPropertyPayload {
     HwNetworkFamily = 0x0F,
 }
 
-/// ```ignore
+/// ```text,ignore
 /// @typedef ActionType
 /// @param {number} SWITCH_OFF_HUB 0x01
 /// @param {number} DISCONNECT 0x02
@@ -422,7 +455,7 @@ pub enum ActionType {
     HubWillGoIntoBootMode = 0x32,
 }
 
-/// ```ignore
+/// ```text,ignore
 /// @typedef AlertPayload
 /// @param {number} STATUS_OK 0x00
 /// @param {number} ALERT 0xFF
@@ -435,7 +468,7 @@ pub enum AlertPayload {
     Alert = 0xFF,
 }
 
-/// ```ignore
+/// ```text,ignore
 /// @typedef Event
 /// @param {number} DETACHED_IO 0x00
 /// @param {number} ATTACHED_IO 0x01
@@ -450,7 +483,7 @@ pub enum Event {
     AttachedVirtualIo = 0x02,
 }
 
-/// ```ignore
+/// ```text,ignore
 /// @typedef HWNetWorkCommandType
 /// @param {number} CONNECTION_REQUEST 0x02
 /// @param {number} FAMILY_REQUEST 0x03
@@ -485,7 +518,7 @@ pub enum HwNetworkCommandType {
     ResetLongPressTiming = 0x0E,
 }
 
-/// ```ignore
+/// ```text,ignore
 /// @typedef PortInputFormatSetupSubCommand
 /// @param {number} SET_MODEANDDATASET_COMBINATIONS 0x01
 /// @param {number} LOCK_LPF2_DEVICE_FOR_SETUP 0x02
@@ -506,7 +539,7 @@ pub enum PortInputFormatSetupSubCommand {
     ResetSensor = 0x06,
 }
 
-/// ```ignore
+/// ```text,ignore
 /// @typedef MarioPantsType
 /// @param {number} NONE 0x00
 /// @param {number} PROPELLER 0x06
@@ -526,7 +559,7 @@ pub enum MarioPantsType {
     Builder = 0x22,
 }
 
-/// ```ignore
+/// ```text,ignore
 /// @typedef MarioColor
 /// @param {number} WHITE 0x1300
 /// @param {number} RED 0x1500
@@ -549,3 +582,61 @@ pub enum MarioColor {
     Brown = 0x6a00,
     Cyan = 0x4201,
 }
+
+pub enum PortOutputSubCommandValue {
+    StartPower2 = 0x02,
+    SetAccTime = 0x05,
+    SetDecTime = 0x06,
+    StartSpeed = 0x07,
+    StartSpeed2 = 0x08,
+    StartSpeedForTime = 0x09,
+    StartSpeedForTime2 = 0x0a,
+    StartSpeedForDegrees = 0x0b,
+    StartSpeedForDegrees2 = 0x0c,
+    GotoAbsolutePosition = 0x0d,
+    GotoAbsolutePosition2 = 0x0e,
+    PresetEncoder2 = 0x14,
+}
+
+pub enum InputSetupCombinedSubcommandValue {
+    SetModeanddatasetCombinations = 0x01,
+    LockLpf2DeviceForSetup = 0x02,
+    UnlockAndStartMultiEnabled = 0x03,
+    UnlockAndStartMultiDisabled = 0x04,
+    NotUsed = 0x05,
+    ResetSensor = 0x06,
+}
+
+pub enum MotorSensorMode {
+    // Valid combinations: 1+2+3  (Speed, Pos, Apos)
+    Power = 0x0,
+    Speed = 0x1,
+    Pos = 0x2,
+    APos = 0x3,
+    // Load = 0x4,
+    Calib = 0x4,
+    Stats = 0x5,
+}
+
+pub enum VisionSensorMode {
+    // Valid combinations: 0+1+2+3+6	Color, Prox, Count, Reflt, Rgb I
+    Color = 0x0,
+    Prox = 0x1,
+    Count = 0x2,
+    Reflt = 0x3,
+    Ambi = 0x4,
+    ColO = 0x5,
+    RgbI = 0x6,
+    IrTx = 0x7,
+    Spec1 = 0x8,
+    Debug = 0x9,
+    Calib = 0xa,
+}
+
+// pub struct PortCapabilities(u8);
+// impl PortCapabilities {
+//     pub const LOGICAL_SYNCHRONIZABLE: u8 = 0b1000;
+//     pub const LOGICAL_COMBINABLE: u8 = 0b0100;
+//     pub const INPUT: u8 = 0b0010;
+//     pub const OUTPUT: u8 = 0b0001;
+// }

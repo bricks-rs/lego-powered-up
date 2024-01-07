@@ -1,32 +1,55 @@
+pub use btleplug;
 use btleplug::api::{
     Central, CentralEvent, Manager as _, Peripheral as _, PeripheralProperties,
-    ScanFilter,
+    ScanFilter, ValueNotification,
 };
 use btleplug::platform::{Adapter, Manager, PeripheralId};
-use futures::{stream::StreamExt, Stream};
-use num_traits::FromPrimitive;
+use tokio_util::sync::CancellationToken;
 
+// std
+use core::time::Duration;
+pub use futures;
+use futures::{stream::StreamExt, Stream};
+use hubs::HubNotification;
+use std::sync::Arc;
+use tokio::sync::broadcast;
+use tokio::sync::Mutex;
 #[macro_use]
 extern crate log;
 
+// nostd
+use core::fmt::Debug;
+use core::pin::Pin;
+use num_traits::FromPrimitive;
+
+// Crate
 pub mod consts;
-pub mod devices;
 pub mod error;
 pub mod hubs;
+pub mod iodevice;
 pub mod notifications;
+pub mod setup;
 
-pub use btleplug;
-pub use error::{Error, OptionContext, Result};
+pub use crate::consts::IoTypeId;
+pub use crate::iodevice::IoDevice;
+pub use hubs::Hub;
 
 use consts::{BLEManufacturerData, HubType};
-use hubs::Hub;
+pub use error::{Error, OptionContext, Result};
+use notifications::{
+    NetworkCommand, PortOutputCommandFeedbackFormat, PortValueCombinedFormat,
+    PortValueSingleFormat,
+};
+
+pub type HubMutex = Arc<Mutex<Box<dyn Hub>>>;
+type NotificationStream = Pin<Box<dyn Stream<Item = ValueNotification> + Send>>;
 
 pub struct PoweredUp {
     adapter: Adapter,
 }
 
 impl PoweredUp {
-    pub async fn devices() -> Result<Vec<Adapter>> {
+    pub async fn adapters() -> Result<Vec<Adapter>> {
         let manager = Manager::new().await?;
         Ok(manager.adapters().await?)
     }
@@ -71,7 +94,9 @@ impl PoweredUp {
         let peripherals = self.adapter.peripherals().await?;
         let mut hubs = Vec::new();
         for peripheral in peripherals {
-            let Some(props) = peripheral.properties().await? else{continue;};
+            let Some(props) = peripheral.properties().await? else {
+                continue;
+            };
             if let Some(hub_type) = identify_hub(&props).await? {
                 hubs.push(DiscoveredHub {
                     hub_type,
@@ -85,30 +110,6 @@ impl PoweredUp {
         Ok(hubs)
     }
 
-    pub async fn scan(
-        &mut self,
-    ) -> Result<impl Stream<Item = DiscoveredHub> + '_> {
-        let events = self.adapter.events().await?;
-        self.adapter.start_scan(ScanFilter::default()).await?;
-        Ok(events.filter_map(|event| async {
-            let CentralEvent::DeviceDiscovered(id) = event else { None? };
-            // get peripheral info
-            let peripheral = self.adapter.peripheral(&id).await.ok()?;
-            // println!("{:?}", peripheral.properties().await?);
-            let Some(props) = peripheral.properties().await.ok()? else { None? };
-            if let Some(hub_type) = identify_hub(&props).await.ok()? {
-                let hub = DiscoveredHub {
-                    hub_type,
-                    addr: id,
-                    name: props
-                        .local_name
-                        .unwrap_or_else(|| "unknown".to_string()),
-                };
-                Some(hub)
-            } else { None }
-        }))
-    }
-
     pub async fn wait_for_hub(&mut self) -> Result<DiscoveredHub> {
         self.wait_for_hub_filter(HubFilter::Null).await
     }
@@ -118,13 +119,18 @@ impl PoweredUp {
         filter: HubFilter,
     ) -> Result<DiscoveredHub> {
         let mut events = self.adapter.events().await?;
-        self.adapter.start_scan(ScanFilter::default()).await?;
+        // self.adapter.start_scan(ScanFilter::default()).await?;
+        self.adapter.start_scan(scanfilter()).await?;
         while let Some(event) = events.next().await {
-            let CentralEvent::DeviceDiscovered(id) = event else { continue };
+            let CentralEvent::DeviceDiscovered(id) = event else {
+                continue;
+            };
             // get peripheral info
             let peripheral = self.adapter.peripheral(&id).await?;
             // println!("{:?}", peripheral.properties().await?);
-            let Some(props) = peripheral.properties().await? else { continue };
+            let Some(props) = peripheral.properties().await? else {
+                continue;
+            };
             if let Some(hub_type) = identify_hub(&props).await? {
                 let hub = DiscoveredHub {
                     hub_type,
@@ -136,6 +142,44 @@ impl PoweredUp {
                 if filter.matches(&hub) {
                     self.adapter.stop_scan().await?;
                     return Ok(hub);
+                }
+            }
+        }
+        panic!()
+    }
+
+    pub async fn wait_for_hubs_filter(
+        &mut self,
+        filter: HubFilter,
+        count: &u8,
+    ) -> Result<Vec<DiscoveredHub>> {
+        let mut events = self.adapter.events().await?;
+        let mut hubs = Vec::new();
+        self.adapter.start_scan(scanfilter()).await?;
+        while let Some(event) = events.next().await {
+            let CentralEvent::DeviceDiscovered(id) = event else {
+                continue;
+            };
+            // get peripheral info
+            let peripheral = self.adapter.peripheral(&id).await?;
+            // println!("{:?}", peripheral.properties().await?);
+            let Some(props) = peripheral.properties().await? else {
+                continue;
+            };
+            if let Some(hub_type) = identify_hub(&props).await? {
+                let hub = DiscoveredHub {
+                    hub_type,
+                    addr: id,
+                    name: props
+                        .local_name
+                        .unwrap_or_else(|| "unknown".to_string()),
+                };
+                if filter.matches(&hub) {
+                    hubs.push(hub);
+                }
+                if hubs.len() == *count as usize {
+                    self.adapter.stop_scan().await?;
+                    return Ok(hubs);
                 }
             }
         }
@@ -154,31 +198,135 @@ impl PoweredUp {
         // tokio::time::sleep(Duration::from_secs(2)).await;
         let chars = peripheral.characteristics();
 
-        dbg!(&chars);
+        // dbg!(&chars);
 
         let lpf_char = chars
             .iter()
             .find(|c| c.uuid == *consts::blecharacteristic::LPF2_ALL)
             .context("Device does not advertise LPF2_ALL characteristic")?
             .clone();
-        peripheral.subscribe(&lpf_char).await?;
+        let cancel = CancellationToken::new();
+        match hub.hub_type {
+            // These have had some real life-testing.
+            HubType::TechnicMediumHub
+            | HubType::MoveHub
+            | HubType::RemoteControl => Ok(Box::new(
+                hubs::generic_hub::GenericHub::init(
+                    peripheral,
+                    lpf_char,
+                    hub.hub_type,
+                    cancel,
+                )
+                .await?,
+            )),
+            // These are untested, but if they support the same "Lego Wireless protocol 3.0"
+            // then they should probably work?
+            HubType::Wedo2SmartHub
+            | HubType::Hub
+            | HubType::DuploTrainBase
+            | HubType::Mario => Ok(Box::new(
+                hubs::generic_hub::GenericHub::init(
+                    peripheral,
+                    lpf_char,
+                    hub.hub_type,
+                    cancel,
+                )
+                .await?,
+            )),
+            // Here is some hub that advertises LPF2_ALL but is not in the known list.
+            // Set kind to Unknown and give it a try, why not?
+            _ => Ok(Box::new(
+                hubs::generic_hub::GenericHub::init(
+                    peripheral,
+                    lpf_char,
+                    HubType::Unknown,
+                    cancel,
+                )
+                .await?,
+            )),
+        }
+    }
 
-        Ok(Box::new(match hub.hub_type {
-            HubType::TechnicMediumHub => {
-                hubs::TechnicHub::init(peripheral, lpf_char).await?
+    pub async fn scan(
+        &mut self,
+    ) -> Result<impl Stream<Item = DiscoveredHub> + '_> {
+        let events = self.adapter.events().await?;
+        // self.adapter.start_scan(ScanFilter::default()).await?;
+        self.adapter.start_scan(scanfilter()).await?;
+        Ok(events.filter_map(|event| async {
+            let CentralEvent::DeviceDiscovered(id) = event else {
+                None?
+            };
+            // get peripheral info
+            let peripheral = self.adapter.peripheral(&id).await.ok()?;
+            println!("{:?}", peripheral.properties().await.unwrap());
+            let Some(props) = peripheral.properties().await.ok()? else {
+                None?
+            };
+            if let Some(hub_type) = identify_hub(&props).await.ok()? {
+                let hub = DiscoveredHub {
+                    hub_type,
+                    addr: id,
+                    name: props
+                        .local_name
+                        .unwrap_or_else(|| "unknown".to_string()),
+                };
+                Some(hub)
+            } else {
+                None
             }
-            _ => unimplemented!(),
         }))
+    }
+
+    pub async fn scan2(
+        &mut self,
+    ) -> Result<Pin<Box<dyn Stream<Item = DiscoveredHub> + Send + '_>>> {
+        let events = self.adapter.events().await?;
+        self.adapter.start_scan(scanfilter()).await?;
+        Ok(Box::pin(events.filter_map(|event| async {
+            let CentralEvent::DeviceDiscovered(id) = event else {
+                None?
+            };
+            // get peripheral info
+            let peripheral = self.adapter.peripheral(&id).await.ok()?;
+            println!("{:?}", peripheral.properties().await.unwrap());
+            let Some(props) = peripheral.properties().await.ok()? else {
+                None?
+            };
+            if let Some(hub_type) = identify_hub(&props).await.ok()? {
+                let hub = DiscoveredHub {
+                    hub_type,
+                    addr: id,
+                    name: props
+                        .local_name
+                        .unwrap_or_else(|| "unknown".to_string()),
+                };
+                Some(hub)
+            } else {
+                None
+            }
+        })))
+    }
+}
+
+fn scanfilter() -> ScanFilter {
+    ScanFilter {
+        services: vec![
+            *consts::bleservice::LPF2_HUB,
+            *consts::bleservice::WEDO2_SMART_HUB,
+        ],
     }
 }
 
 /// Properties by which to filter discovered hubs
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum HubFilter {
     /// Hub name must match the provided value
     Name(String),
     /// Hub address must match the provided value
     Addr(String),
+    /// Match by type
+    Kind(HubType),
     /// Always matches
     Null,
 }
@@ -189,7 +337,9 @@ impl HubFilter {
         use HubFilter::*;
         match self {
             Name(n) => hub.name == *n,
+            // Addr(a) => format!("{:?}", hub.addr) == *a,
             Addr(a) => format!("{:?}", hub.addr) == *a,
+            Kind(k) => hub.hub_type == *k,
             Null => true,
         }
     }
@@ -233,4 +383,97 @@ async fn identify_hub(props: &PeripheralProperties) -> Result<Option<HubType>> {
         }
     }
     Ok(None)
+}
+
+pub struct ConnectedHub {
+    pub name: String,
+    pub mutex: HubMutex,
+    pub kind: HubType,
+    pub cancel: CancellationToken,
+    // pub dropguard: DropGuard,
+}
+impl ConnectedHub {
+    pub async fn setup_hub(created_hub: Box<dyn Hub>) -> Result<ConnectedHub> {
+        let connected_hub = ConnectedHub {
+            kind: created_hub.kind(),
+            name: created_hub.name().await?,
+            cancel: created_hub.cancel_token(),
+            mutex: Arc::new(Mutex::new(created_hub)),
+        };
+        // Create forwarding channels and store in hub so we can create receivers on demand
+        {
+            let lock = &mut connected_hub.mutex.lock().await;
+            lock.channels().singlevalue_sender =
+                Some(broadcast::channel::<PortValueSingleFormat>(32).0);
+            lock.channels().combinedvalue_sender =
+                Some(broadcast::channel::<PortValueCombinedFormat>(32).0);
+            lock.channels().networkcmd_sender =
+                Some(broadcast::channel::<NetworkCommand>(16).0);
+            lock.channels().hubnotification_sender =
+                Some(broadcast::channel::<HubNotification>(16).0);
+            lock.channels().commandfeedback_sender = Some(
+                broadcast::channel::<PortOutputCommandFeedbackFormat>(16).0,
+            );
+        }
+        // Set up notification handler
+        let hub_mutex = connected_hub.mutex.clone();
+        {
+            let lock = &mut connected_hub.mutex.lock().await;
+            let stream: NotificationStream =
+                lock.peripheral().notifications().await?;
+            let senders = lock.channels().clone();
+            // let senders = (
+            //     lock.channels().singlevalue_sender.as_ref().unwrap().clone(),
+            //     lock.channels()
+            //         .combinedvalue_sender
+            //         .as_ref()
+            //         .unwrap()
+            //         .clone(),
+            //     lock.channels().networkcmd_sender.as_ref().unwrap().clone(),
+            //     lock.channels()
+            //         .hubnotification_sender
+            //         .as_ref()
+            //         .unwrap()
+            //         .clone(),
+            //     lock.channels()
+            //         .commandfeedback_sender
+            //         .as_ref()
+            //         .unwrap()
+            //         .clone(),
+            // );
+            let io_handler_cancel = connected_hub.cancel.clone();
+            let _io_handler_task = tokio::spawn(async move {
+                crate::hubs::io_event::io_event_handler(
+                    stream,
+                    hub_mutex,
+                    senders,
+                    io_handler_cancel,
+                )
+                .await
+                .expect("Error setting up main notification handler");
+            });
+        }
+
+        // Subscribe to btleplug peripheral
+        {
+            let lock = connected_hub.mutex.lock().await;
+            match lock.peripheral().subscribe(&lock.characteristic()).await {
+                Ok(()) => (),
+                // We got a peri connection but can't subscribe. Can happen if the hub has almost timed out
+                // waiting for a connection; it seemingly connects but then turns off. On Windows the error
+                // returned was a HRESULT: Operation aborted
+                Err(e) => {
+                    eprintln!(
+                        "Error subscribing to peripheral notifications: {:#?}",
+                        e
+                    )
+                }
+            }
+        }
+        // Wait for devices to be collected. This is set to a very long time because notifications
+        // from the hub sometimes lag, and we don't know how many devices to expect.
+        tokio::time::sleep(Duration::from_millis(3000)).await;
+
+        Ok(connected_hub)
+    }
 }

@@ -7,22 +7,22 @@ use anyhow::Result;
 use lego_powered_up::{btleplug::api::Central, PoweredUp};
 
 pub async fn run(args: &DevicesArgs) -> Result<()> {
-    let adapters = PoweredUp::devices().await?;
+    let adapters = PoweredUp::adapters().await?;
 
     if let Some(idx) = args.index {
         if let Some(adapter) = adapters.get(idx) {
-            println!("Showing 1 Bluetooth device:");
+            println!("Showing 1 Bluetooth adapter:");
             println!("  {}: {}", idx, adapter.adapter_info().await?);
         } else {
-            println!("No Bluetooth device found");
+            println!("No Bluetooth adapter found");
         }
         return Ok(());
     }
 
     if adapters.is_empty() {
-        println!("No Bluetooth device found");
+        println!("No Bluetooth adapter found");
     } else {
-        println!("Showing {} available Bluetooth devices:", adapters.len());
+        println!("Showing {} available Bluetooth adapters:", adapters.len());
         for (idx, dev) in adapters.iter().enumerate() {
             println!("  {}: {}", idx, dev.adapter_info().await?);
         }

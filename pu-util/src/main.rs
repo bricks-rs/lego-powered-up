@@ -6,8 +6,8 @@ use anyhow::Result;
 use argparse::Command;
 use env_logger::Env;
 
+mod adapters;
 mod argparse;
-mod devices;
 mod hubs;
 mod motor_test;
 
@@ -25,7 +25,7 @@ async fn main() -> Result<()> {
     .init();
 
     match args.command {
-        Command::Devices(dev_args) => devices::run(&dev_args).await?,
+        Command::Devices(dev_args) => adapters::run(&dev_args).await?,
         Command::Hubs(hub_args) => hubs::run(&hub_args).await?,
         Command::MotorTest(mot_args) => motor_test::run(&mot_args).await?,
     }

@@ -13,365 +13,13 @@ use num_traits::FromPrimitive;
 use std::collections::HashMap;
 use std::fmt::{self, Debug, Display};
 
-macro_rules! ok {
-    ($thing:expr) => {
-        $thing.context("Cannot convert 'None'")?
-    };
-}
+pub use self::message::NotificationMessage;
+pub mod message;
 
-macro_rules! next {
-    ($iter:ident) => {
-        *$iter.next().context("Insufficient length")?
-    };
-}
-
-macro_rules! four_bytes {
-    ($t:ty, $iter:ident) => {
-        <$t>::from_le_bytes([
-            next!($iter),
-            next!($iter),
-            next!($iter),
-            next!($iter),
-        ])
-    };
-}
-
-macro_rules! two_bytes {
-    ($t:ty, $iter:ident) => {
-        <$t>::from_le_bytes([next!($iter), next!($iter)])
-    };
-}
-
-macro_rules! next_i32 {
-    ($iter:ident) => {
-        four_bytes!(i32, $iter)
-    };
-}
-
-macro_rules! next_u32 {
-    ($iter:ident) => {
-        four_bytes!(u32, $iter)
-    };
-}
-
-macro_rules! next_f32 {
-    ($iter:ident) => {
-        four_bytes!(f32, $iter)
-    };
-}
-
-macro_rules! next_u16 {
-    ($iter:ident) => {
-        two_bytes!(u16, $iter)
-    };
-}
-
-macro_rules! next_i16 {
-    ($iter:ident) => {
-        two_bytes!(i16, $iter)
-    };
-}
-
-macro_rules! next_i8 {
-    ($iter:ident) => {
-        i8::from_le_bytes([next!($iter)])
-    };
-}
+#[macro_use]
+pub mod macros;
 
 pub const MAX_NAME_SIZE: usize = 14;
-
-/// Message format:
-/// HEAD |
-///
-///
-/// HEAD = LENGTH | HUB_ID (IGNORE) | TYPE
-/// * LENGTH: u7(8) or u16, see below. Total length of message
-/// * HUB_ID = 0_u8
-/// * TYPE: message type u8. Message types are in consts::MessageType
-///
-/// LENGTH
-/// lengths 0-127 are encoded as u8
-/// if MSB of first byte is SET then discard this bit and take the next
-/// byte from the message right shifted by 7 and OR it onto the first byte
-/// i.e. LEN = BYTE1 as u16 & 0x7F | (BYTE2 as u16 >> 7)
-///
-/// The conversion to/from u8 is a bit of a hack pending
-/// "Allow arbitrary enums to have explicit discriminants"
-/// <https://github.com/rust-lang/rust/issues/60553>
-///
-/// As it stands we have a horrendous bodge involving consts::MessageType.
-#[non_exhaustive]
-#[derive(Clone, Debug, PartialEq)]
-pub enum NotificationMessage {
-    HubProperties(HubProperty),
-    HubActions(HubAction),
-    HubAlerts(AlertType),
-    HubAttachedIo(AttachedIo),
-    GenericErrorMessages(ErrorMessageFormat),
-    HwNetworkCommands(NetworkCommand),
-    FwUpdateGoIntoBootMode([u8; 9]),
-    FwUpdateLockMemory([u8; 8]),
-    FwUpdateLockStatusRequest,
-    FwLockStatus(LockStatus),
-    PortInformationRequest(InformationRequest),
-    PortModeInformationRequest(ModeInformationRequest),
-    PortInputFormatSetupSingle(InputSetupSingle),
-    PortInputFormatSetupCombinedmode(InputSetupCombined),
-    PortInformation(PortInformationValue),
-    PortModeInformation(PortModeInformationValue),
-    PortValueSingle(PortValueSingleFormat),
-    PortValueCombinedmode(PortValueCombinedFormat),
-    PortInputFormatSingle(PortInputFormatSingleFormat),
-    PortInputFormatCombinedmode(PortInputFormatCombinedFormat),
-    VirtualPortSetup(VirtualPortSetupFormat),
-    PortOutputCommand(PortOutputCommandFormat),
-    PortOutputCommandFeedback(PortOutputCommandFeedbackFormat),
-}
-
-impl NotificationMessage {
-    /// Parse a byte slice into a notification message
-    pub fn parse(msg: &[u8]) -> Result<Self> {
-        use NotificationMessage::*;
-
-        debug!("NOTIFICATION: {:?}", msg);
-
-        let mut msg_iter = msg.iter();
-
-        // consume the length bytes
-        Self::validate_length(&mut msg_iter, msg.len())?;
-        trace!("Length: {}", msg.len());
-
-        let _hub_id = next!(msg_iter);
-        trace!("Hub ID: {}", _hub_id);
-
-        let message_type = ok!(MessageType::from_u8(next!(msg_iter)));
-
-        trace!(
-            "Identified message type: {:?} = {:x}",
-            message_type,
-            message_type as u8
-        );
-
-        Ok(match message_type {
-            MessageType::HubProperties => {
-                let props = HubProperty::parse(&mut msg_iter)?;
-                HubProperties(props)
-            }
-            MessageType::HubActions => {
-                let action = HubAction::parse(&mut msg_iter)?;
-                HubActions(action)
-            }
-            MessageType::HubAlerts => {
-                let alert = AlertType::parse(&mut msg_iter)?;
-                HubAlerts(alert)
-            }
-            MessageType::HubAttachedIo => {
-                let attach = AttachedIo::parse(&mut msg_iter)?;
-                HubAttachedIo(attach)
-            }
-            MessageType::GenericErrorMessages => {
-                let error = ErrorMessageFormat::parse(&mut msg_iter)?;
-                GenericErrorMessages(error)
-            }
-            MessageType::HwNetworkCommands => {
-                let command = NetworkCommand::parse(&mut msg_iter)?;
-                HwNetworkCommands(command)
-            }
-            MessageType::FwUpdateGoIntoBootMode => {
-                let mut safety = [0_u8; 9];
-                for ele in safety.iter_mut() {
-                    *ele = next!(msg_iter);
-                }
-                FwUpdateGoIntoBootMode(safety)
-            }
-            MessageType::FwUpdateLockMemory => {
-                let mut safety = [0_u8; 8];
-                for ele in safety.iter_mut() {
-                    *ele = next!(msg_iter);
-                }
-                FwUpdateLockMemory(safety)
-            }
-            MessageType::FwUpdateLockStatusRequest => FwUpdateLockStatusRequest,
-            MessageType::FwLockStatus => {
-                let status = LockStatus::parse(&mut msg_iter)?;
-                FwLockStatus(status)
-            }
-            MessageType::PortInformationRequest => {
-                let req = InformationRequest::parse(&mut msg_iter)?;
-                PortInformationRequest(req)
-            }
-            MessageType::PortModeInformationRequest => {
-                let req = ModeInformationRequest::parse(&mut msg_iter)?;
-                PortModeInformationRequest(req)
-            }
-            MessageType::PortInputFormatSetupSingle => {
-                let setup = InputSetupSingle::parse(&mut msg_iter)?;
-                PortInputFormatSetupSingle(setup)
-            }
-            MessageType::PortInputFormatSetupCombinedmode => {
-                let setup = InputSetupCombined::parse(&mut msg_iter)?;
-                PortInputFormatSetupCombinedmode(setup)
-            }
-            MessageType::PortInformation => {
-                let info = PortInformationValue::parse(&mut msg_iter)?;
-                PortInformation(info)
-            }
-            MessageType::PortModeInformation => {
-                let info = PortModeInformationValue::parse(&mut msg_iter)?;
-                PortModeInformation(info)
-            }
-            MessageType::PortValueSingle => {
-                let value = PortValueSingleFormat::parse(&mut msg_iter)?;
-                PortValueSingle(value)
-            }
-            MessageType::PortValueCombinedmode => {
-                let value = PortValueCombinedFormat::parse(&mut msg_iter)?;
-                PortValueCombinedmode(value)
-            }
-            MessageType::PortInputFormatSingle => {
-                let fmt = PortInputFormatSingleFormat::parse(&mut msg_iter)?;
-                PortInputFormatSingle(fmt)
-            }
-            MessageType::PortInputFormatCombinedmode => {
-                let fmt = PortInputFormatCombinedFormat::parse(&mut msg_iter)?;
-                PortInputFormatCombinedmode(fmt)
-            }
-            MessageType::VirtualPortSetup => {
-                let setup = VirtualPortSetupFormat::parse(&mut msg_iter)?;
-                VirtualPortSetup(setup)
-            }
-            MessageType::PortOutputCommand => {
-                let cmd = PortOutputCommandFormat::parse(&mut msg_iter)?;
-                PortOutputCommand(cmd)
-            }
-            MessageType::PortOutputCommandFeedback => {
-                let feedback =
-                    PortOutputCommandFeedbackFormat::parse(&mut msg_iter)?;
-                PortOutputCommandFeedback(feedback)
-            }
-        })
-    }
-
-    /// Map from our enum members to MessageType values
-    pub fn message_type(&self) -> u8 {
-        // eww
-        use NotificationMessage::*;
-        (match self {
-            HubProperties(_) => MessageType::HubProperties,
-            HubActions(_) => MessageType::HubActions,
-            HubAlerts(_) => MessageType::HubAlerts,
-            HubAttachedIo(_) => MessageType::HubAttachedIo,
-            GenericErrorMessages(_) => MessageType::GenericErrorMessages,
-            HwNetworkCommands(_) => MessageType::HwNetworkCommands,
-            FwUpdateGoIntoBootMode(_) => MessageType::FwUpdateGoIntoBootMode,
-            FwUpdateLockMemory(_) => MessageType::FwUpdateLockMemory,
-            FwUpdateLockStatusRequest => MessageType::FwUpdateLockStatusRequest,
-            FwLockStatus(_) => MessageType::FwLockStatus,
-            PortInformationRequest(_) => MessageType::PortInformationRequest,
-            PortModeInformationRequest(_) => {
-                MessageType::PortModeInformationRequest
-            }
-            PortInputFormatSetupSingle(_) => {
-                MessageType::PortInputFormatSetupSingle
-            }
-            PortInputFormatSetupCombinedmode(_) => {
-                MessageType::PortInputFormatSetupCombinedmode
-            }
-            PortInformation(_) => MessageType::PortInformation,
-            PortModeInformation(_) => MessageType::PortModeInformation,
-            PortValueSingle(_) => MessageType::PortValueSingle,
-            PortValueCombinedmode(_) => MessageType::PortValueCombinedmode,
-            PortInputFormatSingle(_) => MessageType::PortInputFormatSingle,
-            PortInputFormatCombinedmode(_) => {
-                MessageType::PortInputFormatCombinedmode
-            }
-            VirtualPortSetup(_) => MessageType::VirtualPortSetup,
-            PortOutputCommand(_) => MessageType::PortOutputCommand,
-            PortOutputCommandFeedback(_) => {
-                MessageType::PortOutputCommandFeedback
-            }
-        }) as u8
-    }
-
-    fn validate_length<'a>(
-        mut msg: impl Iterator<Item = &'a u8>,
-        supplied: usize,
-    ) -> Result<()> {
-        let calculated = Self::length(&mut msg)?;
-        if calculated != supplied {
-            Err(Error::ParseError(format!(
-                "Length mismatch {} != {}",
-                calculated, supplied
-            )))
-        } else {
-            Ok(())
-        }
-    }
-
-    fn length<'a>(mut msg: impl Iterator<Item = &'a u8>) -> Result<usize> {
-        let first = next!(msg);
-
-        let length = if first & 0x80 == 0x00 {
-            // high bit not set - length is one byte
-            (first & 0x7f) as usize
-        } else {
-            // high bit set - length is both bytes with a bit missing
-            let second = next!(msg); // only advance if needed
-            eprintln!("second: {:x}", second);
-            ((second as usize) << 7) | ((first & 0x7f) as usize)
-        };
-
-        Ok(length)
-    }
-
-    /// ChkSum = PayLoad\[0\] ^ … PayLoad\[n\] ^ 0xFF
-    pub fn checksum(buf: &[u8]) -> u8 {
-        buf.iter().fold(0xff, |acc, x| acc ^ x)
-    }
-
-    /// Serialise a notification message into a Vec<u8>
-    /// TODO no alloc
-    pub fn serialise(&self) -> Vec<u8> {
-        use NotificationMessage::*;
-
-        let mut ser = match self {
-            HubProperties(_) => todo!(),
-            HubActions(_) => todo!(),
-            HubAlerts(_) => todo!(),
-            HubAttachedIo(_) => todo!(),
-            GenericErrorMessages(_) => todo!(),
-            HwNetworkCommands(_) => todo!(),
-            FwUpdateGoIntoBootMode(_) => todo!(),
-            FwUpdateLockMemory(_) => todo!(),
-            FwUpdateLockStatusRequest => todo!(),
-            FwLockStatus(_) => todo!(),
-            PortInformationRequest(_) => todo!(),
-            PortModeInformationRequest(_) => {
-                todo!()
-            }
-            PortInputFormatSetupSingle(msg) => msg.serialise(),
-            PortInputFormatSetupCombinedmode(_) => {
-                todo!()
-            }
-            PortInformation(_) => todo!(),
-            PortModeInformation(_) => todo!(),
-            PortValueSingle(_) => todo!(),
-            PortValueCombinedmode(_) => todo!(),
-            PortInputFormatSingle(_) => todo!(),
-            PortInputFormatCombinedmode(_) => {
-                todo!()
-            }
-            VirtualPortSetup(_) => todo!(),
-            PortOutputCommand(cmd) => cmd.serialise(),
-            PortOutputCommandFeedback(_) => {
-                todo!()
-            }
-        };
-        ser[0] = ser.len() as u8;
-        debug!("Serialised to: {:02x?}", ser);
-        ser
-    }
-}
 
 /// The two modes by which Hub LED colours may be set
 #[repr(u8)]
@@ -385,8 +33,9 @@ pub enum HubLedMode {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HubProperty {
-    property: HubPropertyValue,
-    operation: HubPropertyOperation,
+    pub property: HubPropertyValue,
+    pub operation: HubPropertyOperation,
+    pub reference: HubPropertyRef,
 }
 
 impl HubProperty {
@@ -394,11 +43,58 @@ impl HubProperty {
         let property_int = next!(msg);
         let operation = ok!(HubPropertyOperation::from_u8(next!(msg)));
         let property = HubPropertyValue::parse(property_int, &mut msg)?;
+        let reference = match property {
+            HubPropertyValue::AdvertisingName(_) => {
+                HubPropertyRef::AdvertisingName
+            }
+            HubPropertyValue::Button(_) => HubPropertyRef::Button,
+            HubPropertyValue::FwVersion(_) => HubPropertyRef::FwVersion,
+            HubPropertyValue::HwVersion(_) => HubPropertyRef::HwVersion,
+            HubPropertyValue::Rssi(_) => HubPropertyRef::Rssi,
+            HubPropertyValue::BatteryVoltage(_) => {
+                HubPropertyRef::BatteryVoltage
+            }
+            HubPropertyValue::BatteryType(_) => HubPropertyRef::BatteryType,
+            HubPropertyValue::ManufacturerName(_) => {
+                HubPropertyRef::ManufacturerName
+            }
+            HubPropertyValue::RadioFirmwareVersion(_) => {
+                HubPropertyRef::RadioFirmwareVersion
+            }
+            HubPropertyValue::LegoWirelessProtocolVersion(_) => {
+                HubPropertyRef::LegoWirelessProtocolVersion
+            }
+            HubPropertyValue::SystemTypeId(_) => HubPropertyRef::SystemTypeId,
+            HubPropertyValue::HwNetworkId(_) => HubPropertyRef::HwNetworkId,
+            HubPropertyValue::PrimaryMacAddress(_) => {
+                HubPropertyRef::PrimaryMacAddress
+            }
+            HubPropertyValue::SecondaryMacAddress => {
+                HubPropertyRef::SecondaryMacAddress
+            }
+            HubPropertyValue::HardwareNetworkFamily(_) => {
+                HubPropertyRef::HardwareNetworkFamily
+            }
+        };
 
         Ok(Self {
+            reference,
             operation,
             property,
         })
+    }
+    pub fn serialise(&self) -> Vec<u8> {
+        let mut msg = Vec::with_capacity(10);
+        msg.extend_from_slice(&[
+            0,
+            0,
+            MessageType::HubProperties as u8,
+            // prop_ref,
+            self.reference as u8,
+            self.operation as u8,
+        ]);
+
+        msg
     }
 }
 
@@ -427,54 +123,54 @@ impl HubPropertyValue {
         mut msg: impl Iterator<Item = &'a u8>,
     ) -> Result<Self> {
         use HubPropertyValue::*;
-        let prop_type = ok!(HubPropertyReference::from_u8(prop_type));
+        let prop_type = ok!(HubPropertyRef::from_u8(prop_type));
 
         Ok(match prop_type {
-            HubPropertyReference::AdvertisingName => {
+            HubPropertyRef::AdvertisingName => {
                 // name is the rest of the data
                 let name = msg.copied().collect();
 
                 AdvertisingName(name)
             }
-            HubPropertyReference::Button => Button(next!(msg)),
-            HubPropertyReference::FwVersion => {
+            HubPropertyRef::Button => Button(next!(msg)),
+            HubPropertyRef::FwVersion => {
                 let vers = next_i32!(msg);
 
                 FwVersion(vers)
             }
-            HubPropertyReference::HwVersion => {
+            HubPropertyRef::HwVersion => {
                 let vers = next_i32!(msg);
 
                 HwVersion(vers)
             }
-            HubPropertyReference::Rssi => {
+            HubPropertyRef::Rssi => {
                 let bytes = [next!(msg)];
                 let rssi = i8::from_le_bytes(bytes);
 
                 Rssi(rssi)
             }
-            HubPropertyReference::BatteryVoltage => BatteryVoltage(next!(msg)),
-            HubPropertyReference::BatteryType => {
+            HubPropertyRef::BatteryVoltage => BatteryVoltage(next!(msg)),
+            HubPropertyRef::BatteryType => {
                 BatteryType(ok!(HubBatteryType::parse(&mut msg)))
             }
-            HubPropertyReference::ManufacturerName => {
+            HubPropertyRef::ManufacturerName => {
                 let name = msg.copied().collect();
 
                 ManufacturerName(name)
             }
-            HubPropertyReference::RadioFirmwareVersion => {
+            HubPropertyRef::RadioFirmwareVersion => {
                 let vers = msg.copied().collect();
 
                 RadioFirmwareVersion(vers)
             }
-            HubPropertyReference::LegoWirelessProtocolVersion => {
+            HubPropertyRef::LegoWirelessProtocolVersion => {
                 let vers = next_u16!(msg);
 
                 LegoWirelessProtocolVersion(vers)
             }
-            HubPropertyReference::SystemTypeId => SystemTypeId(next!(msg)),
-            HubPropertyReference::HwNetworkId => HwNetworkId(next!(msg)),
-            HubPropertyReference::PrimaryMacAddress => {
+            HubPropertyRef::SystemTypeId => SystemTypeId(next!(msg)),
+            HubPropertyRef::HwNetworkId => HwNetworkId(next!(msg)),
+            HubPropertyRef::PrimaryMacAddress => {
                 let mac = [
                     next!(msg),
                     next!(msg),
@@ -485,8 +181,8 @@ impl HubPropertyValue {
                 ];
                 PrimaryMacAddress(mac)
             }
-            HubPropertyReference::SecondaryMacAddress => SecondaryMacAddress,
-            HubPropertyReference::HardwareNetworkFamily => {
+            HubPropertyRef::SecondaryMacAddress => SecondaryMacAddress,
+            HubPropertyRef::HardwareNetworkFamily => {
                 HardwareNetworkFamily(next!(msg))
             }
         })
@@ -515,6 +211,28 @@ pub enum HubAction {
     HubWillGoIntoBootMode = 0x32,
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct HubActionRequest {
+    pub(crate) action_type: HubAction,
+}
+
+impl HubActionRequest {
+    pub fn parse<'a>(mut msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
+        let action_type = HubAction::parse(&mut msg)?;
+        Ok(HubActionRequest { action_type })
+    }
+    pub fn serialise(&self) -> Vec<u8> {
+        let mut msg = Vec::with_capacity(10);
+        msg.extend_from_slice(&[
+            0,
+            0,
+            MessageType::HubActions as u8,
+            self.action_type as u8,
+        ]);
+        msg
+    }
+}
+
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive, Parse)]
 pub enum AlertType {
@@ -522,6 +240,63 @@ pub enum AlertType {
     HighCurrent = 0x02,
     LowSignalStrength = 0x03,
     OverPowerCondition = 0x04,
+}
+impl Display for AlertType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            AlertType::HighCurrent => write!(f, "High current"),
+            AlertType::LowSignalStrength => write!(f, "Low signal strength"),
+            AlertType::LowVoltage => write!(f, "Low voltage"),
+            AlertType::OverPowerCondition => write!(f, "Over power condition"),
+        }
+    }
+}
+
+#[repr(u8)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive, Parse)]
+pub enum AlertOperation {
+    EnableUpdates = 0x01,
+    DisableUpdates = 0x02,
+    RequestUpdate = 0x03,
+    Update = 0x04,
+}
+
+#[repr(u8)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive, Parse)]
+pub enum AlertPayload {
+    StatusOk = 0x00,
+    Alert = 0xFF,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct HubAlert {
+    pub alert_type: AlertType,
+    pub operation: AlertOperation,
+    pub payload: AlertPayload,
+}
+
+impl HubAlert {
+    pub fn parse<'a>(mut msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
+        let alert_type = AlertType::parse(&mut msg)?;
+        let operation = AlertOperation::parse(&mut msg)?;
+        let payload = AlertPayload::parse(&mut msg)?;
+        Ok(HubAlert {
+            alert_type,
+            operation,
+            payload,
+        })
+    }
+    pub fn serialise(&self) -> Vec<u8> {
+        let mut msg = Vec::with_capacity(10);
+        msg.extend_from_slice(&[
+            0,
+            0,
+            MessageType::HubAlerts as u8,
+            self.alert_type as u8,
+            self.operation as u8,
+        ]);
+        msg
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -542,36 +317,51 @@ impl AttachedIo {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum IoAttachEvent {
     DetachedIo {
-        io_type_id: IoTypeId,
+        // io_type_id: IoTypeId,        //Not included in detached event
     },
     AttachedIo {
+        io_type_id: IoTypeId,
         hw_rev: VersionNumber,
         fw_rev: VersionNumber,
     },
     AttachedVirtualIo {
+        io_type_id: IoTypeId,
         port_a: u8,
         port_b: u8,
     },
 }
 
 impl IoAttachEvent {
+    // Note: Returns "NoneError("Cannot convert 'None'")"
+    // if incoming IoTypeId-value is not in enum IoTypeId.
     pub fn parse<'a>(mut msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
         let event_type = ok!(Event::from_u8(next!(msg)));
 
         Ok(match event_type {
             Event::DetachedIo => {
-                let io_type_id = ok!(IoTypeId::from_u16(next_u16!(msg)));
-                IoAttachEvent::DetachedIo { io_type_id }
+                // let io_type_id = ok!(IoTypeId::from_u16(next_u16!(msg)));
+                IoAttachEvent::DetachedIo {}
             }
+
             Event::AttachedIo => {
+                let io_type_id = ok!(IoTypeId::from_u16(next_u16!(msg)));
                 let hw_rev = VersionNumber::parse(&mut msg)?;
                 let fw_rev = VersionNumber::parse(&mut msg)?;
-                IoAttachEvent::AttachedIo { hw_rev, fw_rev }
+                IoAttachEvent::AttachedIo {
+                    io_type_id,
+                    hw_rev,
+                    fw_rev,
+                }
             }
             Event::AttachedVirtualIo => {
+                let io_type_id = ok!(IoTypeId::from_u16(next_u16!(msg)));
                 let port_a = next!(msg);
                 let port_b = next!(msg);
-                IoAttachEvent::AttachedVirtualIo { port_a, port_b }
+                IoAttachEvent::AttachedVirtualIo {
+                    io_type_id,
+                    port_a,
+                    port_b,
+                }
             }
         })
     }
@@ -594,6 +384,7 @@ impl VersionNumber {
     pub fn parse<'a>(mut msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
         //let byte0 = next!(msg);
         //let byte1 = next!(msg);
+
         let build = next_u16!(msg);
         let byte2 = next!(msg);
         let byte3 = next!(msg);
@@ -660,25 +451,6 @@ impl Debug for VersionNumber {
     ) -> std::result::Result<(), fmt::Error> {
         write!(fmt, "{}", self)
     }
-}
-
-#[repr(u16)]
-#[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive)]
-pub enum IoTypeId {
-    Motor = 0x0001,
-    SystemTrainMotor = 0x0002,
-    Button = 0x0005,
-    LedLight = 0x0008,
-    Voltage = 0x0014,
-    Current = 0x0015,
-    PiezoToneSound = 0x0016,
-    RgbLight = 0x0017,
-    ExternalTiltSensor = 0x0022,
-    MotionSensor = 0x0023,
-    VisionSensor = 0x0025,
-    ExternalMotor = 0x0026,
-    InternalMotor = 0x0027,
-    InternalTilt = 0x0028,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -860,8 +632,8 @@ pub enum LockStatus {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct InformationRequest {
-    port_id: u8,
-    information_type: InformationType,
+    pub(crate) port_id: u8,
+    pub(crate) information_type: InformationType,
 }
 
 impl InformationRequest {
@@ -872,6 +644,17 @@ impl InformationRequest {
             port_id,
             information_type,
         })
+    }
+    pub fn serialise(&self) -> Vec<u8> {
+        let mut msg = Vec::with_capacity(10);
+        msg.extend_from_slice(&[
+            0,
+            0,
+            MessageType::PortInformationRequest as u8,
+            self.port_id,
+            self.information_type as u8,
+        ]);
+        msg
     }
 }
 
@@ -885,9 +668,9 @@ pub enum InformationType {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct ModeInformationRequest {
-    port_id: u8,
-    mode: u8,
-    information_type: ModeInformationType,
+    pub(crate) port_id: u8,
+    pub(crate) mode: u8,
+    pub(crate) information_type: ModeInformationType,
 }
 
 impl ModeInformationRequest {
@@ -900,6 +683,18 @@ impl ModeInformationRequest {
             mode,
             information_type,
         })
+    }
+    pub fn serialise(&self) -> Vec<u8> {
+        let mut msg = Vec::with_capacity(10);
+        msg.extend_from_slice(&[
+            0,
+            0,
+            MessageType::PortModeInformationRequest as u8,
+            self.port_id,
+            self.mode,
+            self.information_type as u8,
+        ]);
+        msg
     }
 }
 
@@ -967,8 +762,8 @@ impl InputSetupSingle {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct InputSetupCombined {
-    port_id: u8,
-    subcommand: InputSetupCombinedSubcommand,
+    pub(crate) port_id: u8,
+    pub(crate) subcommand: InputSetupCombinedSubcommand,
 }
 
 impl InputSetupCombined {
@@ -979,6 +774,96 @@ impl InputSetupCombined {
             port_id,
             subcommand,
         })
+    }
+    pub fn serialise(&self) -> Vec<u8> {
+        use InputSetupCombinedSubcommand::*;
+        match &self.subcommand {
+            SetModeanddatasetCombinations {
+                combination_index,
+                mode_dataset,
+            } => {
+                let mut bytes = vec![
+                    // Header
+                    0, // len
+                    0, // hub id - always set to 0
+                    MessageType::PortInputFormatSetupCombined as u8,
+                    // Command
+                    self.port_id,
+                    InputSetupCombinedSubcommandValue::SetModeanddatasetCombinations as u8,
+                    // Subcommand payload
+                    *combination_index,
+                ];
+                // Not sure why mode_dataset needs to be a [u8; 8] but changing it necessitates reworking
+                // the parse function and possibly more. Workaround for now is to set unneeded values to
+                // all 1's as a marker. Should be ok since no device probably has 128 modes and 128 datasets.
+                let md = mode_dataset.as_slice();
+                for val in md.iter() {
+                    if *val == 255 {
+                        break;
+                    } else {
+                        bytes.push(*val);
+                    }
+                }
+                // bytes.extend_from_slice(mode_dataset.as_slice());
+                bytes
+            }
+            LockLpf2DeviceForSetup {} => {
+                vec![
+                    // Header
+                    0, // len
+                    0, // hub id - always set to 0
+                    MessageType::PortInputFormatSetupCombined as u8,
+                    // Command
+                    self.port_id,
+                    InputSetupCombinedSubcommandValue::LockLpf2DeviceForSetup
+                        as u8,
+                ]
+            }
+            UnlockAndStartMultiEnabled {} => {
+                vec![
+                    // Header
+                    0, // len
+                    0, // hub id - always set to 0
+                    MessageType::PortInputFormatSetupCombined as u8,
+                    // Command
+                    self.port_id,
+                    InputSetupCombinedSubcommandValue::UnlockAndStartMultiEnabled as u8,
+                ]
+            }
+            UnlockAndStartMultiDisabled {} => {
+                vec![
+                    // Header
+                    0, // len
+                    0, // hub id - always set to 0
+                    MessageType::PortInputFormatSetupCombined as u8,
+                    // Command
+                    self.port_id,
+                    InputSetupCombinedSubcommandValue::UnlockAndStartMultiDisabled as u8,
+                ]
+            }
+            NotUsed {} => {
+                vec![
+                    // Header
+                    0, // len
+                    0, // hub id - always set to 0
+                    MessageType::PortInputFormatSetupCombined as u8,
+                    // Command
+                    self.port_id,
+                    InputSetupCombinedSubcommandValue::NotUsed as u8,
+                ]
+            }
+            ResetSensor {} => {
+                vec![
+                    // Header
+                    0, // len
+                    0, // hub id - always set to 0
+                    MessageType::PortInputFormatSetupCombined as u8,
+                    // Command
+                    self.port_id,
+                    InputSetupCombinedSubcommandValue::ResetSensor as u8,
+                ]
+            }
+        }
     }
 }
 
@@ -1030,8 +915,8 @@ impl InputSetupCombinedSubcommand {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PortInformationValue {
-    port_id: u8,
-    information_type: PortInformationType,
+    pub port_id: u8,
+    pub information_type: PortInformationType,
 }
 
 impl PortInformationValue {
@@ -1089,7 +974,7 @@ impl PortInformationType {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct PortCapabilities(u8);
+pub struct PortCapabilities(pub u8);
 impl PortCapabilities {
     pub const LOGICAL_SYNCHRONIZABLE: u8 = 0b1000;
     pub const LOGICAL_COMBINABLE: u8 = 0b0100;
@@ -1099,9 +984,9 @@ impl PortCapabilities {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct PortModeInformationValue {
-    port_id: u8,
-    mode: u8,
-    information_type: PortModeInformationType,
+    pub port_id: u8,
+    pub mode: u8,
+    pub information_type: PortModeInformationType,
 }
 
 impl PortModeInformationValue {
@@ -1221,16 +1106,28 @@ impl PortModeInformationType {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
 pub struct ValueFormatType {
-    number_of_datasets: u8,
-    dataset_type: DatasetType,
-    total_figures: u8,
-    decimals: u8,
+    pub number_of_datasets: u8,
+    pub dataset_type: DatasetType,
+    pub total_figures: u8,
+    pub decimals: u8,
+}
+impl fmt::Display for ValueFormatType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{:>4} value(s) of {:<8}   Figures: {:<3} Decimals: {:<3}",
+            self.number_of_datasets,
+            self.dataset_type,
+            self.total_figures,
+            self.decimals
+        )
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct MappingValue(u8);
+pub struct MappingValue(pub u8);
 impl MappingValue {
     pub const SUPPORTS_NULL: u8 = 0b1000_0000;
     pub const SUPPORTS_FUNCTIONAL2: u8 = 0b0100_0000;
@@ -1240,12 +1137,31 @@ impl MappingValue {
 }
 
 #[repr(u8)]
-#[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive, Parse)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive, Parse, Default)]
 pub enum DatasetType {
+    #[default]
     Bits8 = 0b00,
     Bits16 = 0b01,
     Bits32 = 0b10,
     Float = 0b11,
+}
+impl fmt::Display for DatasetType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            DatasetType::Bits8 => {
+                write!(f, " 8 bit")
+            }
+            DatasetType::Bits16 => {
+                write!(f, "16 bit")
+            }
+            DatasetType::Bits32 => {
+                write!(f, "32 bit")
+            }
+            DatasetType::Float => {
+                write!(f, "float ")
+            }
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -1260,16 +1176,35 @@ pub enum TypedValue {
 /// that the values may be different lengths (u8, u16, u32, f32) depending
 /// on the port configuration. For now we just save the payload and then
 /// later on will provide a method to split it out into port-value pairs
-/// based on a separate port type mapping
+/// based on a separate port type mapping.
+///
+/// Notes on Value Format
+/// 1) The valuetypes are signed, i.e. the variants are i8, i16, i32, f32. This:
+///    https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-value-single
+///    says that the values are unsigned, but this is seemingly incorrect. Many sensors can
+///    report negative values, as can be seen by requesting Port Mode Information::Raw range.
+/// 2) The values are not a single value but an array, the length of which is given
+///    by the "number_of_datasets"-member of Value Format.
+///    ("Single" in PortValueSingle refers to single sensor mode, but single sensors can)  
+///     and do provide provide array data, ex. color RGB or accelerometer XYZ-data.)
+/// 3) There are some inconsistencies looking at port mode information:
+///         HubLeds in RBG reports taking 8 bit values in the range 0-255, though this
+///         doesn't concern the parser of incoming values. As regards sensors;
+///         TechnicHubTiltSensor mode CFG, as well as MoveHubInternalTilt modes IM_CF
+///         and CALIB: These all report that they will provide 8 bit values in
+///         range 0-255.
+///     But these are the only ones I've been able to find. On the whole it seems better
+///     to correctly support the multitude of sensors and modes.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PortValueSingleFormat {
-    values: Vec<u8>,
+    pub port_id: u8,
+    pub data: Vec<i8>,
 }
-
 impl PortValueSingleFormat {
-    pub fn parse<'a>(msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
-        let values = msg.cloned().collect();
-        Ok(PortValueSingleFormat { values })
+    pub fn parse<'a>(mut msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
+        let port_id = next!(msg);
+        let data = msg.cloned().map(|x| x as i8).collect();
+        Ok(Self { port_id, data })
     }
 
     pub fn process(&self, _type_mapping: ()) -> HashMap<u8, TypedValue> {
@@ -1282,8 +1217,8 @@ impl PortValueSingleFormat {
 /// raw data and leave parsing it for later.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PortValueCombinedFormat {
-    port_id: u8,
-    data: Vec<u8>,
+    pub port_id: u8,
+    pub data: Vec<u8>,
 }
 
 impl PortValueCombinedFormat {
@@ -1337,7 +1272,11 @@ impl PortInputFormatCombinedFormat {
     pub fn parse<'a>(mut msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
         let port_id = next!(msg);
         let control = next!(msg);
-        let combination_index = next!(msg);
+
+        // let combination_index = next!(msg);  // combination index is part of control byte, not separate byte.
+        // This caused function to fail with "NoneError: Insufficient length"
+        let combination_index: u8 = 0; // Set to 0 for now, figure out how to get from control byte later
+
         let multi_update = (control >> 7) != 0;
         let mode_dataset_combination_pointer = next_u16!(msg);
 
@@ -1391,11 +1330,12 @@ pub struct PortOutputCommandFormat {
 impl PortOutputCommandFormat {
     pub fn parse<'a>(mut msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
         let port_id = next!(msg);
-        let startup_and_command_byte = next!(msg);
-        let startup_info =
-            ok!(StartupInfo::from_u8((startup_and_command_byte & 0xf0) >> 4));
+        let startup_and_completion_byte = next!(msg);
+        let startup_info = ok!(StartupInfo::from_u8(
+            (startup_and_completion_byte & 0xf0) >> 4
+        ));
         let completion_info =
-            ok!(CompletionInfo::from_u8(startup_and_command_byte & 0x0f));
+            ok!(CompletionInfo::from_u8(startup_and_completion_byte & 0x0f));
         let subcommand = PortOutputSubcommand::parse(&mut msg)?;
 
         Ok(Self {
@@ -1408,7 +1348,10 @@ impl PortOutputCommandFormat {
 
     pub fn serialise(&self) -> Vec<u8> {
         use PortOutputSubcommand::*;
+        let startup_and_completion_byte =
+            ((self.startup_info as u8) << 4) + self.completion_info as u8;
         match &self.subcommand {
+            WriteDirectModeData(data) => data.serialise(self),
             StartSpeed {
                 speed,
                 max_power,
@@ -1418,19 +1361,165 @@ impl PortOutputCommandFormat {
                 let profile =
                     ((*use_acc_profile as u8) << 1) | (*use_dec_profile as u8);
                 let speed = speed.to_le_bytes()[0];
+                let max_power = max_power.to_le_bytes()[0];
                 vec![
+                    // Header
                     0, // len
-                    0, // hub id
+                    0, // hub id - always set to 0
                     MessageType::PortOutputCommand as u8,
+                    // Command
                     self.port_id,
-                    0x11,
-                    0x01,
+                    // 0x11, // 0001 Execute immediately, 0001 Command feedback
+                    startup_and_completion_byte,
+                    PortOutputSubCommandValue::StartSpeed as u8,
+                    // Subcommand payload
                     speed,
-                    max_power.to_u8(),
+                    max_power,
                     profile,
                 ]
             }
-            WriteDirectModeData(data) => data.serialise(self),
+            StartSpeedForDegrees {
+                degrees,
+                speed,
+                max_power,
+                end_state,
+                use_acc_profile,
+                use_dec_profile,
+            } => {
+                let profile =
+                    ((*use_acc_profile as u8) << 1) | (*use_dec_profile as u8);
+                let speed = speed.to_le_bytes()[0];
+                let max_power = max_power.to_le_bytes()[0];
+                let degrees = degrees.to_le_bytes();
+                let mut bytes = vec![
+                    // Header
+                    0, // len
+                    0, // hub id - always set to 0
+                    MessageType::PortOutputCommand as u8,
+                    // Command
+                    self.port_id,
+                    startup_and_completion_byte,
+                    PortOutputSubCommandValue::StartSpeedForDegrees as u8,
+                ];
+                // Subcommand payload
+                bytes.extend_from_slice(&degrees);
+                bytes.push(speed);
+                bytes.push(max_power);
+                bytes.push(end_state.to_u8());
+                bytes.push(profile);
+
+                bytes
+            }
+            GotoAbsolutePosition {
+                abs_pos,
+                speed,
+                max_power,
+                end_state,
+                use_acc_profile,
+                use_dec_profile,
+            } => {
+                let profile =
+                    ((*use_acc_profile as u8) << 1) | (*use_dec_profile as u8);
+                let speed = speed.to_le_bytes()[0];
+                let max_power = max_power.to_le_bytes()[0];
+                let abs_pos = abs_pos.to_le_bytes();
+                let mut bytes = vec![
+                    // Header
+                    0, // len
+                    0, // hub id - always set to 0
+                    MessageType::PortOutputCommand as u8,
+                    // Command
+                    self.port_id,
+                    startup_and_completion_byte,
+                    PortOutputSubCommandValue::GotoAbsolutePosition as u8,
+                ];
+                // Subcommand payload
+                bytes.extend_from_slice(&abs_pos);
+                bytes.push(speed);
+                bytes.push(max_power);
+                bytes.push(end_state.to_u8());
+                bytes.push(profile);
+
+                bytes
+            }
+            StartSpeedForTime {
+                time,
+                speed,
+                max_power,
+                end_state,
+                use_acc_profile,
+                use_dec_profile,
+            } => {
+                let profile =
+                    ((*use_acc_profile as u8) << 1) | (*use_dec_profile as u8);
+                let speed = speed.to_le_bytes()[0];
+                let max_power = max_power.to_le_bytes()[0];
+                dbg!(time);
+                let time = time.to_le_bytes();
+                dbg!(time);
+                let mut bytes = vec![
+                    // Header
+                    0, // len
+                    0, // hub id - always set to 0
+                    MessageType::PortOutputCommand as u8,
+                    // Command
+                    self.port_id,
+                    startup_and_completion_byte,
+                    PortOutputSubCommandValue::StartSpeedForTime as u8,
+                ];
+                // Subcommand payload
+                bytes.extend_from_slice(&time);
+                bytes.push(speed);
+                bytes.push(max_power);
+                bytes.push(end_state.to_u8());
+                bytes.push(profile);
+
+                bytes
+            }
+            SetAccTime {
+                time,
+                profile_number,
+            } => {
+                let time = time.to_le_bytes();
+                let profile_number = profile_number.to_le_bytes();
+                let mut bytes = vec![
+                    // Header
+                    0, // len
+                    0, // hub id - always set to 0
+                    MessageType::PortOutputCommand as u8,
+                    // Command
+                    self.port_id,
+                    startup_and_completion_byte,
+                    PortOutputSubCommandValue::SetAccTime as u8,
+                ];
+                // Subcommand payload
+                bytes.extend_from_slice(&time);
+                bytes.extend_from_slice(&profile_number);
+
+                bytes
+            }
+            SetDecTime {
+                time,
+                profile_number,
+            } => {
+                let time = time.to_le_bytes();
+                let profile_number = profile_number.to_le_bytes();
+                let mut bytes = vec![
+                    // Header
+                    0, // len
+                    0, // hub id - always set to 0
+                    MessageType::PortOutputCommand as u8,
+                    // Command
+                    self.port_id,
+                    startup_and_completion_byte,
+                    PortOutputSubCommandValue::SetDecTime as u8,
+                ];
+                // Subcommand payload
+                bytes.extend_from_slice(&time);
+                bytes.extend_from_slice(&profile_number);
+
+                bytes
+            }
             _ => todo!(),
         }
     }
@@ -1477,21 +1566,27 @@ pub enum PortOutputSubcommand {
     },
     StartSpeed {
         speed: i8,
-        max_power: Power,
+        max_power: u8,
+        use_acc_profile: bool,
+        use_dec_profile: bool,
+    },
+    StartSpeedNoPower {
+        speed: i8,
+        max_power: u8,
         use_acc_profile: bool,
         use_dec_profile: bool,
     },
     StartSpeed2 {
         speed1: i8,
         speed2: i8,
-        max_power: i8,
+        max_power: u8,
         use_acc_profile: bool,
         use_dec_profile: bool,
     },
     StartSpeedForTime {
         time: i16,
         speed: i8,
-        max_power: i8,
+        max_power: u8,
         end_state: EndState,
         use_acc_profile: bool,
         use_dec_profile: bool,
@@ -1500,7 +1595,7 @@ pub enum PortOutputSubcommand {
         time: i16,
         speed_l: i8,
         speed_r: i8,
-        max_power: i8,
+        max_power: u8,
         end_state: EndState,
         use_acc_profile: bool,
         use_dec_profile: bool,
@@ -1508,7 +1603,7 @@ pub enum PortOutputSubcommand {
     StartSpeedForDegrees {
         degrees: i32,
         speed: i8,
-        max_power: i8,
+        max_power: u8,
         end_state: EndState,
         use_acc_profile: bool,
         use_dec_profile: bool,
@@ -1517,7 +1612,7 @@ pub enum PortOutputSubcommand {
         degrees: i32,
         speed_l: i8,
         speed_r: i8,
-        max_power: i8,
+        max_power: u8,
         end_state: EndState,
         use_acc_profile: bool,
         use_dec_profile: bool,
@@ -1525,7 +1620,7 @@ pub enum PortOutputSubcommand {
     GotoAbsolutePosition {
         abs_pos: i32,
         speed: i8,
-        max_power: i8,
+        max_power: u8,
         end_state: EndState,
         use_acc_profile: bool,
         use_dec_profile: bool,
@@ -1534,7 +1629,7 @@ pub enum PortOutputSubcommand {
         abs_pos1: i32,
         abs_pos2: i32,
         speed: i8,
-        max_power: i8,
+        max_power: u8,
         end_state: EndState,
         use_acc_profile: bool,
         use_dec_profile: bool,
@@ -1584,7 +1679,7 @@ impl PortOutputSubcommand {
             0x07 => {
                 // StartSpeed(Speed, MaxPower, UseProfile)
                 let speed = next_i8!(msg);
-                let max_power = Power::parse(&mut msg)?;
+                let max_power = next!(msg);
                 let use_prof = next!(msg);
                 let use_acc_profile = (use_prof & 0x01) != 0;
                 let use_dec_profile = (use_prof & 0x02) != 0;
@@ -1599,7 +1694,7 @@ impl PortOutputSubcommand {
                 // StartSpeed(Speed1, Speed2, MaxPower, UseProfile)
                 let speed1 = next_i8!(msg);
                 let speed2 = next_i8!(msg);
-                let max_power = next_i8!(msg);
+                let max_power = next!(msg);
                 let use_prof = next!(msg);
                 let use_acc_profile = (use_prof & 0x01) != 0;
                 let use_dec_profile = (use_prof & 0x02) != 0;
@@ -1615,7 +1710,7 @@ impl PortOutputSubcommand {
                 // StartSpeedForTime (Time, Speed, MaxPower, EndState, UseProfile)
                 let time = next_i16!(msg);
                 let speed = next_i8!(msg);
-                let max_power = next_i8!(msg);
+                let max_power = next!(msg);
                 let end_state = EndState::parse(&mut msg)?;
                 let use_prof = next!(msg);
                 let use_acc_profile = (use_prof & 0x01) != 0;
@@ -1635,7 +1730,7 @@ impl PortOutputSubcommand {
                 let time = next_i16!(msg);
                 let speed_l = next_i8!(msg);
                 let speed_r = next_i8!(msg);
-                let max_power = next_i8!(msg);
+                let max_power = next!(msg);
                 let end_state = EndState::parse(&mut msg)?;
                 let use_prof = next!(msg);
                 let use_acc_profile = (use_prof & 0x01) != 0;
@@ -1655,7 +1750,7 @@ impl PortOutputSubcommand {
                 // UseProfile)
                 let degrees = next_i32!(msg);
                 let speed = next_i8!(msg);
-                let max_power = next_i8!(msg);
+                let max_power = next!(msg);
                 let end_state = EndState::parse(&mut msg)?;
                 let use_prof = next!(msg);
                 let use_acc_profile = (use_prof & 0x01) != 0;
@@ -1675,7 +1770,7 @@ impl PortOutputSubcommand {
                 let degrees = next_i32!(msg);
                 let speed_l = next_i8!(msg);
                 let speed_r = next_i8!(msg);
-                let max_power = next_i8!(msg);
+                let max_power = next!(msg);
                 let end_state = EndState::parse(&mut msg)?;
                 let use_prof = next!(msg);
                 let use_acc_profile = (use_prof & 0x01) != 0;
@@ -1695,7 +1790,7 @@ impl PortOutputSubcommand {
                 // UseProfile)
                 let abs_pos = next_i32!(msg);
                 let speed = next_i8!(msg);
-                let max_power = next_i8!(msg);
+                let max_power = next!(msg);
                 let end_state = EndState::parse(&mut msg)?;
                 let use_prof = next!(msg);
                 let use_acc_profile = (use_prof & 0x01) != 0;
@@ -1715,7 +1810,7 @@ impl PortOutputSubcommand {
                 let abs_pos1 = next_i32!(msg);
                 let abs_pos2 = next_i32!(msg);
                 let speed = next_i8!(msg);
-                let max_power = next_i8!(msg);
+                let max_power = next!(msg);
                 let end_state = EndState::parse(&mut msg)?;
                 let use_prof = next!(msg);
                 let use_acc_profile = (use_prof & 0x01) != 0;
@@ -1739,12 +1834,12 @@ impl PortOutputSubcommand {
                     right_position,
                 }
             }
-            50 => {
+            0x50 => {
                 // WriteDirect(Byte[0],Byte[0 + n])
                 let data = WriteDirectPayload::parse(&mut msg)?;
                 WriteDirect(data)
             }
-            51 => {
+            0x51 => {
                 // WriteDirectModeData(Mode, PayLoad[0] PayLoad [0 + n]
                 let data = WriteDirectModeDataPayload::parse(&mut msg)?;
                 WriteDirectModeData(data)
@@ -1756,6 +1851,43 @@ impl PortOutputSubcommand {
                 )))
             }
         })
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Speed {
+    Cw(u8),
+    Ccw(u8),
+    Hold,
+}
+
+impl Speed {
+    pub fn parse<'a>(mut msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
+        let val = next_i8!(msg);
+        Speed::from_i8(val)
+    }
+
+    pub fn to_u8(&self) -> u8 {
+        use Speed::*;
+        let integer: i8 = match self {
+            Hold => 0,
+            Cw(p) => *p as i8,
+            Ccw(p) => -(*p as i8),
+        };
+        integer.to_le_bytes()[0]
+    }
+
+    pub fn from_i8(val: i8) -> Result<Self> {
+        use Speed::*;
+        match val {
+            0 => Ok(Hold),
+            p if (1..=100).contains(&p) => Ok(Cw(p as u8)),
+            p if (-100..=-1).contains(&p) => Ok(Ccw((-p) as u8)),
+            p => Err(Error::ParseError(format!(
+                "Invalid value for Speed: {}",
+                p
+            ))),
+        }
     }
 }
 
@@ -1834,10 +1966,28 @@ pub enum EndState {
     Hold = 126,
     Brake = 127,
 }
+impl EndState {
+    pub fn to_u8(&self) -> u8 {
+        use EndState::*;
+        let integer: u8 = match self {
+            Float => 0,
+            Hold => 126,
+            Brake => 127,
+        };
+        integer.to_le_bytes()[0]
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum WriteDirectModeDataPayload {
     StartPower(Power),
+    // StartPower2 has the "Encoded through WriteDirectModeData"-tag, but it also has a subcommand-id (0x02)
+    // and is not listed among the WriteDirectModeData-commands. I think the tag is a doc error, so:
+    // StartPower2{
+    // power1: Power,
+    // power2: Power
+    // },
+    // i32 as four bytes
     PresetEncoder(i32),
     TiltImpactPreset(i32),
     TiltConfigOrientation(Orientation),
@@ -1845,12 +1995,14 @@ pub enum WriteDirectModeDataPayload {
         impact_threshold: i8,
         bump_holdoff: i8,
     },
-    SetRgbColorNo(i8),
-    SetRgbColors {
+    TiltFactoryCalibration(i8),
+    SetHubColor(i8),
+    SetHubRgb {
         red: u8,
         green: u8,
         blue: u8,
     },
+    SetVisionSensorColor(i8),
 }
 
 impl WriteDirectModeDataPayload {
@@ -1860,6 +2012,7 @@ impl WriteDirectModeDataPayload {
         let mode = next!(msg);
         Ok(match mode {
             0x01 => {
+                //Should be 0x00 according to docs? Seems to work, I may be misreading.
                 // StartPower(Power)
                 let power = Power::parse(&mut msg)?;
                 StartPower(power)
@@ -1891,17 +2044,24 @@ impl WriteDirectModeDataPayload {
                     bump_holdoff,
                 }
             }
+            0x07 => {
+                // TiltFactoryCalibration(Orientation, CalibrationPassCode)  Passcode is 12 chars: Calib-Sensor
+                // "Mode 7"
+                let orientation = next_i8!(msg);
+                // let passcode = next_i8!(msg);
+                TiltFactoryCalibration(orientation)
+            }
             0x08 => {
-                // SetRgbColorNo(ColorNo)
+                // SetHubColor(ColorNo)
                 let col = next_i8!(msg);
-                SetRgbColorNo(col)
+                SetHubColor(col)
             }
             0x09 => {
-                // SetRgbColors(RedColor, GreenColor, BlueColor)
+                // SetHubRgb(RedColor, GreenColor, BlueColor)
                 let red = next!(msg);
                 let green = next!(msg);
                 let blue = next!(msg);
-                SetRgbColors { red, green, blue }
+                SetHubRgb { red, green, blue }
             }
             m => {
                 return Err(Error::ParseError(format!(
@@ -1915,7 +2075,7 @@ impl WriteDirectModeDataPayload {
     pub fn serialise(&self, meta: &PortOutputCommandFormat) -> Vec<u8> {
         use WriteDirectModeDataPayload::*;
         match self {
-            SetRgbColors { red, green, blue } => {
+            SetHubRgb { red, green, blue } => {
                 let startup_and_completion =
                     meta.startup_info.serialise(&meta.completion_info);
                 vec![
@@ -1925,10 +2085,25 @@ impl WriteDirectModeDataPayload {
                     meta.port_id,
                     startup_and_completion,
                     0x51, // WriteDirect
-                    HubLedMode::Rgb as u8,
+                    // Docs says to insert an 0x00 and then an extra 0x51 here, but works without it
+                    crate::iodevice::modes::HubLed::RGB_O,
                     *red,
                     *green,
                     *blue,
+                ]
+            }
+            SetHubColor(c) => {
+                let startup_and_completion =
+                    meta.startup_info.serialise(&meta.completion_info);
+                vec![
+                    0,
+                    0, // hub id
+                    MessageType::PortOutputCommand as u8,
+                    meta.port_id,
+                    startup_and_completion,
+                    0x51, // WriteDirect
+                    crate::iodevice::modes::HubLed::COL_O,
+                    *c as u8,
                 ]
             }
             StartPower(p) => {
@@ -1942,11 +2117,122 @@ impl WriteDirectModeDataPayload {
                     meta.port_id,
                     startup_and_completion,
                     0x51, // WriteDirect
-                    0x00, // magic value from docs
+                    crate::iodevice::modes::InternalMotorTacho::POWER,
                     power,
                 ]
             }
-            _ => todo!(),
+            PresetEncoder(position) => {
+                let startup_and_completion =
+                    meta.startup_info.serialise(&meta.completion_info);
+                let pos_bytes: [u8; 4] = position.to_le_bytes(); // i32 sent as 4 bytes
+                vec![
+                    0,
+                    0, // hub id
+                    MessageType::PortOutputCommand as u8,
+                    meta.port_id,
+                    startup_and_completion,
+                    0x51, // WriteDirect
+                    crate::iodevice::modes::InternalMotorTacho::POS,
+                    pos_bytes[0],
+                    pos_bytes[1],
+                    pos_bytes[2],
+                    pos_bytes[3],
+                ]
+            }
+            // Set the Tilt into TiltImpactCount mode (0x03) and change (preset) the value to PresetValue.
+            TiltImpactPreset(preset_value) => {
+                let startup_and_completion =
+                    meta.startup_info.serialise(&meta.completion_info);
+                let val_bytes: [u8; 4] = preset_value.to_le_bytes(); // i32 sent as 4 bytes
+                vec![
+                    0,
+                    0, // hub id
+                    MessageType::PortOutputCommand as u8,
+                    meta.port_id,
+                    startup_and_completion,
+                    0x51, // WriteDirect
+                    crate::iodevice::modes::InternalTilt::IMPCT,
+                    val_bytes[0],
+                    val_bytes[1],
+                    val_bytes[2],
+                    val_bytes[3],
+                ]
+            }
+            // Set the Tilt into TiltOrientation mode (0x05) and set the Orientation value to Orientation
+            TiltConfigOrientation(orientation) => {
+                let startup_and_completion =
+                    meta.startup_info.serialise(&meta.completion_info);
+                vec![
+                    0,
+                    0, // hub id
+                    MessageType::PortOutputCommand as u8,
+                    meta.port_id,
+                    startup_and_completion,
+                    0x51, // WriteDirect
+                    crate::iodevice::modes::InternalTilt::OR_CF,
+                    *orientation as u8,
+                ]
+            }
+            // Setup Tilt ImpactThreshold and BumpHoldoff by entering mode 6 and use the payload ImpactThreshold and BumpHoldoff.
+            TiltConfigImpact {
+                impact_threshold,
+                bump_holdoff,
+            } => {
+                let startup_and_completion =
+                    meta.startup_info.serialise(&meta.completion_info);
+                vec![
+                    0,
+                    0, // hub id
+                    MessageType::PortOutputCommand as u8,
+                    meta.port_id,
+                    startup_and_completion,
+                    0x51, // WriteDirect
+                    crate::iodevice::modes::InternalTilt::IM_CF,
+                    *impact_threshold as u8,
+                    *bump_holdoff as u8,
+                ]
+            }
+            //  Sets the actual orientation in the montage automat.  0: XY (laying flat) 1: Z (standing long direction)
+            TiltFactoryCalibration(orientation) => {
+                let startup_and_completion =
+                    meta.startup_info.serialise(&meta.completion_info);
+                vec![
+                    0,
+                    0, // hub id
+                    MessageType::PortOutputCommand as u8,
+                    meta.port_id,
+                    startup_and_completion,
+                    0x51, // WriteDirect
+                    crate::iodevice::modes::InternalTilt::CALIB,
+                    *orientation as u8,
+                    b'C',
+                    b'a',
+                    b'l',
+                    b'i',
+                    b'b',
+                    b'-',
+                    b'S',
+                    b'e',
+                    b'n',
+                    b's',
+                    b'o',
+                    b'r',
+                ]
+            }
+            SetVisionSensorColor(c) => {
+                let startup_and_completion =
+                    meta.startup_info.serialise(&meta.completion_info);
+                vec![
+                    0,
+                    0, // hub id
+                    MessageType::PortOutputCommand as u8,
+                    meta.port_id,
+                    startup_and_completion,
+                    0x51, // WriteDirect
+                    crate::iodevice::modes::VisionSensor::COL_O,
+                    *c as u8,
+                ]
+            }
         }
     }
 }
@@ -1971,9 +2257,9 @@ impl Orientation {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct PortOutputCommandFeedbackFormat {
-    msg1: FeedbackMessage,
-    msg2: Option<FeedbackMessage>,
-    msg3: Option<FeedbackMessage>,
+    pub msg1: FeedbackMessage,
+    pub msg2: Option<FeedbackMessage>,
+    pub msg3: Option<FeedbackMessage>,
 }
 
 impl PortOutputCommandFeedbackFormat {
@@ -1987,12 +2273,12 @@ impl PortOutputCommandFeedbackFormat {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct FeedbackMessage {
-    port_id: u8,
-    empty_cmd_in_progress: bool,
-    empty_cmd_completed: bool,
-    discarded: bool,
-    idle: bool,
-    busy_full: bool,
+    pub port_id: u8,
+    pub empty_cmd_in_progress: bool, // Command in progress, queue empty
+    pub empty_cmd_completed: bool,   // Command in progress, queue full
+    pub discarded: bool,             // Command discarded
+    pub idle: bool, // Nothing in progress, buffer empty. (“Idle”)
+    pub busy_full: bool, // Command in progress, buffer full (“Busy/Full”)
 }
 
 impl FeedbackMessage {
@@ -2012,309 +2298,5 @@ impl FeedbackMessage {
             idle,
             busy_full,
         })
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use log::LevelFilter;
-
-    fn init() {
-        let _ = env_logger::builder()
-            .is_test(true)
-            .filter(None, LevelFilter::Trace)
-            .try_init();
-    }
-
-    #[test]
-    fn attach_io_message() {
-        init();
-        let msgs: &[&[u8]] = &[
-            &[15, 0, 4, 0, 1, 47, 0, 0, 16, 0, 0, 0, 16, 0, 0],
-            &[15, 0, 4, 50, 1, 23, 0, 0, 0, 0, 16, 0, 0, 0, 16],
-            &[15, 0, 4, 59, 1, 21, 0, 0, 0, 0, 16, 0, 0, 0, 16],
-            &[15, 0, 4, 60, 1, 20, 0, 0, 0, 0, 16, 0, 0, 0, 16],
-            &[15, 0, 4, 61, 1, 60, 0, 0, 0, 0, 16, 0, 0, 0, 16],
-            &[15, 0, 4, 96, 1, 60, 0, 1, 0, 0, 0, 1, 0, 0, 0],
-            &[15, 0, 4, 97, 1, 57, 0, 1, 0, 0, 0, 1, 0, 0, 0],
-            &[15, 0, 4, 98, 1, 58, 0, 1, 0, 0, 0, 1, 0, 0, 0],
-            &[15, 0, 4, 99, 1, 59, 0, 1, 0, 0, 0, 1, 0, 0, 0],
-            &[15, 0, 4, 100, 1, 54, 0, 1, 0, 0, 0, 1, 0, 0, 0],
-        ];
-        for msg in msgs {
-            let notif = NotificationMessage::parse(msg).unwrap();
-            if let NotificationMessage::HubAttachedIo(_) = notif {
-                // OK
-            } else {
-                panic!("wrong type");
-            }
-        }
-    }
-
-    #[test]
-    fn error_message() {
-        init();
-        let msgs: &[&[u8]] = &[&[5, 0, 5, 17, 5]];
-        for msg in msgs {
-            let _notif = NotificationMessage::parse(msg).unwrap();
-        }
-    }
-
-    /*#[test]
-    fn write_direct() {
-        init();
-        let msgs: &[&[u8]] = &[&[9, 0, 129, 81, 50, 1, 0, 255, 0]];
-        for msg in msgs {
-            let _notif = NotificationMessage::parse(msg).unwrap();
-        }
-    }*/
-
-    #[test]
-    fn message_length() {
-        init();
-        let test_cases = &[
-            ([0x34, 0x00], 0x34),
-            ([0x7f, 0x00], 0x7f),
-            ([0b1000_0000, 0b0000_0001], 128),
-            ([0b1000_0001, 0b0000_0001], 129),
-            ([0b1000_0010, 0b0000_0001], 130),
-        ];
-
-        for case in test_cases {
-            assert_eq!(
-                NotificationMessage::length(case.0.iter()).unwrap(),
-                case.1
-            );
-        }
-    }
-
-    #[test]
-    fn serialise_write_direct() {
-        /* Hub LED, from the arduino lib:
-        byte port = getPortForDeviceType((byte)DeviceType::HUB_LED);
-        byte setRGBMode[8] = {0x41, port, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00};
-        WriteValue(setRGBMode, 8);
-        byte setRGBColor[8] = {0x81, port, 0x11, 0x51, 0x01, red, green, blue};
-        WriteValue(setRGBColor, 8);
-        // WriteValue adds the length header and hub id = 0 header
-        // https://github.com/corneliusmunz/legoino/blob/master/src/Lpf2Hub.cpp#L952
-        */
-        init();
-        let startup_info = StartupInfo::ExecuteImmediately;
-        let completion_info = CompletionInfo::CommandFeedback;
-
-        let subcommand = PortOutputSubcommand::WriteDirectModeData(
-            WriteDirectModeDataPayload::SetRgbColors {
-                red: 0x12,
-                green: 0x34,
-                blue: 0x56,
-            },
-        );
-
-        let msg =
-            NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
-                port_id: 50,
-                startup_info,
-                completion_info,
-                subcommand,
-            });
-
-        let serialised = msg.serialise();
-        let correct =
-            &mut [0_u8, 0, 0x81, 50, 0x11, 0x51, 0x01, 0x12, 0x34, 0x56];
-        correct[0] = correct.len() as u8;
-
-        assert_eq!(&serialised, correct);
-    }
-
-    #[test]
-    fn port_input_format_setup_single() {
-        init();
-
-        let msg =
-            NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
-                port_id: 50,
-                mode: 0x01,
-                delta: 0x00000001,
-                notification_enabled: false,
-            });
-
-        let serialised = msg.serialise();
-        let correct =
-            &mut [0_u8, 0, 0x41, 50, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00];
-        correct[0] = correct.len() as u8;
-
-        assert_eq!(&serialised, correct);
-    }
-
-    #[test]
-    fn version_number() {
-        init();
-        // first test case from documentation
-        // remainder from observed hardware
-        let test_cases: &[(i32, VersionNumber)] = &[
-            (
-                0x17371510,
-                VersionNumber {
-                    major: 1,
-                    minor: 7,
-                    bugfix: 37,
-                    build: 0x1510,
-                },
-            ),
-            (
-                268435503,
-                VersionNumber {
-                    major: 1,
-                    minor: 0,
-                    bugfix: 0,
-                    build: 0x2f,
-                },
-            ),
-            (
-                268435456,
-                VersionNumber {
-                    major: 1,
-                    minor: 0,
-                    bugfix: 0,
-                    build: 0,
-                },
-            ),
-            (
-                23,
-                VersionNumber {
-                    major: 0,
-                    minor: 0,
-                    bugfix: 0,
-                    build: 23,
-                },
-            ),
-            (
-                21,
-                VersionNumber {
-                    major: 0,
-                    minor: 0,
-                    bugfix: 0,
-                    build: 21,
-                },
-            ),
-            (
-                20,
-                VersionNumber {
-                    major: 0,
-                    minor: 0,
-                    bugfix: 0,
-                    build: 20,
-                },
-            ),
-            (
-                60,
-                VersionNumber {
-                    major: 0,
-                    minor: 0,
-                    bugfix: 0,
-                    build: 60,
-                },
-            ),
-            (
-                4096,
-                VersionNumber {
-                    major: 0,
-                    minor: 0,
-                    bugfix: 0,
-                    build: 4096,
-                },
-            ),
-            (
-                65596,
-                VersionNumber {
-                    major: 0,
-                    minor: 0,
-                    bugfix: 1,
-                    build: 60,
-                },
-            ),
-            (
-                65536,
-                VersionNumber {
-                    major: 0,
-                    minor: 0,
-                    bugfix: 1,
-                    build: 0,
-                },
-            ),
-            (
-                65593,
-                VersionNumber {
-                    major: 0,
-                    minor: 0,
-                    bugfix: 1,
-                    build: 57,
-                },
-            ),
-            (
-                65594,
-                VersionNumber {
-                    major: 0,
-                    minor: 0,
-                    bugfix: 1,
-                    build: 58,
-                },
-            ),
-            (
-                65595,
-                VersionNumber {
-                    major: 0,
-                    minor: 0,
-                    bugfix: 1,
-                    build: 59,
-                },
-            ),
-            (
-                65590,
-                VersionNumber {
-                    major: 0,
-                    minor: 0,
-                    bugfix: 1,
-                    build: 54,
-                },
-            ),
-        ];
-
-        for (number, correct) in test_cases {
-            eprintln!("\ntest case: {:08x} - {}", number, correct);
-            let parsed =
-                VersionNumber::parse(number.to_le_bytes().iter()).unwrap();
-            assert_eq!(parsed, *correct);
-
-            let serialised = correct.serialise();
-            eprintln!("serialised: {:02x?}", serialised);
-            eprintln!("correct LE: {:02x?}", number.to_le_bytes());
-            assert_eq!(serialised, &number.to_le_bytes());
-        }
-    }
-
-    #[test]
-    fn motor_set_speed() {
-        init();
-        let subcommand = PortOutputSubcommand::StartSpeed {
-            speed: 0x12,
-            max_power: Power::Cw(0x34),
-            use_acc_profile: true,
-            use_dec_profile: true,
-        };
-        let msg =
-            NotificationMessage::PortOutputCommand(PortOutputCommandFormat {
-                port_id: 1,
-                startup_info: StartupInfo::ExecuteImmediately,
-                completion_info: CompletionInfo::NoAction,
-                subcommand,
-            });
-        let serialised = msg.serialise();
-        let correct = &mut [0, 0, 0x81, 1, 0x11, 0x01, 0x12, 0x34, 0x03];
-        correct[0] = correct.len() as u8;
-
-        assert_eq!(&serialised, correct);
     }
 }
