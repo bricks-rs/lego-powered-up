@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Streaming API for scanning for hubs
 
 ### Changed
+* Major refactor of API
 
 ### Deprecated
 
