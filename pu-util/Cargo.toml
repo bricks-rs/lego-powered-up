@@ -9,10 +9,15 @@ repository = "https://github.com/bricks-rs/lego-powered-up"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1.0"
+anyhow = "1"
 async-trait = "0.1"
 clap = { version = "3", features = ["cargo"] }
 env_logger = "0.10"
-lego-powered-up = { path="../lego-powered-up" }
+lego-powered-up = { path = "../lego-powered-up" }
 log = "0.4"
-tokio = { version = "1", features = ["macros", "rt", "rt-multi-thread", "time"] }
+tokio = { version = "1", features = [
+    "macros",
+    "rt",
+    "rt-multi-thread",
+    "time",
+] }
