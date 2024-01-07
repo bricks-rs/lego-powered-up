@@ -1,7 +1,6 @@
 // Any copyright is dedicated to the Public Domain.
 // https://creativecommons.org/publicdomain/zero/1.0/
 
-
 use lego_powered_up::consts::named_port;
 use lego_powered_up::iodevice::modes;
 use lego_powered_up::iodevice::motor::EncoderMotor;
@@ -20,7 +19,8 @@ async fn main() -> anyhow::Result<()> {
     // Set up motor feedback
     let motor = main_hub.mutex.lock().await.io_from_port(named_port::A)?;
     let (mut motor_rx, _position_task) = motor
-        .enable_32bit_sensor(modes::InternalMotorTacho::POS, 1).await?;
+        .enable_32bit_sensor(modes::InternalMotorTacho::POS, 1)
+        .await?;
 
     // Control task
     let motor_control = tokio::spawn(async move {

@@ -1,18 +1,18 @@
-/// Support for
-/// https://rebrickable.com/parts/26912/sensor-color-and-distance-powered-up-2-x-4-x-2/
+//! Support for
+//! https://rebrickable.com/parts/26912/sensor-color-and-distance-powered-up-2-x-4-x-2/
 
 use async_trait::async_trait;
 use core::fmt::Debug;
 use tokio::sync::broadcast;
 use tokio::task::JoinHandle;
 
-use crate::device_trait;
-use super::Basic;
 use super::modes;
+use super::Basic;
+use crate::device_trait;
 use crate::error::Result;
 use crate::notifications::{
-    CompletionInfo, PortOutputSubcommand,
-    StartupInfo, WriteDirectModeDataPayload,
+    CompletionInfo, PortOutputSubcommand, StartupInfo,
+    WriteDirectModeDataPayload,
 };
 
 #[derive(Debug, Copy, Clone)]
@@ -45,7 +45,7 @@ device_trait!(VisionSensor, [
     ) -> Result<(broadcast::Receiver<DetectedColor>, JoinHandle<()>)> {
         self.device_mode(modes::VisionSensor::COLOR, 1, true).await?;
         let port_id = self.port();
-        
+
         // Set up channel
         let (tx, rx) = broadcast::channel::<DetectedColor>(8);
         let mut rx_from_main = self

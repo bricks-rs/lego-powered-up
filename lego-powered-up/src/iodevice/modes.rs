@@ -102,5 +102,3 @@ pub mod UnknownMovehubDevice {
     pub const CANVAS: u8 = 1;
     pub const VAR: u8 = 2;
 }
-
-//    pub const : u8 = ;

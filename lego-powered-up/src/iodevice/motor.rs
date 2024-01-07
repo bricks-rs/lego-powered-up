@@ -1,56 +1,55 @@
-/// Support for the Powered Up encoder motors, aka. tacho motors.
-/// The ones I've had available for testing are:
-/// https://rebrickable.com/parts/22169/motor-large-powered-up/
-/// https://rebrickable.com/parts/22172/motor-xl-powered-up/
-/// And the internal motors in: https://rebrickable.com/parts/26910/hub-move-powered-up-6-x-16-x-4/
-/// The start_power commands should work with train motors.
+//! Support for the Powered Up encoder motors, aka. tacho motors.
+//! The ones I've had available for testing are:
+//! https://rebrickable.com/parts/22169/motor-large-powered-up/
+//! https://rebrickable.com/parts/22172/motor-xl-powered-up/
+//! And the internal motors in: https://rebrickable.com/parts/26910/hub-move-powered-up-6-x-16-x-4/
+//! The start_power commands should work with train motors.
+
 use async_trait::async_trait;
 use core::fmt::Debug;
 use tokio::sync::broadcast;
 use tokio::task::JoinHandle;
 
-use crate::device_trait;
 use super::Basic;
-use crate::error::{Error, Result};
-use crate::notifications::{PortOutputCommandFeedbackFormat, FeedbackMessage};
-use crate::notifications::{StartupInfo, CompletionInfo};
-use crate::notifications::{PortOutputSubcommand, WriteDirectModeDataPayload};
-use crate::notifications::{InputSetupCombinedSubcommand, PortValueCombinedFormat};
 pub use crate::consts::MotorSensorMode;
+use crate::device_trait;
+use crate::error::{Error, Result};
+use crate::notifications::{CompletionInfo, StartupInfo};
 pub use crate::notifications::{EndState, Power};
+use crate::notifications::{FeedbackMessage, PortOutputCommandFeedbackFormat};
+use crate::notifications::{
+    InputSetupCombinedSubcommand, PortValueCombinedFormat,
+};
+use crate::notifications::{PortOutputSubcommand, WriteDirectModeDataPayload};
 
-/// State model of a command receiver. 
+/// State model of a command receiver.
 /// https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#buffering-state-machine
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Eq, Ord, Default)]
 pub struct CmdReceiverState {
     pub state: BufferState,
 
-    // The progress is implied by bufferstate, so this isn't really needed? 
+    // The progress is implied by bufferstate, so this isn't really needed?
     // pub progress: CmdProgress,
 
     // 1 or 2 commands discarded. This happens when a command is sent with StartupInfo::ExecuteImmediately
     // (the other alt. is BufferIfNecessary) when state was BusyEmpty (discards cmd in progress) or
     // BusyFull (discards cmd in progress and queued command.) The queue can hold 1 command only.
-    pub discarded: bool,           
+    pub discarded: bool,
 }
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Eq, Ord, Default)]
 pub enum BufferState {
-    #[default] Idle,               // Nothing in progress, buffer empty. (“Idle”)
-    BusyEmpty,                     // Command in progress, buffer empty (“Busy/Empty”)
-    BusyFull                       // Command in progress, buffer full (“Busy/Full”)
+    #[default]
+    Idle, // Nothing in progress, buffer empty. (“Idle”)
+    BusyEmpty, // Command in progress, buffer empty (“Busy/Empty”)
+    BusyFull,  // Command in progress, buffer full (“Busy/Full”)
 }
-// #[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord, Default)]
-// pub enum CmdProgress {
-//     InProgress,
-//     #[default] Completed,
-// }
 
 device_trait!(EncoderMotor, [
     fn get_rx_combined(&self) -> Result<broadcast::Receiver<PortValueCombinedFormat>>;,
     fn get_rx_feedback(&self) -> Result<broadcast::Receiver<PortOutputCommandFeedbackFormat>>;,
 
     /// Set up handling of command feedback notifications
-    // This supports only single motors for now, synced motors is TODO 
+    // This supports only single motors for now, synced motors is TODO
     fn cmd_feedback_handler(
         &self,
     ) -> Result<(broadcast::Receiver<CmdReceiverState>, JoinHandle<()>)> {
@@ -64,19 +63,16 @@ device_trait!(EncoderMotor, [
             while let Ok(data) = rx_from_main.recv().await {
                 match data {
                     PortOutputCommandFeedbackFormat {msg1, .. } if msg1.port_id == port_id => {
-                        // println!("LPU_cmdfb: {:?}", &data);
                         #[allow(clippy::match_single_binding)]
                         match msg1  {
                             FeedbackMessage { port_id:_, empty_cmd_in_progress, empty_cmd_completed:_ , discarded, idle:_, busy_full } => {
                                 // Is it correct that the fields 'empty_cmd_completed' and 'idle' are redundant?
-                                
-                                // let mut progress = CmdProgress::Completed;
-                                // if empty_cmd_in_progress | busy_full { progress = CmdProgress::InProgress }
 
-                                let mut state: BufferState = BufferState::Idle; 
+
+                                let mut state: BufferState = BufferState::Idle;
                                 if busy_full { state = BufferState::BusyFull }
                                 else if empty_cmd_in_progress { state = BufferState::BusyEmpty }
-                                
+
                                 let _ = tx.send( CmdReceiverState {
                                     discarded,
                                     // progress,
@@ -92,7 +88,7 @@ device_trait!(EncoderMotor, [
 
         Ok((rx, task))
     },
-    
+
     /// Motor settings
     async fn preset_encoder(&self, position: i32) -> Result<()> {
         self.check()?;
@@ -292,7 +288,7 @@ device_trait!(EncoderMotor, [
         self.device_mode(0, u32::MAX, false).await
     },
 
-    // Note: Currently the returned channel assumes primary mode is Position. 
+    // Note: Currently the returned channel assumes primary mode is Position.
     async fn motor_combined_sensor_enable(
         &self,
         // primary_mode: MotorSensorMode,
@@ -305,18 +301,18 @@ device_trait!(EncoderMotor, [
         let subcommand =
             InputSetupCombinedSubcommand::LockLpf2DeviceForSetup {};
         self.device_mode_combined(subcommand).await?;
-     
+
         // Step 2: Set up modes
         self.motor_sensor_enable(MotorSensorMode::Speed, speed_delta).await?;
         // APOS availablie on TechnicLinear motors, not on InternalTacho (MoveHub)
         // self.motor_sensor_enable(MotorSensorMode::APos, position_delta).await?;
-        // POS available on either    
-        self.motor_sensor_enable(MotorSensorMode::Pos, position_delta).await?; 
-        
+        // POS available on either
+        self.motor_sensor_enable(MotorSensorMode::Pos, position_delta).await?;
+
         // Step 3: Set up combination
         // let mut sensor2_mode_nibble: u8;
         let dataset_nibble: u8 = 0x00; // All motor modes have 1 dataset only
-        
+
         // Only pos as primary for now
         // match primary_mode {
         //     MotorSensorMode::Speed => {
@@ -372,16 +368,16 @@ device_trait!(EncoderMotor, [
 
                         // Pos primary
                         // If position changes we always get a speed update even if it has not changed.
-                        // If only speed changes then we only get speed => send speed with buffered position. 
+                        // If only speed changes then we only get speed => send speed with buffered position.
                         if data.data.len() == 3 {
                             // tx.send( (data.data[2] as i8, position_buffer) ).expect("Error sending");
                             #[allow(clippy::single_match)]
                             match tx.send( (data.data[2] as i8, position_buffer) ) {
                                 Ok(_) => {},
-                                Err(_) => { 
+                                Err(_) => {
                                     // eprintln!("Motor combined error: {:?}", e);
                                 }
-                            } 
+                            }
                         }
                         else if data.data.len() == 7 {
                             let mut it = data.data.into_iter().skip(2);
@@ -396,10 +392,10 @@ device_trait!(EncoderMotor, [
                             #[allow(clippy::single_match)]
                             match tx.send( (speed, pos) ) {
                                 Ok(_) => {},
-                                Err(_) => { 
+                                Err(_) => {
                                     // eprintln!("Motor combined error: {:?}", e);
                                 }
-                            } 
+                            }
                         }
                         else {
                             eprintln!("Combined mode unexpected length");
@@ -430,7 +426,7 @@ device_trait!(EncoderMotor, [
                         // else {
                         //     eprintln!("Combined mode unexpected length");
                         // }
-                        
+
 
                         // let converted_data = data.data.into_iter().map(|x| x as i8).collect();
                         // tx.send(converted_data);

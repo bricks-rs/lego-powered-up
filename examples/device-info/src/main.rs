@@ -1,7 +1,6 @@
 // Any copyright is dedicated to the Public Domain.
 // https://creativecommons.org/publicdomain/zero/1.0/
 
-// #![allow(unused)]
 use core::time::Duration;
 use std::collections::HashMap;
 use tokio::task::JoinHandle;

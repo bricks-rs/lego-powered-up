@@ -1,9 +1,9 @@
-
 use tokio::sync::broadcast;
 
 use crate::hubs::{Channels, Tokens};
 use crate::notifications::{
-    DatasetType, NetworkCommand, PortValueCombinedFormat, PortValueSingleFormat, PortOutputCommandFeedbackFormat,
+    DatasetType, NetworkCommand, PortOutputCommandFeedbackFormat,
+    PortValueCombinedFormat, PortValueSingleFormat,
 };
 use crate::IoTypeId;
 use crate::{Error, Result};
@@ -76,12 +76,10 @@ impl Basic for IoDevice {
 impl GenericSensor for IoDevice {
     fn check(&self) -> Result<()> {
         Ok(())
-     }
+    }
     fn check_dataset(&self, mode: u8, datasettype: DatasetType) -> Result<()> {
         if let Some(pm) = self.def.modes().get(&mode) {
             let vf = pm.value_format;
-            // println!("Dataset for call: {:?}  Dataset for device: {:?} Device kind: {:?} ", &datasettype, &vf.dataset_type, &self.kind);
-            // dbg!(&self.modes);
             if datasettype == vf.dataset_type {
                 Ok(())
             } else {
@@ -128,7 +126,9 @@ impl EncoderMotor for IoDevice {
             Err(Error::NoneError(String::from("Sender not found")))
         }
     }
-    fn get_rx_feedback(&self) -> Result<broadcast::Receiver<PortOutputCommandFeedbackFormat>> {
+    fn get_rx_feedback(
+        &self,
+    ) -> Result<broadcast::Receiver<PortOutputCommandFeedbackFormat>> {
         if let Some(sender) = &self.channels.commandfeedback_sender {
             Ok(sender.subscribe())
         } else {
@@ -139,6 +139,8 @@ impl EncoderMotor for IoDevice {
         match self.def.kind() {
             IoTypeId::TechnicLargeLinearMotor
             | IoTypeId::TechnicXLargeLinearMotor
+            | IoTypeId::TechnicMediumAngularMotorGrey
+            | IoTypeId::TechnicLargeAngularMotorGrey
             | IoTypeId::InternalMotorTacho => Ok(()),
             _ => Err(Error::HubError(String::from("Not an Encoder Motor"))),
         }
@@ -167,7 +169,7 @@ impl VisionSensor for IoDevice {
 
 #[macro_export]
 macro_rules! device_trait {
-    ($name:tt, [$( $b:item ),*])  => { 
+    ($name:tt, [$( $b:item ),*])  => {
         #[async_trait]
         pub trait $name: Debug + Send + Sync + Basic {
             fn check(&self) -> Result<()>;

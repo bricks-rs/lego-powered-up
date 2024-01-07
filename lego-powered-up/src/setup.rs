@@ -1,14 +1,8 @@
-/// Convenience functions
+//! Convenience functions
 
-use crate::{ConnectedHub, PoweredUp};
 use crate::error::Result;
 use crate::HubFilter;
-// use crate::consts::HubType;
-// use crate::{IoDevice, IoTypeId};
-// use crate::consts::named_port;
-// use crate::iodevice::modes;
-// use crate::iodevice::remote::{RcDevice, RcButtonState};
-// use crate::iodevice::{light::*, sensor::*, motor::*}
+use crate::{ConnectedHub, PoweredUp};
 
 /// Setup single hub
 pub async fn single_hub() -> Result<ConnectedHub> {
@@ -16,8 +10,6 @@ pub async fn single_hub() -> Result<ConnectedHub> {
     let mut pu = PoweredUp::init().await?;
     println!("Waiting for hub...");
     let hub = pu.wait_for_hub().await?;
-    // let hub = pu.wait_for_hub_filter(HubFilter::Addr("E4:E1:12:A0:39:07".to_string())).await?;  // Does not work
-    // let hub = pu.wait_for_hub_filter(HubFilter::Kind(HubType::TechnicMediumHub)).await?;        // Works
     println!("Connecting to hub...");
     dbg!(&hub);
 

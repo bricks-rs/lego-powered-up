@@ -1147,7 +1147,7 @@ pub enum DatasetType {
     Float = 0b11,
 }
 impl fmt::Display for DatasetType {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             DatasetType::Bits8 => {
                 write!(f, " 8 bit")
@@ -1162,9 +1162,6 @@ impl fmt::Display for DatasetType {
                 write!(f, "float ")
             }
         }
-        // write!(f, "{}",
-        // *self,
-        // )
     }
 }
 
@@ -1199,27 +1196,6 @@ pub enum TypedValue {
 ///         range 0-255.
 ///     But these are the only ones I've been able to find. On the whole it seems better
 ///     to correctly support the multitude of sensors and modes.
-///
-
-// #[derive(Clone, Debug, PartialEq, Eq)]
-// pub struct PortValueSingleFormat {
-//     pub port_id: u8,
-//     pub data: Vec<u8>,
-// }
-// impl PortValueSingleFormat {
-//     pub fn parse<'a>(mut msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
-//         // let values = msg.cloned().collect();
-//         // Ok(PortValueSingleFormat { values })
-//         let port_id = next!(msg);
-//         let data = msg.cloned().collect();
-//         Ok(Self { port_id, data })
-//     }
-
-//     pub fn process(&self, _type_mapping: ()) -> HashMap<u8, TypedValue> {
-//         unimplemented!()
-//     }
-// }
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PortValueSingleFormat {
     pub port_id: u8,
@@ -1356,8 +1332,9 @@ impl PortOutputCommandFormat {
     pub fn parse<'a>(mut msg: impl Iterator<Item = &'a u8>) -> Result<Self> {
         let port_id = next!(msg);
         let startup_and_completion_byte = next!(msg);
-        let startup_info =
-            ok!(StartupInfo::from_u8((startup_and_completion_byte & 0xf0) >> 4));
+        let startup_info = ok!(StartupInfo::from_u8(
+            (startup_and_completion_byte & 0xf0) >> 4
+        ));
         let completion_info =
             ok!(CompletionInfo::from_u8(startup_and_completion_byte & 0x0f));
         let subcommand = PortOutputSubcommand::parse(&mut msg)?;
@@ -1372,7 +1349,8 @@ impl PortOutputCommandFormat {
 
     pub fn serialise(&self) -> Vec<u8> {
         use PortOutputSubcommand::*;
-        let startup_and_completion_byte = ((self.startup_info as u8) << 4) + self.completion_info as u8;
+        let startup_and_completion_byte =
+            ((self.startup_info as u8) << 4) + self.completion_info as u8;
         match &self.subcommand {
             WriteDirectModeData(data) => data.serialise(self),
             StartSpeed {
@@ -1397,7 +1375,6 @@ impl PortOutputCommandFormat {
                     PortOutputSubCommandValue::StartSpeed as u8,
                     // Subcommand payload
                     speed,
-                    // max_power.to_u8(),
                     max_power,
                     profile,
                 ]
@@ -1499,7 +1476,7 @@ impl PortOutputCommandFormat {
                 bytes.push(profile);
 
                 bytes
-            },
+            }
             SetAccTime {
                 time,
                 profile_number,
@@ -1703,7 +1680,6 @@ impl PortOutputSubcommand {
             0x07 => {
                 // StartSpeed(Speed, MaxPower, UseProfile)
                 let speed = next_i8!(msg);
-                // let max_power = Power::parse(&mut msg)?;
                 let max_power = next!(msg);
                 let use_prof = next!(msg);
                 let use_acc_profile = (use_prof & 0x01) != 0;
@@ -1719,7 +1695,6 @@ impl PortOutputSubcommand {
                 // StartSpeed(Speed1, Speed2, MaxPower, UseProfile)
                 let speed1 = next_i8!(msg);
                 let speed2 = next_i8!(msg);
-                // let max_power = Power::parse(&mut msg)?;
                 let max_power = next!(msg);
                 let use_prof = next!(msg);
                 let use_acc_profile = (use_prof & 0x01) != 0;
@@ -1736,7 +1711,6 @@ impl PortOutputSubcommand {
                 // StartSpeedForTime (Time, Speed, MaxPower, EndState, UseProfile)
                 let time = next_i16!(msg);
                 let speed = next_i8!(msg);
-                // let max_power = Power::parse(&mut msg)?;
                 let max_power = next!(msg);
                 let end_state = EndState::parse(&mut msg)?;
                 let use_prof = next!(msg);
@@ -1757,7 +1731,6 @@ impl PortOutputSubcommand {
                 let time = next_i16!(msg);
                 let speed_l = next_i8!(msg);
                 let speed_r = next_i8!(msg);
-                // let max_power = Power::parse(&mut msg)?;
                 let max_power = next!(msg);
                 let end_state = EndState::parse(&mut msg)?;
                 let use_prof = next!(msg);
@@ -1778,7 +1751,6 @@ impl PortOutputSubcommand {
                 // UseProfile)
                 let degrees = next_i32!(msg);
                 let speed = next_i8!(msg);
-                // let max_power = Power::parse(&mut msg)?;
                 let max_power = next!(msg);
                 let end_state = EndState::parse(&mut msg)?;
                 let use_prof = next!(msg);
@@ -1799,7 +1771,6 @@ impl PortOutputSubcommand {
                 let degrees = next_i32!(msg);
                 let speed_l = next_i8!(msg);
                 let speed_r = next_i8!(msg);
-                // let max_power = Power::parse(&mut msg)?;
                 let max_power = next!(msg);
                 let end_state = EndState::parse(&mut msg)?;
                 let use_prof = next!(msg);
@@ -1820,7 +1791,6 @@ impl PortOutputSubcommand {
                 // UseProfile)
                 let abs_pos = next_i32!(msg);
                 let speed = next_i8!(msg);
-                // let max_power = Power::parse(&mut msg)?;
                 let max_power = next!(msg);
                 let end_state = EndState::parse(&mut msg)?;
                 let use_prof = next!(msg);
@@ -1841,7 +1811,6 @@ impl PortOutputSubcommand {
                 let abs_pos1 = next_i32!(msg);
                 let abs_pos2 = next_i32!(msg);
                 let speed = next_i8!(msg);
-                // let max_power = Power::parse(&mut msg)?;
                 let max_power = next!(msg);
                 let end_state = EndState::parse(&mut msg)?;
                 let use_prof = next!(msg);
@@ -2264,7 +2233,7 @@ impl WriteDirectModeDataPayload {
                     crate::iodevice::modes::VisionSensor::COL_O,
                     *c as u8,
                 ]
-            } // _ => todo!(),
+            }
         }
     }
 }
@@ -2289,9 +2258,9 @@ impl Orientation {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct PortOutputCommandFeedbackFormat {
-   pub msg1: FeedbackMessage,
-   pub msg2: Option<FeedbackMessage>,
-   pub  msg3: Option<FeedbackMessage>,
+    pub msg1: FeedbackMessage,
+    pub msg2: Option<FeedbackMessage>,
+    pub msg3: Option<FeedbackMessage>,
 }
 
 impl PortOutputCommandFeedbackFormat {
@@ -2306,11 +2275,11 @@ impl PortOutputCommandFeedbackFormat {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct FeedbackMessage {
     pub port_id: u8,
-    pub empty_cmd_in_progress: bool,   // Command in progress, queue empty
-    pub empty_cmd_completed: bool,     // Command in progress, queue full
-    pub discarded: bool,               // Command discarded 
-    pub idle: bool,                    // Nothing in progress, buffer empty. (“Idle”)
-    pub busy_full: bool,               // Command in progress, buffer full (“Busy/Full”) 
+    pub empty_cmd_in_progress: bool, // Command in progress, queue empty
+    pub empty_cmd_completed: bool,   // Command in progress, queue full
+    pub discarded: bool,             // Command discarded
+    pub idle: bool, // Nothing in progress, buffer empty. (“Idle”)
+    pub busy_full: bool, // Command in progress, buffer full (“Busy/Full”)
 }
 
 impl FeedbackMessage {

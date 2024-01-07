@@ -1,16 +1,16 @@
-/// The basic bricks of device control.
-/// All the other device traits are sugar for these 3 commands.
+//! The basic bricks of device control.
+//! All the other device traits are sugar for these 3 commands.
 
 use async_trait::async_trait;
 use core::fmt::Debug;
 use tokio::sync::broadcast;
 
-use crate::hubs::Tokens;
 use crate::error::Result;
+use crate::hubs::Tokens;
 use crate::notifications::{
     CompletionInfo, InputSetupCombined, InputSetupCombinedSubcommand,
     InputSetupSingle, NotificationMessage, PortOutputCommandFormat,
-    PortOutputSubcommand, StartupInfo, PortValueSingleFormat,
+    PortOutputSubcommand, PortValueSingleFormat, StartupInfo,
 };
 
 #[async_trait]
@@ -19,10 +19,10 @@ pub trait Basic: Debug + Send + Sync {
     fn tokens(&self) -> Tokens;
     fn get_rx(&self) -> Result<broadcast::Receiver<PortValueSingleFormat>>;
     async fn commit(&self, msg: NotificationMessage) -> Result<()> {
-         match crate::hubs::send(self.tokens(), msg).await {
-             Ok(()) => Ok(()),
-             Err(e) => Err(e),
-         }
+        match crate::hubs::send(self.tokens(), msg).await {
+            Ok(()) => Ok(()),
+            Err(e) => Err(e),
+        }
     }
 
     async fn device_mode(

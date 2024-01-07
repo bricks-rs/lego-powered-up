@@ -1,6 +1,7 @@
-/// Models the information available about a device from
-/// the AttachedIo, PortInformation and PortModeInformation
-/// message types.
+//! Models the information available about a device from
+//! the AttachedIo, PortInformation and PortModeInformation
+//! message types.
+
 use std::collections::BTreeMap;
 use std::fmt;
 
@@ -19,7 +20,7 @@ pub struct Definition {
     valid_combos: Vec<Vec<u8>>,
 }
 impl fmt::Display for Definition {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
             "{:#?} on port {} ({:#x}) with {} modes: {:#?}",

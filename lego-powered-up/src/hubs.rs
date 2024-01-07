@@ -1,21 +1,18 @@
-#![allow(unused)]
-
-//! Specific implementations for each of the supported hubs.
-
-/// Models a hub with hub-related properties and commands, as well as
-/// accessing connected devices (internal and external).
-///
-/// Accessing devices through the hub has changed; instead of a fixed port map,
-/// the map connected_io is populated with attached devices and their available
-/// options and we can select a device from there.
-/// The io_from_.. methods wrap some useful calls on connected_io(), for example;
-/// io_from_kind(IoTypeId::HubLed)
-/// accesses the LED on any hub type though hardware addresses differ,
-/// io_multiple_from_kind(IoTypeId::Motor)
-/// accesses all motors indifferent to where they are connected.
-///
-/// This also reduces the need for specific implementations, all three
-/// types I have available are supported by generic_hub.  
+//! # Specific implementations for each of the supported hubs.
+//1 Models a hub with hub-related properties and commands, as well as
+//! accessing connected devices (internal and external).
+//!
+//! Accessing devices through the hub has changed; instead of a fixed port map,
+//! the map connected_io is populated with attached devices and their available
+//! options and we can select a device from there.
+//! The io_from_.. methods wrap some useful calls on connected_io(), for example;
+//! io_from_kind(IoTypeId::HubLed)
+//! accesses the LED on any hub type though hardware addresses differ,
+//! io_multiple_from_kind(IoTypeId::Motor)
+//! accesses all motors indifferent to where they are connected.
+//!
+//! This also reduces the need for specific implementations, all three
+//! types I have available are supported by generic_hub.  
 
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -23,11 +20,10 @@
 
 use btleplug::api::{Characteristic, Peripheral as _, WriteType};
 use btleplug::platform::Peripheral;
-use tokio_util::sync::CancellationToken;
-use std::sync::Arc;
 use std::collections::BTreeMap;
 use std::fmt::Debug;
-use parking_lot::Mutex;
+use std::sync::Arc;
+use tokio_util::sync::CancellationToken;
 
 use crate::consts::{HubPropertyOperation, HubPropertyRef, HubType};
 use crate::error::{Error, OptionContext, Result};
@@ -36,10 +32,11 @@ use crate::notifications::{
     HubActionRequest, HubAlert, HubProperty, HubPropertyValue,
     InformationRequest, InformationType, InputSetupSingle,
     ModeInformationRequest, ModeInformationType, NetworkCommand,
-    NotificationMessage, PortValueCombinedFormat, PortValueSingleFormat, PortOutputCommandFeedbackFormat,
+    NotificationMessage, PortOutputCommandFeedbackFormat,
+    PortValueCombinedFormat, PortValueSingleFormat,
 };
 use crate::{IoDevice, IoTypeId};
-pub type Tokens = Arc<( Peripheral, Characteristic )>;
+pub type Tokens = Arc<(Peripheral, Characteristic)>;
 
 pub mod generic_hub;
 pub mod io_event;
@@ -62,11 +59,10 @@ pub trait Hub: Debug + Send + Sync {
     async fn subscribe(&self, char: Characteristic) -> Result<()>;
     fn io_from_port(&self, port_id: u8) -> Result<IoDevice>;
     fn io_from_kind(&self, kind: IoTypeId) -> Result<IoDevice>;
-    fn io_multi_from_kind(&self, kind: IoTypeId)
-        -> Result<Vec<IoDevice>>;
+    fn io_multi_from_kind(&self, kind: IoTypeId) -> Result<Vec<IoDevice>>;
 
     fn tokens(&self) -> Tokens;
-    fn attach_io(&mut self, io_type_id:IoTypeId, port_id: u8) -> Result<()>;
+    fn attach_io(&mut self, io_type_id: IoTypeId, port_id: u8) -> Result<()>;
     fn peripheral(&self) -> Arc<Peripheral>;
     fn characteristic(&self) -> Arc<Characteristic>;
     fn device_cache(&self, d: IoDevice) -> IoDevice;
@@ -155,27 +151,16 @@ pub trait Hub: Debug + Send + Sync {
 
     async fn send(&self, msg: NotificationMessage) -> Result<()> {
         let buf = msg.serialise();
-        let tokens = self.tokens();    
-        tokens.0.write(&tokens.1, &buf, WriteType::WithoutResponse)
+        let tokens = self.tokens();
+        tokens
+            .0
+            .write(&tokens.1, &buf, WriteType::WithoutResponse)
             .await?;
         Ok(())
     }
 
     // Cannot provide a default implementation without access to the Peripheral trait from here
     async fn send_raw(&self, msg: &[u8]) -> Result<()>;
-
-    // fn send(&self, msg: NotificationMessage) -> Result<()>;
-
-    // Ideally the vec should be sorted somehow
-    // async fn attached_io(&self) -> Vec<IoDevice>;
-
-    // fn process_io_event(&mut self, _evt: AttachedIo);
-
-    // async fn port(&self, port_id: Port) -> Result<Box<dyn Device>>;             //Deprecated
-
-    // async fn port_map(&self) -> &PortMap {
-    //     &self.properties().await.port_map
-    // }
 }
 
 pub type VersionNumber = u8;
@@ -194,16 +179,10 @@ pub struct HubProperties {
     pub battery_level: usize,
     /// BLE signal strength
     pub rssi: i16,
-    // Mapping from port type to port ID. Internally (to the hub) each
-    // port has a hardcoded identifier
-    // pub port_map: PortMap,   // Deprecated
 }
 
 /// Devices can use this with cached tokens and not need to mutex-lock hub
-pub async fn send(
-    tokens: Tokens,
-    msg: NotificationMessage,
-) -> Result<()> {
+pub async fn send(tokens: Tokens, msg: NotificationMessage) -> Result<()> {
     let buf = msg.serialise();
     tokens
         .0
@@ -211,7 +190,6 @@ pub async fn send(
         .await?;
     Ok(())
 }
-
 
 #[derive(Debug, Default, Clone)]
 pub struct Channels {
@@ -234,62 +212,3 @@ pub struct HubNotification {
     pub hub_alert: Option<HubAlert>,
     pub hub_error: Option<ErrorMessageFormat>,
 }
-
-// pub type PortMap = HashMap<Port, u8>;
-
-// Ports supported by any hub
-// #[non_exhaustive]
-// #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-// pub enum Port {
-//     /// Motor A
-//     A,
-//     /// Motor B
-//     B,
-//     /// Motor C
-//     C,
-//     /// Motor D
-//     D,
-//     AB, // Move Hub
-//     HubLed,
-//     CurrentSensor,
-//     VoltageSensor,
-//     Accelerometer,
-//     GyroSensor,
-//     TiltSensor,
-//     GestureSensor,
-//     TemperatureSensor1,
-//     TemperatureSensor2,
-//     InternalMotor,
-//     Rssi,
-//     RemoteA,
-//     RemoteB,
-//     Virtual(u8),
-//     Deprecated         // Port enum depreacated
-// }
-
-// impl Port {
-//     /// Returns the ID of the port
-//     pub fn id(&self) -> u8 {
-//         todo!()
-//     }
-// }
-
-// Struct representing a device connected to a port
-// #[derive(Debug, Clone)]
-// pub struct ConnectedIo {
-//     /// Name/type of device
-//     pub port: Port,
-//     /// Internal numeric ID of the device
-//     pub port_id: u8,
-//     /// Device firmware revision
-//     pub fw_rev: VersionNumber,
-//     /// Device hardware revision
-//     pub hw_rev: VersionNumber,
-// }
-// #[derive(Debug, Clone)]
-// pub struct ConnectedIo {        //deprecated
-//     /// Name/type of device
-//     pub io_type_id: IoTypeId,
-//     /// Internal numeric ID of the device
-//     pub port_id: u8,
-// }

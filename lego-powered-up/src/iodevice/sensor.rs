@@ -1,13 +1,14 @@
-/// Support for generic sensors. Can be used with simple sensors
-/// like hub temp, voltage etc., or other devices without
-/// higher level support.
+//! Support for generic sensors. Can be used with simple sensors
+//! like hub temp, voltage etc., or other devices without
+//! higher level support.
+
 use async_trait::async_trait;
 use core::fmt::Debug;
 use tokio::sync::broadcast;
 use tokio::task::JoinHandle;
 
-use crate::device_trait;
 use super::Basic;
+use crate::device_trait;
 use crate::error::{Error, Result};
 use crate::notifications::DatasetType;
 
@@ -41,9 +42,6 @@ device_trait!(GenericSensor, [
                             continue;
                         }
                         let _ = tx.send(msg.data);
-
-                        // let converted_data = data.data.into_iter().map(|x| x as i8).collect();
-                        // tx.send(converted_data);
                     }
                 });
 
@@ -82,14 +80,6 @@ device_trait!(GenericSensor, [
                         }
                         let mut converted: Vec<i16> = Vec::new();
 
-                        // let it = data.data.into_iter().map(|x| x as u8);
-                        // converted.push(next_i16!(it));
-
-                        // let chunks = data.data.chunks_exact(2);
-                        // for c in chunks {
-                        //     converted.push( ((c[0] as u16) << 8) | (c[1] as u16) );
-                        // }
-                        // let converted_2 = converted.into_iter().map(|x| x as i16).collect();
 
                         let cycles = &data.data.len() / 2;
                         let mut it = data.data.into_iter();
@@ -189,33 +179,3 @@ device_trait!(GenericSensor, [
     }
 
 ]);
-
-    // async fn enable_sensor<T>(&self, mode: u8, delta: u32) -> Result<(broadcast::Receiver<Vec<T>>, JoinHandle<()> )> {
-    //     let dataset = match self.dataset(mode) {
-    //         Some(dst) => dst,
-    //         None => { return Err(Error::NoneError((String::from("Dataset type unavailable")))); }
-    //     };
-    //     self.set_device_mode(mode, delta).await?;
-    //     let port_id = self.port();
-    //     match dataset {
-    //         DatasetType::Bits8 => {
-    //             let (tx, rx) = broadcast::channel::<Vec<i8>>(8);
-    //             match self.get_rx() {
-    //                 Ok(mut rx_from_main) => {
-    //                     let task = tokio::spawn(async move {
-    //                         while let Ok(msg) = rx_from_main.recv().await {
-    //                             if msg.port_id != port_id {
-    //                                 continue;
-    //                             }
-    //                             let _ = tx.send(msg.data);
-    //                         }
-    //                     });
-    //                     return Ok((rx, task))
-    //                 }
-    //                 _ => Err(Error::NoneError((String::from("No sender in device cache"))))
-    //             }
-    //         },
-    //         DatasetType::Bits16 => {},
-    //         DatasetType::Bits32 => {},
-    //     }
-    // }

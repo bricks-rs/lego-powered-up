@@ -1,15 +1,17 @@
+//! Support for the button devices in
+//! https://rebrickable.com/parts/28739/control-unit-powered-up/
+//! The unit as a whole functions as a hub that connects the
+//! two button devices, hubled and voltage and rssi sensors.
+
 use crate::Result;
-/// Support for the button devices in
-/// https://rebrickable.com/parts/28739/control-unit-powered-up/
-/// The unit as a whole functions as a hub that connects the
-/// two button devices, hubled and voltage and rssi sensors.
+
 use async_trait::async_trait;
 use core::fmt::Debug;
 use tokio::sync::broadcast;
 use tokio::task::JoinHandle;
 
-use crate::device_trait;
 use super::Basic;
+use crate::device_trait;
 use crate::notifications::{
     ButtonState, InputSetupSingle,
     NetworkCommand::{self},
@@ -39,7 +41,7 @@ device_trait!(RcDevice, [
         let msg =
             NotificationMessage::PortInputFormatSetupSingle(InputSetupSingle {
                 port_id,
-                mode: 0, // Not sure what the usecases for the different button modes are, 0 seems fine
+                mode: 0,
                 delta: 1,
                 notification_enabled: true,
             });

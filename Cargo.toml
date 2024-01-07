@@ -1,12 +1,7 @@
 [workspace]
-members = [
-	"lego-powered-up",
-	"pu-util",
-	"lpu-macros",
-
-	"examples/*",
-]
+members = ["lego-powered-up", "pu-util", "lpu-macros", "examples/*"]
 default-members = ["pu-util", "lego-powered-up"]
+resolver = "2"
 
 
 [patch.crates-io]

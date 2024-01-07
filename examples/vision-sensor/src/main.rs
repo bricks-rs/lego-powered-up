@@ -1,29 +1,23 @@
 // Any copyright is dedicated to the Public Domain.
 // https://creativecommons.org/publicdomain/zero/1.0/
 
-// #![allow(unused)]
-// use core::time::Duration;
-// use tokio::time::sleep as sleep;
-
 use std::collections::HashMap;
 use text_io::read;
 use tokio::task::JoinHandle;
 
 use lego_powered_up::error::Result;
-use lego_powered_up::setup;
-use lego_powered_up::{IoDevice, IoTypeId};
-// use lego_powered_up::error::{Error, Result, OptionContext};
-use lego_powered_up::iodevice::modes;
 use lego_powered_up::iodevice::basic::Basic;
+use lego_powered_up::iodevice::modes;
 use lego_powered_up::iodevice::{hubled::*, sensor::*, visionsensor::*};
 use lego_powered_up::notifications::DatasetType;
+use lego_powered_up::setup;
 use lego_powered_up::HubMutex;
+use lego_powered_up::{IoDevice, IoTypeId};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let hub = setup::single_hub().await?;
 
-    // let mutex = hub.mutex.clone();
     vision_sensor_ui(hub.mutex.clone()).await?;
 
     // Cleanup
@@ -44,7 +38,6 @@ pub async fn vision_sensor_ui(mutex: HubMutex) -> Result<()> {
         let lock = mutex.lock().await;
         device = lock
             .io_from_kind(IoTypeId::VisionSensor)
-            // .await
             .expect("Can't access VisionSensor");
     }
     let port_id = device.def.port();
@@ -224,9 +217,8 @@ pub async fn vision_sensor_ui(mutex: HubMutex) -> Result<()> {
         } else if line.contains("q") {
             break;
         } else if line.contains("l") {
-            // println!("{}", &device.def.modes());   //{dbg!(device);}
             for m in device.def.modes().values() {
-                println!("{}", m); //{dbg!(device);}
+                println!("{}", m);
             }
             continue;
         }
@@ -328,20 +320,15 @@ async fn vision_to_hub_color(
                 DetectedColor::Black => {
                     let _ = hubled.set_hubled_color(Color::Black);
                 }
-                // DetectedColor::Color1 => { hubled.set_hubled_color(Color::Pink).await; },
-                // DetectedColor::Color2 => { hubled.set_hubled_color(Color::Magenta).await; },
                 DetectedColor::Blue => {
                     let _ = hubled.set_hubled_color(Color::Blue);
                 }
-                // DetectedColor::Color4 => { hubled.set_hubled_color(Color::LightBlue).await; },
                 DetectedColor::Green => {
                     let _ = hubled.set_hubled_color(Color::Green);
                 }
-                // DetectedColor::Color6 => { hubled.set_hubled_color(Color::Green).await; },
                 DetectedColor::Yellow => {
                     let _ = hubled.set_hubled_color(Color::Yellow);
                 }
-                // DetectedColor::Color8 => { hubled.set_hubled_color(Color::Orange).await; },
                 DetectedColor::Red => {
                     let _ = hubled.set_hubled_color(Color::Red);
                 }
@@ -352,7 +339,6 @@ async fn vision_to_hub_color(
             }
         }
     }))
-    // println!("Vision to hub color EXIT");
 }
 
 async fn vision_to_hub_rgb(
@@ -364,7 +350,6 @@ async fn vision_to_hub_rgb(
         let lock = mutex.lock().await;
         hubled = lock
             .io_from_kind(IoTypeId::HubLed)
-            // .await
             .expect("Can't access Hubled");
     }
     hubled
@@ -378,9 +363,11 @@ async fn vision_to_hub_rgb(
         .unwrap();
     Ok(tokio::spawn(async move {
         while let Ok(data) = vision_rx.recv().await {
-            let _ = hubled
-                .set_hubled_rgb(&[data[0] as u8, data[1] as u8, data[2] as u8]);
-                // .await;
+            let _ = hubled.set_hubled_rgb(&[
+                data[0] as u8,
+                data[1] as u8,
+                data[2] as u8,
+            ]);
             println!("RGB: {:?} ", data,)
         }
     }))
