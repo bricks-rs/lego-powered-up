@@ -73,24 +73,23 @@ pub async fn attached_device_info(mutex: HubMutex) -> Result<()> {
     loop {
         print!("(l)ist, <port>, (s)et or (q)uit > ");
         let line: String = read!("{}\n");
-        if (line.len() == 0) | line.starts_with("\r") {
+        if line.is_empty() || line.starts_with('\r') {
             continue;
-        } else if line.contains("l") {
+        } else if line.contains('l') {
             let lock = mutex.lock().await;
             for device in lock.connected_io().values() {
                 println!("{}", device.def);
             }
             continue;
-        } else if line.contains("s") {
-            let port_id: u8;
+        } else if line.contains('s') {
             let mode_id: u8;
             let delta: u32;
 
             print!("Set mode; port > ");
             let line: String = read!("{}\n");
-            port_id = line.trim().parse::<u8>().unwrap();
+            let port_id = line.trim().parse::<u8>().unwrap();
             let lock = mutex.lock().await;
-            if let Some(device) = lock.connected_io().get(&port_id).clone() {
+            if let Some(device) = lock.connected_io().get(&port_id) {
                 let device = lock.device_cache(device.clone());
                 print!("Set mode; mode > ");
                 let line: String = read!("{}\n");
@@ -100,29 +99,26 @@ pub async fn attached_device_info(mutex: HubMutex) -> Result<()> {
                 delta = line.trim().parse::<u32>().unwrap();
                 print!("Set mode; enable notifications (Y / n) > ");
                 let line: String = read!("{}\n");
-                if (line.len() > 1) & (line.contains("n")) {
-                    let _ = device.device_mode(mode_id, delta, false);
-                } else {
-                    if let Ok(task) =
-                        reader(&device, port_id, mode_id, delta).await
-                    {
-                        match tasks.insert(port_id, task) {
-                            Some(task) => task.abort(),
-                            None => (),
-                        }
-                    } else {
-                        eprintln!(
-                            "Mode {0} ({0:#x}) not found on port {1} ({1:#x})",
-                            mode_id, port_id
-                        );
+                if (line.len() > 1) & (line.contains('n')) {
+                    let _ = device.device_mode(mode_id, delta, false).await;
+                } else if let Ok(task) =
+                    reader(&device, port_id, mode_id, delta).await
+                {
+                    if let Some(task) = tasks.insert(port_id, task) {
+                        task.abort();
                     }
+                } else {
+                    eprintln!(
+                        "Mode {0} ({0:#x}) not found on port {1} ({1:#x})",
+                        mode_id, port_id
+                    );
                 }
             } else {
                 eprintln!("No device on port {0} ({0:#x})", port_id);
                 continue;
             }
             continue;
-        } else if line.contains("q") {
+        } else if line.contains('q') {
             break;
         } else {
             let input = line.trim().parse::<u8>();

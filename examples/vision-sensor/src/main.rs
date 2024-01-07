@@ -45,10 +45,9 @@ pub async fn vision_sensor_ui(mutex: HubMutex) -> Result<()> {
     loop {
         print!("(l)ist, <mode>, or (q)uit > ");
         let line: String = read!("{}\n");
-        if (line.len() == 0) | line.starts_with("\r") {
-            match tasks.remove(&port_id) {
-                Some(task) => task.abort(),
-                None => (),
+        if line.is_empty() || line.starts_with('\r') {
+            if let Some(task) = tasks.remove(&port_id) {
+                task.abort();
             }
             device
                 .device_mode(0, 1, false)
@@ -56,15 +55,14 @@ pub async fn vision_sensor_ui(mutex: HubMutex) -> Result<()> {
                 .expect("Error disabling notifications");
             continue;
         } else if line.trim().eq_ignore_ascii_case("color") {
-            match tasks.insert(
+            if let Some(task) = tasks.insert(
                 port_id,
                 vision_to_hub_color(&device, mutex.clone()).await?,
             ) {
-                Some(task) => task.abort(),
-                None => (),
+                task.abort();
             }
         } else if line.trim().eq_ignore_ascii_case("prox") {
-            match tasks.insert(
+            if let Some(task) = tasks.insert(
                 port_id,
                 reader(
                     &device,
@@ -75,11 +73,10 @@ pub async fn vision_sensor_ui(mutex: HubMutex) -> Result<()> {
                 )
                 .await?,
             ) {
-                Some(task) => task.abort(),
-                None => (),
+                task.abort();
             }
         } else if line.trim().eq_ignore_ascii_case("count") {
-            match tasks.insert(
+            if let Some(task) = tasks.insert(
                 port_id,
                 reader(
                     &device,
@@ -90,11 +87,10 @@ pub async fn vision_sensor_ui(mutex: HubMutex) -> Result<()> {
                 )
                 .await?,
             ) {
-                Some(task) => task.abort(),
-                None => (),
+                task.abort();
             }
         } else if line.trim().eq_ignore_ascii_case("reflt") {
-            match tasks.insert(
+            if let Some(task) = tasks.insert(
                 port_id,
                 reader(
                     &device,
@@ -105,11 +101,10 @@ pub async fn vision_sensor_ui(mutex: HubMutex) -> Result<()> {
                 )
                 .await?,
             ) {
-                Some(task) => task.abort(),
-                None => (),
+                task.abort();
             }
         } else if line.trim().eq_ignore_ascii_case("ambi") {
-            match tasks.insert(
+            if let Some(task) = tasks.insert(
                 port_id,
                 reader(
                     &device,
@@ -120,13 +115,12 @@ pub async fn vision_sensor_ui(mutex: HubMutex) -> Result<()> {
                 )
                 .await?,
             ) {
-                Some(task) => task.abort(),
-                None => (),
+                task.abort();
             }
         } else if line.trim().eq_ignore_ascii_case("col_o")
-            | line.trim().eq_ignore_ascii_case("col o")
+            || line.trim().eq_ignore_ascii_case("col o")
         {
-            match tasks.insert(
+            if let Some(task) = tasks.insert(
                 port_id,
                 reader(
                     &device,
@@ -137,23 +131,21 @@ pub async fn vision_sensor_ui(mutex: HubMutex) -> Result<()> {
                 )
                 .await?,
             ) {
-                Some(task) => task.abort(),
-                None => (),
+                task.abort();
             }
         } else if (line.trim().eq_ignore_ascii_case("rgb_i"))
-            | (line.trim().eq_ignore_ascii_case("rgb i"))
+            || (line.trim().eq_ignore_ascii_case("rgb i"))
         {
-            match tasks.insert(
+            if let Some(task) = tasks.insert(
                 port_id,
                 vision_to_hub_rgb(&device, mutex.clone()).await?,
             ) {
-                Some(task) => task.abort(),
-                None => (),
+                task.abort();
             }
         } else if (line.trim().eq_ignore_ascii_case("ir_tx"))
-            | (line.trim().eq_ignore_ascii_case("ir tx"))
+            || (line.trim().eq_ignore_ascii_case("ir tx"))
         {
-            match tasks.insert(
+            if let Some(task) = tasks.insert(
                 port_id,
                 reader(
                     &device,
@@ -164,13 +156,12 @@ pub async fn vision_sensor_ui(mutex: HubMutex) -> Result<()> {
                 )
                 .await?,
             ) {
-                Some(task) => task.abort(),
-                None => (),
+                task.abort()
             }
         } else if (line.trim().eq_ignore_ascii_case("spec_1"))
-            | (line.trim().eq_ignore_ascii_case("spec 1"))
+            || (line.trim().eq_ignore_ascii_case("spec 1"))
         {
-            match tasks.insert(
+            if let Some(task) = tasks.insert(
                 port_id,
                 reader(
                     &device,
@@ -181,11 +172,10 @@ pub async fn vision_sensor_ui(mutex: HubMutex) -> Result<()> {
                 )
                 .await?,
             ) {
-                Some(task) => task.abort(),
-                None => (),
+                task.abort()
             }
         } else if line.trim().eq_ignore_ascii_case("debug") {
-            match tasks.insert(
+            if let Some(task) = tasks.insert(
                 port_id,
                 reader(
                     &device,
@@ -196,11 +186,10 @@ pub async fn vision_sensor_ui(mutex: HubMutex) -> Result<()> {
                 )
                 .await?,
             ) {
-                Some(task) => task.abort(),
-                None => (),
+                task.abort();
             }
         } else if line.trim().eq_ignore_ascii_case("calib") {
-            match tasks.insert(
+            if let Some(task) = tasks.insert(
                 port_id,
                 reader(
                     &device,
@@ -211,12 +200,11 @@ pub async fn vision_sensor_ui(mutex: HubMutex) -> Result<()> {
                 )
                 .await?,
             ) {
-                Some(task) => task.abort(),
-                None => (),
+                task.abort();
             }
-        } else if line.contains("q") {
+        } else if line.contains('q') {
             break;
-        } else if line.contains("l") {
+        } else if line.contains('l') {
             for m in device.def.modes().values() {
                 println!("{}", m);
             }
@@ -315,25 +303,25 @@ async fn vision_to_hub_color(
             println!("Color: {:?} ", data,);
             match data {
                 DetectedColor::NoObject => {
-                    let _ = hubled.set_hubled_color(Color::Black);
+                    hubled.set_hubled_color(Color::Black).await.unwrap();
                 }
                 DetectedColor::Black => {
-                    let _ = hubled.set_hubled_color(Color::Black);
+                    hubled.set_hubled_color(Color::Black).await.unwrap();
                 }
                 DetectedColor::Blue => {
-                    let _ = hubled.set_hubled_color(Color::Blue);
+                    hubled.set_hubled_color(Color::Blue).await.unwrap();
                 }
                 DetectedColor::Green => {
-                    let _ = hubled.set_hubled_color(Color::Green);
+                    hubled.set_hubled_color(Color::Green).await.unwrap();
                 }
                 DetectedColor::Yellow => {
-                    let _ = hubled.set_hubled_color(Color::Yellow);
+                    hubled.set_hubled_color(Color::Yellow).await.unwrap();
                 }
                 DetectedColor::Red => {
-                    let _ = hubled.set_hubled_color(Color::Red);
+                    hubled.set_hubled_color(Color::Red).await.unwrap();
                 }
                 DetectedColor::White => {
-                    let _ = hubled.set_hubled_color(Color::White);
+                    hubled.set_hubled_color(Color::White).await.unwrap();
                 }
                 _ => (),
             }
@@ -356,18 +344,17 @@ async fn vision_to_hub_rgb(
         .set_hubled_mode(HubLedMode::Rgb)
         .await
         .expect("Error setting mode");
-    let _ = hubled.set_hubled_rgb(&[0x00, 0x00, 0x00]);
+    hubled.set_hubled_rgb(&[0x00, 0x00, 0x00]).await.unwrap();
     let (mut vision_rx, _) = device
         .enable_16bit_sensor(modes::VisionSensor::RGB_I, 1)
         .await
         .unwrap();
     Ok(tokio::spawn(async move {
         while let Ok(data) = vision_rx.recv().await {
-            let _ = hubled.set_hubled_rgb(&[
-                data[0] as u8,
-                data[1] as u8,
-                data[2] as u8,
-            ]);
+            hubled
+                .set_hubled_rgb(&[data[0] as u8, data[1] as u8, data[2] as u8])
+                .await
+                .unwrap();
             println!("RGB: {:?} ", data,)
         }
     }))

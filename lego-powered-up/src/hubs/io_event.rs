@@ -24,28 +24,28 @@ type PinnedStream = Pin<Box<dyn Stream<Item = ValueNotification> + Send>>;
 
 pub struct Verbosity {
     attached: bool,
-    hub: bool,
-    input: bool,
-    output: bool,
-    values: bool,
+    _hub: bool,
+    _input: bool,
+    _output: bool,
+    _values: bool,
 }
 impl Verbosity {
     pub fn new() -> Self {
         Self {
             attached: true,
-            hub: false,
-            input: false,
-            output: true,
-            values: false,
+            _hub: false,
+            _input: false,
+            _output: true,
+            _values: false,
         }
     }
     pub fn set(
         &mut self,
         attached: bool,
-        hub: bool,
-        input: bool,
-        output: bool,
-        values: bool,
+        _hub: bool,
+        _input: bool,
+        _output: bool,
+        _values: bool,
     ) {
         self.attached = attached;
     }
@@ -68,7 +68,7 @@ pub async fn io_event_handler(
         | senders.singlevalue_sender.is_none()
         | senders.commandfeedback_sender.is_none()
     {
-        return Err(crate::Error::HubError(format!("Sender was none")));
+        return Err(crate::Error::HubError("Sender was none".into()));
     }
     let combinedvalue_sender = senders.combinedvalue_sender.unwrap();
     let commandfeedback_sender = senders.commandfeedback_sender.unwrap();
@@ -147,8 +147,8 @@ pub async fn io_event_handler(
                         match event {
                             IoAttachEvent::AttachedIo {
                                 io_type_id,
-                                hw_rev,
-                                fw_rev,
+                                hw_rev:_,
+                                fw_rev:_,
                             } => {
                                 {
                                     let mut hub = mutex.lock().await;
@@ -180,8 +180,8 @@ pub async fn io_event_handler(
                             }
                             IoAttachEvent::AttachedVirtualIo {
                                 io_type_id,
-                                port_a,
-                                port_b,
+                                port_a:_,
+                                port_b:_,
                             } => {
                                 {
                                     let mut hub = mutex.lock().await;
@@ -207,7 +207,6 @@ pub async fn io_event_handler(
                         information_type,
                     } = val;
                     {
-                        let port_id = port_id;
                         match information_type {
                                 PortInformationType::ModeInfo{capabilities, mode_count, input_modes, output_modes} => {
                                     {
