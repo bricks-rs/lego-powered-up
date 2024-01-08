@@ -11,7 +11,7 @@ pub async fn single_hub() -> Result<ConnectedHub> {
     println!("Waiting for hub...");
     let hub = pu.wait_for_hub().await?;
     println!("Connecting to hub...");
-    dbg!(&hub);
+    //dbg!(&hub);
 
     Ok(ConnectedHub::setup_hub(
         pu.create_hub(&hub).await.expect("Error creating hub"),
