@@ -1454,9 +1454,9 @@ impl PortOutputCommandFormat {
                     ((*use_acc_profile as u8) << 1) | (*use_dec_profile as u8);
                 let speed = speed.to_le_bytes()[0];
                 let max_power = max_power.to_le_bytes()[0];
-                dbg!(time);
+                //dbg!(time);
                 let time = time.to_le_bytes();
-                dbg!(time);
+                //dbg!(time);
                 let mut bytes = vec![
                     // Header
                     0, // len
